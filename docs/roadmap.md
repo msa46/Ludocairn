@@ -1,0 +1,106 @@
+# Roadmap
+
+## Delivery strategy
+
+The first usable product milestone is divided into four development increments.
+Each increment produces a reviewable, tested result. Together they satisfy the
+milestone described in the project brief.
+
+## Increment 1: Foundation
+
+Deliver the Vite, React, and TypeScript project; formatting, linting,
+type-checking, and test commands; the GitHub Pages build and deployment
+workflow; global responsive and print styles; and initial accessibility
+conventions.
+
+Acceptance criteria:
+
+- `npm ci`, type-checking, tests, and the production build succeed in CI.
+- The deployed artifact contains static files only and works from a repository
+  subpath.
+- A direct load of the project root and a reload with a game query parameter do
+  not require an SPA fallback.
+- The base document has semantic landmarks, keyboard-visible focus, and a
+  print stylesheet.
+- An explicit open-source license is selected and added before public release.
+
+## Increment 2: Content engine
+
+Deliver the standard 52-card and tarot deck models, selectors, version 1 game
+schema, Markdown loader and renderer, catalog, and three repository games:
+Card Mafia, Higher or Lower, and Tarot Journey.
+
+Acceptance criteria:
+
+- The standard deck contains exactly 52 unique cards with the expected four
+  suits and thirteen ranks.
+- The tarot deck contains exactly 78 unique cards: 22 major and 56 minor
+  arcana, with documented canonical IDs.
+- Selector tests cover IDs, suits, ranks, arcana, tags, and combined filters.
+- Valid game files parse into normalized definitions; malformed frontmatter,
+  unsupported versions, duplicate IDs, and invalid defaults produce structured
+  diagnostics.
+- CI validates every repository game before deployment.
+- The catalog opens each example's safely rendered Markdown rules.
+
+## Increment 3: Local session tracker
+
+Deliver session creation, player management, boolean/choice/number/text fields,
+phase and round tracking, notes, versioned local persistence, and recovery from
+invalid stored data.
+
+Acceptance criteria:
+
+- A user can create a session from any example game.
+- Players can be added and removed without reloading.
+- Every configured field renders an appropriate labeled control and initializes
+  from its declared default.
+- The current phase can be changed and the round adjusted when enabled.
+- A refreshed page restores valid sessions from local storage.
+- Invalid or unsupported stored data produces a recoverable message and is not
+  silently overwritten.
+- Pure session transformations and serialization are covered by unit tests.
+
+## Increment 4: Print and release hardening
+
+Deliver dedicated print states for rules and trackers, responsive refinements,
+keyboard and screen-reader verification, import/export of versioned session
+files, contributor documentation, and release checks.
+
+Acceptance criteria:
+
+- Rules and tracker print previews omit interactive chrome and remain readable
+  in grayscale.
+- Narrow-screen layouts preserve every operation without requiring precise
+  horizontal gestures.
+- A keyboard-only user can select a game, create a session, add a player, edit
+  all field types, change phase and round, and invoke print.
+- Sessions export to and import from a validated, versioned JSON file.
+- The README and game-author guide allow a contributor to add a valid game
+  without reading application source.
+
+## Later milestones
+
+Later work may add file sharing, compact fragment sharing for suitably small
+state, custom deck definitions, printable role/reference sheets, richer card
+group capabilities, and a carefully designed distinction between objective
+state and subjective player knowledge.
+
+Accounts, cloud synchronization, multiplayer networking, real-time
+collaboration, arbitrary scripts, AI game generation, and a plugin marketplace
+remain outside the first release.
+
+## Architectural triggers
+
+Generalize only after examples demonstrate a repeated need:
+
+- Add labeled choice objects when choice IDs cannot produce adequate labels in
+  at least two real games.
+- Add special role or status concepts only when generic choice/boolean fields
+  cannot support several games without duplication or ambiguity.
+- Add card-group behavior only with a specific interaction and at least two
+  games that require it.
+- Add a selector expression language only when the structured selector cannot
+  express several necessary selections.
+- Replace `localStorage` only if measured session size or transactional needs
+  exceed its practical limits.
