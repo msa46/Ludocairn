@@ -7,6 +7,7 @@ import {
   addPlayer,
   createSession,
   removePlayer,
+  renameSession,
   setPhase,
   setRound,
   updateNotes,
@@ -15,6 +16,7 @@ import {
 import { LocalStorageSessionRepository } from '../storage/local-storage'
 import type { SessionRepository } from '../storage/repository'
 import { CatalogView } from './components/CatalogView'
+import { ImportSession } from './components/ImportSession'
 import { RulesView } from './components/RulesView'
 import { SessionSetup } from './components/SessionSetup'
 import { TrackerView } from './components/TrackerView'
@@ -54,6 +56,7 @@ export function App({
   const [search, setSearch] = useState(() => window.location.search)
   const [setupGameId, setSetupGameId] = useState<string>()
   const [revision, setRevision] = useState(0)
+  const [actionError, setActionError] = useState<string>()
   const { session, saveStatus, error, open, accept } =
     useSessionStore(sessionRepository)
 
@@ -81,6 +84,7 @@ export function App({
     window.history.pushState({}, '', query)
     setSearch(nextSearch ? '?' + nextSearch : '')
     setSetupGameId(undefined)
+    setActionError(undefined)
   }
 
   function mutate(result: ReturnType<typeof updateNotes>, debounce = false) {
@@ -95,6 +99,7 @@ export function App({
           game={sessionGame}
           session={session}
           saveStatus={saveStatus}
+          error={error ?? actionError}
           navigateHome={() => navigate('')}
           onPhase={(phase) =>
             mutate(setPhase(session, sessionGame, phase, clock))
@@ -123,6 +128,15 @@ export function App({
             mutate(addPlayer(session, sessionGame, name, clock, ids))
           }
           onRemovePlayer={(id) => mutate(removePlayer(session, id, clock))}
+          onRename={(name) => mutate(renameSession(session, name, clock))}
+          onDeleteSession={() => {
+            const removed = sessionRepository.remove(session.id)
+            if (removed.ok) {
+              navigate('')
+            } else {
+              setActionError(removed.diagnostic.message)
+            }
+          }}
         />
       )
     } else {
@@ -197,6 +211,14 @@ export function App({
           sessionRepository.remove(id)
           setRevision((value) => value + 1)
         }}
+        importSession={
+          <ImportSession
+            ids={ids}
+            repository={sessionRepository}
+            resolveGame={resolveGame}
+            onImported={(id) => navigate('session=' + id)}
+          />
+        }
         key={revision}
       />
     )

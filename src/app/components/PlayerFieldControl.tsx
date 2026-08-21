@@ -15,74 +15,93 @@ export function PlayerFieldControl({
   onChange,
 }: PlayerFieldControlProps) {
   const label = playerName + ' — ' + field.label
+  const printValue =
+    field.type === 'boolean' ? (value === true ? 'Yes' : 'No') : String(value)
+  const printed = (
+    <p className="print-only" aria-hidden="true">
+      {field.label}: {printValue}
+    </p>
+  )
 
   if (field.type === 'boolean') {
     return (
-      <label className="checkbox-field">
-        <input
-          aria-label={label}
-          checked={value === true}
-          type="checkbox"
-          onChange={(event) => onChange(event.target.checked)}
-        />
-        <span>{field.label}</span>
-      </label>
+      <>
+        <label className="checkbox-field editing-controls">
+          <input
+            aria-label={label}
+            checked={value === true}
+            type="checkbox"
+            onChange={(event) => onChange(event.target.checked)}
+          />
+          <span>{field.label}</span>
+        </label>
+        {printed}
+      </>
     )
   }
 
   if (field.type === 'choice') {
     return (
-      <label>
-        {field.label}
-        <select
-          aria-label={label}
-          value={String(value)}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          {field.choices.map((choice) => (
-            <option key={choice} value={choice}>
-              {choice}
-            </option>
-          ))}
-        </select>
-      </label>
+      <>
+        <label className="editing-controls">
+          {field.label}
+          <select
+            aria-label={label}
+            value={String(value)}
+            onChange={(event) => onChange(event.target.value)}
+          >
+            {field.choices.map((choice) => (
+              <option key={choice} value={choice}>
+                {choice}
+              </option>
+            ))}
+          </select>
+        </label>
+        {printed}
+      </>
     )
   }
 
   if (field.type === 'number') {
     return (
-      <label>
-        {field.label}
-        <input
-          aria-label={label}
-          max={field.max}
-          min={field.min}
-          step={field.step}
-          type="number"
-          value={Number(value)}
-          onChange={(event) => onChange(event.target.valueAsNumber)}
-        />
-      </label>
+      <>
+        <label className="editing-controls">
+          {field.label}
+          <input
+            aria-label={label}
+            max={field.max}
+            min={field.min}
+            step={field.step}
+            type="number"
+            value={Number(value)}
+            onChange={(event) => onChange(event.target.valueAsNumber)}
+          />
+        </label>
+        {printed}
+      </>
     )
   }
 
   return (
-    <label>
-      {field.label}
-      {field.multiline ? (
-        <textarea
-          aria-label={label}
-          rows={3}
-          value={String(value)}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      ) : (
-        <input
-          aria-label={label}
-          value={String(value)}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      )}
-    </label>
+    <>
+      <label className="editing-controls">
+        {field.label}
+        {field.multiline ? (
+          <textarea
+            aria-label={label}
+            rows={3}
+            value={String(value)}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        ) : (
+          <input
+            aria-label={label}
+            value={String(value)}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        )}
+      </label>
+      {printed}
+    </>
   )
 }

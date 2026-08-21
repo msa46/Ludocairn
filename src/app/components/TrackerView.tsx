@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 
+import { serializeSession } from '../../files/session-files'
 import type { GameDefinition } from '../../games/model'
 import type { Session, SessionFieldValue } from '../../sessions/model'
 import { getPlayerCountWarning } from '../../sessions/operations'
@@ -9,6 +10,7 @@ interface TrackerViewProps {
   readonly game: GameDefinition
   readonly session: Session
   readonly saveStatus: string
+  readonly error?: string
   readonly navigateHome: () => void
   readonly onPhase: (phase: string) => void
   readonly onRound: (round: number) => void
@@ -20,12 +22,15 @@ interface TrackerViewProps {
   readonly onNotes: (notes: string) => void
   readonly onAddPlayer: (name: string) => void
   readonly onRemovePlayer: (id: string) => void
+  readonly onRename: (name: string) => void
+  readonly onDeleteSession: () => void
 }
 
 export function TrackerView({
   game,
   session,
   saveStatus,
+  error,
   navigateHome,
   onPhase,
   onRound,
@@ -33,10 +38,55 @@ export function TrackerView({
   onNotes,
   onAddPlayer,
   onRemovePlayer,
+  onRename,
+  onDeleteSession,
 }: TrackerViewProps) {
   const [newPlayerName, setNewPlayerName] = useState('')
   const [confirmingRemoval, setConfirmingRemoval] = useState<string>()
+  const [confirmingSessionDelete, setConfirmingSessionDelete] = useState(false)
+  const [exportError, setExportError] = useState<string>()
   const warning = getPlayerCountWarning(session, game)
+
+  function submitRename(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    onRename(String(data.get('session-name') ?? ''))
+  }
+
+  function exportSession() {
+    setExportError(undefined)
+    let url: string | undefined
+    try {
+      url = URL.createObjectURL(
+        new Blob([serializeSession(session)], {
+          type: 'application/json;charset=utf-8',
+        }),
+      )
+      const filename =
+        session.name
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'session'
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = filename + '.ludocairn-session.json'
+      anchor.click()
+    } catch (cause) {
+      setExportError(
+        typeof cause === 'object' &&
+          cause !== null &&
+          'message' in cause &&
+          typeof cause.message === 'string' &&
+          cause.message
+          ? cause.message
+          : 'The session file could not be downloaded.',
+      )
+    } finally {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }
 
   return (
     <div className="page-stack tracker-print">
@@ -50,7 +100,7 @@ export function TrackerView({
         >
           All games
         </a>
-        <p role="status" aria-live="polite">
+        <p className="save-status" role="status" aria-live="polite">
           {saveStatus}
         </p>
       </nav>
@@ -69,50 +119,114 @@ export function TrackerView({
       </header>
 
       {warning && <p className="guidance">{warning}</p>}
+      {(error || exportError) && <p role="alert">{error ?? exportError}</p>}
+
+      <section
+        className="session-management print-hidden"
+        aria-labelledby="session-management-title"
+      >
+        <h2 id="session-management-title">Session management</h2>
+        <form onSubmit={submitRename}>
+          <label>
+            Session name
+            <input
+              key={session.name}
+              defaultValue={session.name}
+              name="session-name"
+              required
+            />
+          </label>
+          <button type="submit">Rename session</button>
+        </form>
+        <div>
+          <button type="button" onClick={exportSession}>
+            Export session
+          </button>
+          <p className="privacy-note">
+            Exports include facilitator notes. Handle the downloaded file as
+            private table material.
+          </p>
+        </div>
+        <div className="destructive-controls">
+          {confirmingSessionDelete ? (
+            <div role="alert">
+              <p>This permanently deletes {session.name} from this browser.</p>
+              <button type="button" onClick={onDeleteSession}>
+                Delete saved session
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingSessionDelete(false)}
+              >
+                Keep session
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingSessionDelete(true)}
+            >
+              Review delete session
+            </button>
+          )}
+        </div>
+      </section>
 
       <section className="tracker-controls" aria-label="Round and phase">
         {game.phases.length > 0 && (
-          <label>
-            Phase
-            <select
-              aria-label="Phase"
-              value={session.currentPhase}
-              onChange={(event) => onPhase(event.target.value)}
-            >
-              {game.phases.map((phase) => (
-                <option key={phase.id} value={phase.id}>
-                  {phase.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <>
+            <label className="editing-controls">
+              Phase
+              <select
+                aria-label="Phase"
+                value={session.currentPhase}
+                onChange={(event) => onPhase(event.target.value)}
+              >
+                {game.phases.map((phase) => (
+                  <option key={phase.id} value={phase.id}>
+                    {phase.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="print-only" aria-hidden="true">
+              Phase:{' '}
+              {game.phases.find((phase) => phase.id === session.currentPhase)
+                ?.label ?? session.currentPhase}
+            </p>
+          </>
         )}
         {game.round.enabled && (
-          <div className="round-control">
-            <span>Round</span>
-            <button
-              aria-label="Decrease round"
-              type="button"
-              disabled={(session.round ?? 1) <= 1}
-              onClick={() => onRound((session.round ?? 1) - 1)}
-            >
-              −
-            </button>
-            <input
-              aria-label="Round"
-              min={1}
-              type="number"
-              value={session.round}
-              onChange={(event) => onRound(event.target.valueAsNumber)}
-            />
-            <button
-              aria-label="Increase round"
-              type="button"
-              onClick={() => onRound((session.round ?? 0) + 1)}
-            >
-              +
-            </button>
-          </div>
+          <>
+            <div className="round-control editing-controls">
+              <span>Round</span>
+              <button
+                aria-label="Decrease round"
+                type="button"
+                disabled={(session.round ?? 1) <= 1}
+                onClick={() => onRound((session.round ?? 1) - 1)}
+              >
+                −
+              </button>
+              <input
+                aria-label="Round"
+                min={1}
+                type="number"
+                value={session.round}
+                onChange={(event) => onRound(event.target.valueAsNumber)}
+              />
+              <button
+                aria-label="Increase round"
+                type="button"
+                onClick={() => onRound((session.round ?? 0) + 1)}
+              >
+                +
+              </button>
+            </div>
+            <p className="print-only" aria-hidden="true">
+              Round: {session.round}
+            </p>
+          </>
         )}
       </section>
 
@@ -195,7 +309,7 @@ export function TrackerView({
 
       <section className="notes-section">
         <h2>Facilitator notes</h2>
-        <label>
+        <label className="editing-controls">
           Session notes
           <textarea
             rows={5}
@@ -203,6 +317,9 @@ export function TrackerView({
             onChange={(event) => onNotes(event.target.value)}
           />
         </label>
+        <p className="print-only" aria-hidden="true">
+          Facilitator notes: {session.notes || 'None'}
+        </p>
         <p className="privacy-note">
           These notes remain in this browser unless you later export them.
         </p>

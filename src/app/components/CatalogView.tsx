@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import type { GameDefinition } from '../../games/model'
 import type { RepositoryRecord } from '../../storage/repository'
 import { RecoveryCard } from './RecoveryCard'
@@ -7,6 +9,7 @@ interface CatalogViewProps {
   readonly records: readonly RepositoryRecord[]
   readonly navigate: (search: string) => void
   readonly removeRecord: (id: string) => void
+  readonly importSession: ReactNode
 }
 
 export function CatalogView({
@@ -14,6 +17,7 @@ export function CatalogView({
   records,
   navigate,
   removeRecord,
+  importSession,
 }: CatalogViewProps) {
   const sessions = records.filter((record) => record.ok)
   const recovery = records.filter((record) => !record.ok)
@@ -113,6 +117,8 @@ export function CatalogView({
           ))}
         </section>
       )}
+
+      {importSession}
     </div>
   )
 }
