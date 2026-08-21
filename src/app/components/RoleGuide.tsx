@@ -61,7 +61,12 @@ export function RoleGuide({
 
       {playerCount === undefined ? (
         game.roleDistributions.length > 0 ? (
-          <div className="role-guide-table-wrap">
+          <div
+            aria-label="Role quantities by player count"
+            className="role-guide-table-wrap"
+            role="region"
+            tabIndex={0}
+          >
             <table>
               <caption>Role quantities by player count</caption>
               <thead>

@@ -68,6 +68,11 @@ describe('RoleGuide', () => {
     expect(
       screen.getByRole('table', { name: 'Role quantities by player count' }),
     ).toHaveTextContent('5–6')
+    const quantityScrollRegion = screen.getByRole('region', {
+      name: 'Role quantities by player count',
+    })
+    quantityScrollRegion.focus()
+    expect(quantityScrollRegion).toHaveFocus()
 
     rerender(<RoleGuide game={game} playerCount={8} />)
     expect(screen.getByText('Quantities for 8 players')).toBeInTheDocument()
