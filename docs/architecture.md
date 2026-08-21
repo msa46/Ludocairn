@@ -63,6 +63,20 @@ validation remains necessary so future imported files can use the same safe
 boundary. Raw HTML in Markdown is disabled. Game definitions cannot execute
 JavaScript.
 
+Structured role data follows one explicit path. The role domain defines role,
+physical card-marker, distribution, and semantic role-field values. The game
+parser validates and normalizes that YAML, including deck-valid selectors and
+complete player-count coverage. Rules, setup, tracker, and print views then
+pass the same normalized definition to the shared read-only role guide. When a
+session contains a `type: role` player field, its native select displays role
+labels but session operations, local storage, and exports retain the stable
+role ID string.
+
+This flow supplies public setup information, not secret game state. The role
+guide and selector model never choose exact cards, shuffle or deal a deck,
+assign roles to players, reveal private roles, or execute role behavior. Those
+actions remain with the facilitator and the physical rules.
+
 ### Session domain
 
 Session state contains a session ID, game identity and schema version, players,
@@ -111,9 +125,11 @@ claiming the fragment namespace intended for future share data.
 
 1. Vite bundles the repository game Markdown sources.
 2. The game loader parses and validates them into a catalog.
-3. A user selects a public game and reads its rendered Markdown rules.
+3. A user selects a public game and reads its shared role guide, when defined,
+   alongside the rendered Markdown rules.
 4. Session creation applies defaults from the selected game definition.
-5. UI events call pure session transformations.
+5. Role controls display role labels while UI events pass stable role IDs to
+   pure session transformations.
 6. The storage adapter serializes each validated state change locally.
 7. Reloading validates and restores the stored session.
 8. An explicit export downloads the validated state; an explicit import

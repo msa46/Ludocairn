@@ -43,12 +43,59 @@ can change.
 schema_version: 1
 id: example-game
 name: Example Game
-summary: A neutral example showing every version 1 field type.
+summary: A neutral example showing structured roles and every version 1 field type.
 deck: standard-52
 
 players:
   min: 5
-  max: 16
+  max: 12
+
+roles:
+  - id: echo
+    label: Echo
+    team: Quorum
+    summary: Privately tests one active player each night.
+    card:
+      label: Heart
+      selector:
+        suits: [hearts]
+
+  - id: drifter
+    label: Drifter
+    team: Drifters
+    summary: Works with the other Drifters to reduce the quorum.
+    card:
+      label: Any spade
+      selector:
+        suits: [spades]
+
+  - id: wayfinder
+    label: Wayfinder
+    team: Quorum
+    summary: Discusses and signals to identify the Drifters.
+    card:
+      label: Any club or diamond
+      selector:
+        suits: [clubs, diamonds]
+
+role_distributions:
+  - players: { min: 5, max: 6 }
+    counts:
+      echo: 1
+      drifter: 1
+      wayfinder: remaining
+
+  - players: { min: 7, max: 9 }
+    counts:
+      echo: 1
+      drifter: 2
+      wayfinder: remaining
+
+  - players: { min: 10, max: 12 }
+    counts:
+      echo: 1
+      drifter: 3
+      wayfinder: remaining
 
 session:
   phases:
@@ -70,12 +117,14 @@ session:
 
     - id: role
       label: Role
+      type: role
+      default: wayfinder
+
+    - id: stance
+      label: Stance
       type: choice
-      choices:
-        - first
-        - second
-        - third
-      default: first
+      choices: [steady, daring]
+      default: steady
 
     - id: score
       label: Score
@@ -108,6 +157,8 @@ Place the rules after the closing frontmatter delimiter.
 | `summary` | yes | Plain-text catalog description. |
 | `deck` | yes | `standard-52` or `tarot`. |
 | `players` | yes | Supported player-count constraints. |
+| `roles` | no | Non-empty ordered role definitions for the shared role guide. |
+| `role_distributions` | no | Ordered role counts covering every supported player count. |
 | `session` | yes | Tracker configuration. |
 
 Unknown fields are rejected in version 1. This catches misspellings and keeps
@@ -119,6 +170,41 @@ extensions deliberate.
 present, must be an integer greater than or equal to `min`. The UI warns when a
 session is outside the recommended range but does not delete players or block
 an existing session from opening.
+
+### Structured roles and distributions
+
+The optional `roles` list defines stable game-local role IDs and the
+human-readable information used by the shared guide. When present it must be a
+non-empty list. Every role requires a unique lowercase stable `id`, a non-empty
+`label`, and a non-empty plain-text `summary`. `team` is optional but must be a
+non-empty label when supplied.
+
+The optional `card` marker contains a non-empty display `label` and a
+structured `selector`. The selector must be valid for the declared deck and
+must select at least one card. Card markers identify the physical cards the
+rules use; they do not reserve, choose, shuffle, deal, or assign those cards.
+
+`role_distributions` is optional and requires both a non-empty `roles` list and
+a finite `players.max`. Each inclusive `players` band must be ordered and
+adjacent to the next, with the complete list covering every supported player
+count from `players.min` through `players.max` exactly once. Gaps, overlaps,
+reversed bands, and bands outside the supported range are invalid.
+
+Every `counts` object names every role exactly once and contains no unknown
+role IDs. A count is either a non-negative integer or the literal
+`remaining`. At most one role per band may use `remaining`; its count is the
+actual table size minus all fixed counts. Fixed counts cannot exceed the band
+minimum. Without `remaining`, a band must represent one player count and its
+fixed counts must fill that count exactly. Roles may be defined without
+distributions when the rules leave composition to the facilitator, but
+distributions cannot be defined without roles.
+
+Games that omit these optional properties normalize to empty role and
+distribution arrays and render no role guide.
+
+The guide is public, shared reference material. Ludocairn does not deal cards,
+make private role assignments, or reveal private roles; the facilitator and
+the game's physical procedure remain responsible for those actions.
 
 ### Phases and rounds
 
@@ -161,6 +247,20 @@ The default is a YAML boolean.
 `choices` contains at least one unique ID. The default must be one of those
 IDs. Version 1 displays a humanized choice ID; separate choice labels can be
 added in a later schema version if real games require them.
+
+#### Role
+
+```yaml
+- id: role
+  label: Role
+  type: role
+  default: wayfinder
+```
+
+A role field takes its options and display labels from the top-level `roles`
+list, so it does not declare `choices`. Its default must be the ID of one
+declared role. Trackers display the role label while stored and exported
+session values remain stable role-ID strings.
 
 #### Number
 
@@ -214,9 +314,9 @@ tags: [court]
 
 Values within a property are alternatives. Populated properties combine with
 logical AND. An empty selector is invalid. A selector property that does not
-apply to the selected deck is invalid. Version 1 game metadata does not yet
-attach selectors to automated behavior; the model is defined and tested for
-future explicit capabilities.
+apply to the selected deck is invalid. Role card markers use selectors for
+validated, structured physical references only; selectors do not trigger
+automated behavior.
 
 ## Compatibility rules
 
@@ -226,6 +326,12 @@ future explicit capabilities.
 - Schema changes that invalidate an existing valid game require a new version.
 - Adding optional behavior may remain in the same version only when old files
   retain identical meaning.
+
+Structured roles are an optional addition to `schema_version: 1`; games without
+them keep the same meaning. Converting a choice-based role field to `type: role`
+does not require a saved-session migration when the role IDs remain unchanged:
+the session continues to store the same strings. The current saved-session
+`storageVersion` therefore remains `1`.
 
 Game schema versions and saved-session storage versions are separate. A game
 definition configures new trackers; an exported or stored session contains the
@@ -245,7 +351,8 @@ currently bundled game before it can be restored or imported.
    records.
 
 The current catalog demonstrates the format with
-[`Veilquorum`](../games/veilquorum/game.md) (all four field types plus phases),
+[`Veilquorum`](../games/veilquorum/game.md) (structured roles plus phases and
+facilitator fields),
 [`Rillward Gambit`](../games/rillward-gambit/game.md) (score/streak/stance
 tracking), and [`Sereinfolio`](../games/sereinfolio/game.md) (tarot reflection
 text and tone tracking).

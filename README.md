@@ -27,8 +27,8 @@ the browser cannot enumerate existing sessions safely.
 The catalog contains three original Ludocairn games:
 
 - **[Veilquorum](games/veilquorum/game.md)** — a facilitator-led hidden-role
-  game for a standard 52-card deck, with phase, round, boolean, choice,
-  number, and text tracking.
+  game for a standard 52-card deck, with a structured role guide plus phase,
+  round, boolean, number, and text tracking.
 - **[Rillward Gambit](games/rillward-gambit/game.md)** — a standard-card
   comparison game about choosing risk, building streaks, and banking score.
 - **[Sereinfolio](games/sereinfolio/game.md)** — a non-divinatory tarot
@@ -36,6 +36,7 @@ The catalog contains three original Ludocairn games:
 
 Their rules, terminology, prompts, examples, and tracker configurations were
 independently authored for this repository and released under the MIT License.
+No commercial games or their proprietary content are bundled.
 Each game has an adjacent `RIGHTS.md` with authorship, license, provenance, and
 dated name-screen records. Those searches, like the
 [Ludocairn product-name record](docs/name-clearance.md), are preliminary
@@ -46,9 +47,12 @@ freedom to use. Database coverage and unregistered market use can change.
 
 Choose a game to read its safely rendered rules, then create a named session
 with any number of initial players. The tracker supports player add/remove,
-the four configured field types, phase and round controls where defined,
+the configured field types, phase and round controls where defined,
 facilitator notes, session rename, confirmed deletion, and automatic local
 saving. Refreshing a tracker URL restores the valid saved session.
+
+- Structured role guides show role purposes, teams, physical card markers, and
+  table-size quantities without automating private assignment.
 
 **Print rules** and **Print tracker** open the browser's print dialog. Dedicated
 print styles hide navigation and editing controls, expose current tracker

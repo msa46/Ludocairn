@@ -42,6 +42,18 @@ print dialog was not introspected. The downloaded file therefore was not
 independently opened in that run; automated tests separately verify export
 contents and metadata.
 
+## Structured role guide
+
+- [x] Add optional version 1 role definitions, physical card markers, complete
+  player-count distributions, and semantic role fields.
+- [x] Show the same accessible, printable role guide in rules, setup, and
+  tracker views while keeping role IDs stable in saved sessions.
+- [x] Publish Veilquorum as the first structured-role game while keeping
+  Rillward Gambit and Sereinfolio roleless.
+
+Automated role assignment, private reveals, and scripted role behavior remain
+future work and are outside the structured guide's scope.
+
 ## Increment 1: Foundation
 
 Deliver the Vite, React, and TypeScript project; formatting, linting,
@@ -136,9 +148,10 @@ Acceptance criteria:
 ## Later milestones
 
 Later work may add file sharing, compact fragment sharing for suitably small
-state, custom deck definitions, printable role/reference sheets, richer card
-group capabilities, and a carefully designed distinction between objective
-state and subjective player knowledge.
+state, custom deck definitions, printable role/reference sheets, automated
+role assignment, private reveals, scripted role behavior, richer card group
+capabilities, and a carefully designed distinction between objective state and
+subjective player knowledge.
 
 Accounts, cloud synchronization, multiplayer networking, real-time
 collaboration, arbitrary scripts, AI game generation, and a plugin marketplace

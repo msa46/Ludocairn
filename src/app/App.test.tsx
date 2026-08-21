@@ -10,6 +10,10 @@ const catalog = loadBundledGames()
 if (!catalog.ok) throw new Error('Bundled catalog fixture failed to load')
 const veilquorum = catalog.games.find((game) => game.id === 'veilquorum')
 if (!veilquorum) throw new Error('Veilquorum fixture was not found')
+const rillwardGambit = catalog.games.find(
+  (game) => game.id === 'rillward-gambit',
+)
+if (!rillwardGambit) throw new Error('Rillward Gambit fixture was not found')
 
 const structuredVeilquorum = {
   ...veilquorum,
@@ -187,10 +191,10 @@ describe('App', () => {
   })
 
   it('does not show an empty role guide for games without roles', () => {
-    const repository = new MemorySessionRepository(() => veilquorum)
-    render(<App games={[veilquorum]} repository={repository} />)
+    const repository = new MemorySessionRepository(() => rillwardGambit)
+    render(<App games={[rillwardGambit]} repository={repository} />)
 
-    fireEvent.click(screen.getByRole('link', { name: /Open Veilquorum/ }))
+    fireEvent.click(screen.getByRole('link', { name: /Open Rillward Gambit/ }))
     expect(
       screen.queryAllByRole('heading', { name: 'Role guide' }),
     ).toHaveLength(0)

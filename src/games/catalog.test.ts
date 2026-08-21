@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildCatalog } from './catalog'
+import { buildCatalog, loadBundledGames } from './catalog'
 
 function gameSource(id: string, name: string): string {
   return `---
@@ -66,5 +66,66 @@ describe('buildCatalog', () => {
       ok: false,
       diagnostics: [{ code: 'catalog.path-id-mismatch', path: 'id' }],
     })
+  })
+})
+
+describe('loadBundledGames', () => {
+  it('loads Veilquorum with its structured role guide', () => {
+    const result = loadBundledGames()
+    if (!result.ok) throw new Error('Bundled catalog failed to load')
+
+    const veilquorum = result.games.find(({ id }) => id === 'veilquorum')
+    if (!veilquorum) throw new Error('Veilquorum was not found')
+
+    expect(veilquorum.roles.map(({ id, label }) => ({ id, label }))).toEqual([
+      { id: 'echo', label: 'Echo' },
+      { id: 'drifter', label: 'Drifter' },
+      { id: 'wayfinder', label: 'Wayfinder' },
+    ])
+    expect(veilquorum.roles.find(({ id }) => id === 'echo')?.card).toEqual({
+      label: 'Heart',
+      selector: { suits: ['hearts'] },
+    })
+    expect(veilquorum.roles.find(({ id }) => id === 'drifter')?.card).toEqual({
+      label: 'Any spade',
+      selector: { suits: ['spades'] },
+    })
+    expect(
+      veilquorum.roles.find(({ id }) => id === 'wayfinder')?.card,
+    ).toEqual({
+      label: 'Any club or diamond',
+      selector: { suits: ['clubs', 'diamonds'] },
+    })
+    expect(veilquorum.roleDistributions).toEqual([
+      {
+        players: { min: 5, max: 6 },
+        counts: { echo: 1, drifter: 1, wayfinder: 'remaining' },
+      },
+      {
+        players: { min: 7, max: 9 },
+        counts: { echo: 1, drifter: 2, wayfinder: 'remaining' },
+      },
+      {
+        players: { min: 10, max: 12 },
+        counts: { echo: 1, drifter: 3, wayfinder: 'remaining' },
+      },
+    ])
+    expect(veilquorum.fields.find(({ id }) => id === 'role')).toMatchObject({
+      type: 'role',
+      default: 'wayfinder',
+    })
+  })
+
+  it('normalizes bundled games without structured roles to empty arrays', () => {
+    const result = loadBundledGames()
+    if (!result.ok) throw new Error('Bundled catalog failed to load')
+
+    for (const id of ['rillward-gambit', 'sereinfolio']) {
+      const game = result.games.find((candidate) => candidate.id === id)
+      if (!game) throw new Error(`${id} was not found`)
+
+      expect(game.roles).toEqual([])
+      expect(game.roleDistributions).toEqual([])
+    }
   })
 })

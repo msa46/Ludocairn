@@ -600,7 +600,7 @@ git commit -m "feat: show role guides across sessions"
 - Consumes: the complete structured-role parser, session semantics, and shared UI.
 - Produces: the first bundled structured-role game, public authoring instructions, and a locally verified static release candidate.
 
-- [ ] **Step 1: Write failing bundled-content assertions**
+- [x] **Step 1: Write failing bundled-content assertions**
 
 In `src/games/catalog.test.ts`, locate Veilquorum and assert exact IDs, labels, card selectors, and bands:
 
@@ -623,13 +623,13 @@ expect(veilquorum.fields.find(({ id }) => id === 'role')).toMatchObject({
 
 Assert Rillward Gambit and Sereinfolio both have empty normalized role arrays.
 
-- [ ] **Step 2: Run the bundled catalog test and verify RED**
+- [x] **Step 2: Run the bundled catalog test and verify RED**
 
 Run: `npm test -- src/games/catalog.test.ts`
 
 Expected: FAIL because Veilquorum still declares a generic choice field and prose-only mapping.
 
-- [ ] **Step 3: Convert Veilquorum frontmatter**
+- [x] **Step 3: Convert Veilquorum frontmatter**
 
 Add the exact roles and distributions approved in the spec. Preserve the current mapping and bands:
 
@@ -641,13 +641,13 @@ Change only the existing role field from `type: choice` plus `choices` to `type:
 
 Edit `Prepare the role cards` prose to introduce the structured guide and avoid treating suits as role names. Retain a complete textual explanation so the Markdown remains understandable outside the application.
 
-- [ ] **Step 4: Run catalog and complete component journeys**
+- [x] **Step 4: Run catalog and complete component journeys**
 
 Run: `npm test -- src/games/catalog.test.ts src/app/App.test.tsx`
 
 Expected: all three bundled games load, Veilquorum uses structured roles, and every game still reaches its configured tracker.
 
-- [ ] **Step 5: Update public and authoring documentation**
+- [x] **Step 5: Update public and authoring documentation**
 
 Document in `docs/game-format.md`:
 
@@ -660,13 +660,13 @@ Document in `docs/game-format.md`:
 
 Document the role domain → parser → shared guide → session role-ID flow in `docs/architecture.md`. Mark the structured role guide delivered in `docs/roadmap.md` while leaving automated assignment, private reveals, and scripted role behavior future/out of scope. Add one concise README feature bullet and keep the established legal caveat: bundled content is original; commercial games are not bundled.
 
-- [ ] **Step 6: Run focused documentation and formatting checks**
+- [x] **Step 6: Run focused documentation and formatting checks**
 
 Run: `npm run format:check && git diff --check`
 
 Expected: all changed code, Markdown, and YAML use repository formatting with no whitespace errors.
 
-- [ ] **Step 7: Run the full release gate**
+- [x] **Step 7: Run the full release gate**
 
 Run: `npm run ci`
 
@@ -688,7 +688,7 @@ In a browser, verify at 320px and a wide viewport:
 8. Keyboard navigation reaches every role control and guide content remains exposed to the accessibility tree.
 9. No runtime request leaves the preview origin.
 
-- [ ] **Step 9: Commit the bundled game and documentation**
+- [x] **Step 9: Commit the bundled game and documentation**
 
 ```bash
 git add games/veilquorum/game.md src/games/catalog.test.ts README.md docs/game-format.md docs/architecture.md docs/roadmap.md docs/superpowers/plans/2026-08-21-structured-role-guide.md

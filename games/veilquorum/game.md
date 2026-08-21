@@ -7,6 +7,47 @@ deck: standard-52
 players:
   min: 5
   max: 12
+roles:
+  - id: echo
+    label: Echo
+    team: Quorum
+    summary: Privately tests one active player each night.
+    card:
+      label: Heart
+      selector:
+        suits: [hearts]
+  - id: drifter
+    label: Drifter
+    team: Drifters
+    summary: Works with the other Drifters to reduce the quorum.
+    card:
+      label: Any spade
+      selector:
+        suits: [spades]
+  - id: wayfinder
+    label: Wayfinder
+    team: Quorum
+    summary: Discusses and signals to identify the Drifters.
+    card:
+      label: Any club or diamond
+      selector:
+        suits: [clubs, diamonds]
+role_distributions:
+  - players: { min: 5, max: 6 }
+    counts:
+      echo: 1
+      drifter: 1
+      wayfinder: remaining
+  - players: { min: 7, max: 9 }
+    counts:
+      echo: 1
+      drifter: 2
+      wayfinder: remaining
+  - players: { min: 10, max: 12 }
+    counts:
+      echo: 1
+      drifter: 3
+      wayfinder: remaining
 session:
   phases:
     - id: night
@@ -24,8 +65,7 @@ session:
       default: true
     - id: role
       label: Role
-      type: choice
-      choices: [wayfinder, drifter, echo]
+      type: role
       default: wayfinder
     - id: signals
       label: Signals
@@ -59,7 +99,10 @@ roles privately from physical cards.
 
 ## Prepare the role cards
 
-Choose cards with the following suits. Rank does not matter.
+The structured role guide shown with these rules summarizes each role, its
+team, its purpose, its physical card marker, and the correct counts for the
+group size. To prepare those markers without the application, choose cards by
+suit using the complete table below. Rank does not matter.
 
 | Players | Drifters | Echoes | Wayfinders |
 | --- | ---: | ---: | ---: |
@@ -68,9 +111,10 @@ Choose cards with the following suits. Rank does not matter.
 | 10–12 | 3 spades | 1 heart | All remaining cards are clubs or diamonds |
 
 Shuffle exactly one card per player and deal them face down. Each player looks
-at only their own card. A spade is a Drifter, the heart is the Echo, and every
-club or diamond is a Wayfinder. Players keep their cards hidden until the game
-ends.
+at only their own card. Assign the Drifter role to each player holding a spade,
+the Echo role to the player holding the heart, and the Wayfinder role to every
+player holding a club or diamond. The cards are physical role markers; players
+keep them hidden until the game ends.
 
 In the tracker, add every player and record the corresponding role. Leave all
 players active, set every Signals value to zero, begin at Night, and begin with
@@ -142,4 +186,3 @@ When an objective is met, announce the winning side and let everyone reveal
 their cards. Review the tracker together only if the group wants to discuss
 how its reads changed. Start a new session for a rematch so the previous
 facilitator notes remain intact.
-
