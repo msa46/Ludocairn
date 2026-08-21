@@ -23,6 +23,19 @@ The directory name and frontmatter `id` must match. IDs use lowercase ASCII
 letters, digits, and single hyphens, start with a letter, and remain stable
 after publication.
 
+Each game also requires an adjacent rights record:
+
+```text
+games/<game-id>/RIGHTS.md
+```
+
+It records authorship, license, provenance, sources for any permitted reused
+material, and the date and scope of exact/confusing-similarity name screening.
+Repository examples are original Ludocairn content under the MIT License.
+Name screens are preliminary conflict checks, not legal opinions, registration
+claims, or guarantees of freedom to use; databases and unregistered market use
+can change.
+
 ## Complete example
 
 ```markdown
@@ -213,3 +226,26 @@ future explicit capabilities.
 - Schema changes that invalidate an existing valid game require a new version.
 - Adding optional behavior may remain in the same version only when old files
   retain identical meaning.
+
+Game schema versions and saved-session storage versions are separate. A game
+definition configures new trackers; an exported or stored session contains the
+game ID/schema version plus concrete player state and is validated against the
+currently bundled game before it can be restored or imported.
+
+## Authoring and verification
+
+1. Choose a stable lowercase ID and create `games/<game-id>/game.md`.
+2. Copy the structure above, using only the field types and optional controls
+   required by the game.
+3. Write complete, self-contained rules after the frontmatter. Do not embed raw
+   HTML, JavaScript, images, or remote widgets.
+4. Add the adjacent `RIGHTS.md` before treating the title as public.
+5. Run `npm run ci`. The repository contract discovers every bundled game,
+   validates the schema, rejects duplicate IDs, and checks required rights
+   records.
+
+The current catalog demonstrates the format with
+[`Veilquorum`](../games/veilquorum/game.md) (all four field types plus phases),
+[`Rillward Gambit`](../games/rillward-gambit/game.md) (score/streak/stance
+tracking), and [`Sereinfolio`](../games/sereinfolio/game.md) (tarot reflection
+text and tone tracking).

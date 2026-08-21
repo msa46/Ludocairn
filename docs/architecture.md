@@ -9,23 +9,23 @@ require server-side rendering, a runtime API, a database, authentication, or
 cloud storage.
 
 Game authors write Markdown and YAML rather than JavaScript. Domain behavior
-must remain testable without rendering React components. The design should
-make later import, export, fragment sharing, and custom decks possible without
-building those features prematurely.
+must remain testable without rendering React components. The design supports
+explicit session-file import and export while leaving fragment sharing and
+custom decks for later milestones.
 
 ## Technology
 
-The proposed application stack is Vite, React, and TypeScript. Vite produces
-the static `dist/` artifact. A GitHub Actions workflow will type-check, test,
-validate repository-hosted games, build the application, and deploy that
-artifact through GitHub Pages.
+The application stack is Vite, React, and strict TypeScript. Vite produces the
+static `dist/` artifact. GitHub Actions type-checks, tests, validates
+repository-hosted games, builds the application, and deploys that artifact
+through GitHub Pages.
 
-Vite will use a relative public base (`base: "./"`). Ludocairn will keep its
+Vite uses a relative public base (`base: "./"`). Ludocairn keeps its
 first-milestone navigation on one physical `index.html`, so relative assets
 work under repository subpaths, renamed forks, and custom domains. Public game
-selection may use a query parameter such as `?game=example-game`. URL fragments
-remain available for future private state sharing because fragments are not
-sent in HTTP requests.
+selection uses `?game=<game-id>` and restored sessions use
+`?session=<session-id>`. URL fragments remain available for future private
+state sharing because fragments are not sent in HTTP requests.
 
 The deployment approach follows the official
 [Vite GitHub Pages guidance](https://vite.dev/guide/static-deploy.html) and
@@ -86,6 +86,13 @@ Loading treats browser data as untrusted. Malformed or unsupported records
 produce a recoverable diagnostic instead of crashing the application or being
 silently overwritten.
 
+Session export serializes the validated session as UTF-8 JSON and triggers a
+user download. Import reads one selected JSON file in the browser, resolves
+its bundled game, validates the complete session, presents a preview, and only
+then allows confirmation. An imported ID collision receives a fresh ID. Files
+are never uploaded, but after export their confidentiality depends on how the
+user stores and shares them.
+
 ### React application
 
 React coordinates catalog, rules, setup, and tracker views. Components consume
@@ -106,8 +113,26 @@ claiming the fragment namespace intended for future share data.
 5. UI events call pure session transformations.
 6. The storage adapter serializes each validated state change locally.
 7. Reloading validates and restores the stored session.
+8. An explicit export downloads the validated state; an explicit import
+   validates and previews a local file before saving it.
 
-No step sends session state across the network.
+No application step sends session state across the network.
+
+## Static artifact and deployment
+
+`npm run ci` is the release gate: formatting, linting, strict types, tests,
+production build, and static verification must all pass. The verifier requires
+`dist/index.html` to contain the Ludocairn identity and relative JavaScript and
+CSS references; rejects root-absolute and HTTP(S) runtime asset references;
+and proves each local entry asset is a real file beneath `dist/`, including
+after symlink resolution.
+
+`.github/workflows/ci.yml` runs the gate for pull requests and pushes to
+`main`. `.github/workflows/deploy-pages.yml` deploys only from `main` or a
+manual dispatch, reruns the gate, configures Pages, uploads only `dist/`, and
+grants Pages/id-token write permissions only to the deploy job. The production
+URL is not considered verified until that workflow succeeds and the published
+repository-subpath build is manually exercised.
 
 ## Accessibility, responsive design, and printing
 
@@ -147,7 +172,10 @@ GitHub Pages artifact; end-to-end tests are not the primary domain test layer.
 ## Security and privacy
 
 Ludocairn does not enable raw HTML in Markdown, evaluate game-authored code,
-or trust deserialized data. Session data remains on the device unless a user
-later performs an explicit export or sharing action. Future fragment sharing
+or trust deserialized data. Session data remains in this browser's local
+storage unless a user performs an explicit export. Exported JSON contains
+player names, field values, and facilitator notes and must be treated as
+private table material. Import reads locally and does not transmit the file.
+Future fragment sharing
 must document that fragments avoid server transmission but can still appear in
 browser history, screenshots, copied URLs, extensions, and client-side code.

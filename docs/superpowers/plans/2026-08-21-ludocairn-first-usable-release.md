@@ -584,21 +584,21 @@ git commit -m "feat: add session files and print modes"
 - Consumes: the complete release and existing GitHub Pages workflow.
 - Produces: contributor/user instructions, a verified static artifact, pushed feature branch, reviewed integration into `main`, and a manually exercised production URL.
 
-- [ ] **Step 1: Extend the static artifact contract before changing release docs**
+- [x] **Step 1: Extend the static artifact contract before changing release docs**
 
 Assert `dist/index.html` contains relative JS/CSS assets, contains `Ludocairn`, contains no `http://` or `https://` runtime asset/script references, and that every referenced local asset exists beneath `dist/`.
 
-- [ ] **Step 2: Update user and contributor documentation**
+- [x] **Step 2: Update user and contributor documentation**
 
 Document `npm install`, `npm run dev`, `npm run ci`, GitHub Pages deployment, local-only privacy, session export/import, print behavior, the three games, game authoring, rights records, and the preliminary nature of name screening. Mark every implemented roadmap item complete without claiming future multiplayer or cloud features.
 
-- [ ] **Step 3: Run automated release verification**
+- [x] **Step 3: Run automated release verification**
 
 Run: `npm run ci`
 
 Expected: lint, formatting, types, all tests, production build, and static artifact verification PASS.
 
-- [ ] **Step 4: Run local browser release checks**
+- [x] **Step 4: Run local browser release checks**
 
 Serve the production artifact and exercise, at narrow and wide widths, catalog → each rules page → new session → all field types → refresh restoration → export → import preview/confirm → print rules → print tracker. Repeat the primary journey using only the keyboard and inspect the accessibility tree for labels, landmarks, alerts, and status regions.
 

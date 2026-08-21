@@ -13,10 +13,15 @@ import { verifyStaticBuild } from './verify-static-build.mjs'
 
 const temporaryDirectories: string[] = []
 
-function createDist(indexHtml: string, assets: Record<string, string> = {}) {
+function createDist(
+  indexHtml: string,
+  assets: Record<string, string> = {},
+  options: { branded?: boolean } = {},
+) {
   const directory = mkdtempSync(join(tmpdir(), 'deckwright-static-'))
   temporaryDirectories.push(directory)
-  writeFileSync(join(directory, 'index.html'), indexHtml)
+  const identity = options.branded === false ? '' : '<title>Ludocairn</title>'
+  writeFileSync(join(directory, 'index.html'), `${identity}${indexHtml}`)
 
   for (const [relativePath, contents] of Object.entries(assets)) {
     const outputPath = join(directory, relativePath)
@@ -43,13 +48,19 @@ afterEach(() => {
 })
 
 describe('verifyStaticBuild', () => {
-  it('accepts an index with existing relative assets', () => {
+  it('accepts a branded index with existing relative JavaScript and CSS assets', () => {
     const directory = createDist(
-      '<script type="module" src="./assets/app.js"></script>',
-      { 'assets/app.js': 'console.log("Deckwright")' },
+      '<script type="module" src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css">',
+      {
+        'assets/app.js': 'console.log("Ludocairn")',
+        'assets/app.css': 'body {}',
+      },
     )
 
-    expect(verifyStaticBuild(directory)).toEqual(['./assets/app.js'])
+    expect(verifyStaticBuild(directory)).toEqual([
+      './assets/app.js',
+      './assets/app.css',
+    ])
   })
 
   it('recognizes asset attributes across case, spacing, and quote forms', () => {
@@ -69,18 +80,86 @@ describe('verifyStaticBuild', () => {
 
   it('ignores navigational anchor hrefs', () => {
     const directory = createDist(
-      '<a href="./rules/missing.html">Read the rules</a>',
+      '<script src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css"><a href="./rules/missing.html">Read the rules</a>',
+      {
+        'assets/app.js': 'console.log("Ludocairn")',
+        'assets/app.css': 'body {}',
+      },
     )
 
-    expect(verifyStaticBuild(directory)).toEqual([])
+    expect(verifyStaticBuild(directory)).toEqual([
+      './assets/app.js',
+      './assets/app.css',
+    ])
   })
 
   it('ignores asset-like text inside another tag attribute', () => {
     const directory = createDist(
-      `<script data-example='src="./assets/missing.js"'></script>`,
+      `<script src="./assets/app.js" data-example='src="./assets/missing.js"'></script><link rel="stylesheet" href="./assets/app.css">`,
+      {
+        'assets/app.js': 'console.log("Ludocairn")',
+        'assets/app.css': 'body {}',
+      },
     )
 
-    expect(verifyStaticBuild(directory)).toEqual([])
+    expect(verifyStaticBuild(directory)).toEqual([
+      './assets/app.js',
+      './assets/app.css',
+    ])
+  })
+
+  it('rejects an entry document without the Ludocairn identity', () => {
+    const directory = createDist(
+      '<script src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css">',
+      {
+        'assets/app.js': 'console.log("app")',
+        'assets/app.css': 'body {}',
+      },
+      { branded: false },
+    )
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document does not contain the Ludocairn identity.',
+    )
+  })
+
+  it('rejects an entry document without a relative JavaScript asset', () => {
+    const directory = createDist(
+      '<link rel="stylesheet" href="./assets/app.css">',
+      { 'assets/app.css': 'body {}' },
+    )
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document does not reference a relative JavaScript asset.',
+    )
+  })
+
+  it('rejects an entry document without a relative CSS asset', () => {
+    const directory = createDist('<script src="./assets/app.js"></script>', {
+      'assets/app.js': 'console.log("Ludocairn")',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document does not reference a relative CSS asset.',
+    )
+  })
+
+  it.each([
+    'http://example.com/app.js',
+    'https://example.com/app.css',
+    '//example.com/app.js',
+  ])('rejects remote runtime asset URL %s', (url) => {
+    const directory = createDist(
+      `<script src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css"><script src="${url}"></script>`,
+      {
+        'assets/app.js': 'console.log("Ludocairn")',
+        'assets/app.css': 'body {}',
+      },
+    )
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Remote runtime asset URL is not allowed: ${url}`,
+    )
   })
 
   it.each([

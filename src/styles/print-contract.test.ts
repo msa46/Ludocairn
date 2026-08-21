@@ -33,3 +33,15 @@ describe('print stylesheet contract', () => {
     expect(printCss).toMatch(/\.player-card\s*{[^}]*break-inside:\s*avoid/s)
   })
 })
+
+describe('narrow rules stylesheet contract', () => {
+  it('contains wide rules tables without forcing document-level overflow', () => {
+    const rulesPageRule = css.match(/\.rules-page\s*{(?<body>[^}]*)}/s)?.groups
+      ?.body
+    const proseRule = css.match(/\.prose\s*{(?<body>[^}]*)}/s)?.groups?.body
+
+    expect(rulesPageRule).toMatch(/min-width:\s*0/)
+    expect(proseRule).toMatch(/min-width:\s*0/)
+    expect(proseRule).toMatch(/overflow-x:\s*auto/)
+  })
+})

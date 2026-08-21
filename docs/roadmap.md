@@ -3,12 +3,21 @@
 ## Delivery strategy
 
 The first usable product milestone is divided into four capability increments.
-The foundation is complete. The remaining work follows the approved
-[first usable release design](superpowers/specs/2026-08-21-ludocairn-first-usable-release-design.md):
-deliver one social-deduction vertical slice across the content and tracker
-increments, add the other two examples through the same boundaries, and then
-complete release hardening. Together the increments satisfy the milestone
-described in the project brief.
+All four increments are implemented in the release branch and are subject to
+the complete `npm run ci` gate plus local production-artifact exercise. The
+work follows the approved
+[first usable release design](superpowers/specs/2026-08-21-ludocairn-first-usable-release-design.md).
+
+Release publication is intentionally separate from implementation status:
+
+- [x] Implement and locally verify the first usable release.
+- [x] Prepare a fully static GitHub Pages artifact with relative assets.
+- [ ] Publish from `main`, verify the Pages workflow and repository-subpath
+  journey, then record the production URL and verification date.
+
+The unchecked publication item does not imply a production URL has been
+verified. Accounts, cloud synchronization, and multiplayer networking are not
+part of this milestone.
 
 ## Increment 1: Foundation
 
@@ -19,14 +28,15 @@ conventions.
 
 Acceptance criteria:
 
-- `npm ci`, type-checking, tests, and the production build succeed in CI.
-- The deployed artifact contains static files only and works from a repository
-  subpath.
-- A direct load of the project root and a reload with a game query parameter do
-  not require an SPA fallback.
-- The base document has semantic landmarks, keyboard-visible focus, and a
+- [x] `npm ci`, type-checking, tests, and the production build are automated in
+  CI and the same gate is available locally as `npm run ci`.
+- [x] The production artifact contains static files only, uses relative assets,
+  and is repository-subpath safe.
+- [x] A direct load of the project root and a reload with a game query
+  parameter use the same physical entry document without an SPA fallback.
+- [x] The base document has semantic landmarks, keyboard-visible focus, and a
   print stylesheet.
-- An explicit open-source license is selected and added before public release.
+- [x] The MIT License covers application code and original repository content.
 
 ## Increment 2: Content engine
 
@@ -41,20 +51,22 @@ clearance opinions.
 
 Acceptance criteria:
 
-- The standard deck contains exactly 52 unique cards with the expected four
+- [x] The standard deck contains exactly 52 unique cards with the expected four
   suits and thirteen ranks.
-- The tarot deck contains exactly 78 unique cards: 22 major and 56 minor
+- [x] The tarot deck contains exactly 78 unique cards: 22 major and 56 minor
   arcana, with documented canonical IDs.
-- Selector tests cover IDs, suits, ranks, arcana, tags, and combined filters.
-- Valid game files parse into normalized definitions; malformed frontmatter,
+- [x] Selector tests cover IDs, suits, ranks, arcana, tags, and combined
+  filters.
+- [x] Valid game files parse into normalized definitions; malformed frontmatter,
   unsupported versions, duplicate IDs, and invalid defaults produce structured
   diagnostics.
-- CI validates every repository game before deployment.
-- The bundled catalog contains exactly `veilquorum`, `rillward-gambit`, and
+- [x] CI validates every repository game before deployment.
+- [x] The bundled catalog contains exactly `veilquorum`, `rillward-gambit`, and
   `sereinfolio`.
-- The catalog opens each example's safely rendered Markdown rules.
-- Every repository game has an adjacent rights record documenting authorship,
-  license, provenance, and name-clearance work.
+- [x] The catalog opens each example's safely rendered Markdown rules.
+- [x] Every repository game has an adjacent rights record documenting
+  authorship, MIT licensing, original provenance, and preliminary name-screen
+  work. These records are not legal clearance opinions.
 
 ## Increment 3: Local session tracker
 
@@ -64,15 +76,17 @@ invalid stored data.
 
 Acceptance criteria:
 
-- A user can create a session from any example game.
-- Players can be added and removed without reloading.
-- Every configured field renders an appropriate labeled control and initializes
-  from its declared default.
-- The current phase can be changed and the round adjusted when enabled.
-- A refreshed page restores valid sessions from local storage.
-- Invalid or unsupported stored data produces a recoverable message and is not
-  silently overwritten.
-- Pure session transformations and serialization are covered by unit tests.
+- [x] A user can create a session from any example game.
+- [x] Players can be added and removed without reloading, with confirmation
+  before removal.
+- [x] Every configured field renders an appropriate labeled control and
+  initializes from its declared default.
+- [x] The current phase can be changed and the round adjusted when enabled.
+- [x] A refreshed page restores valid sessions from browser-local storage.
+- [x] Invalid or unsupported stored data produces a recoverable message and is
+  not silently overwritten.
+- [x] Session rename, confirmed deletion, pure transformations, persistence,
+  and serialization are covered by tests.
 
 ## Increment 4: Print and release hardening
 
@@ -82,15 +96,18 @@ files, contributor documentation, and release checks.
 
 Acceptance criteria:
 
-- Rules and tracker print previews omit interactive chrome and remain readable
+- [x] Rules and tracker print modes omit interactive chrome, expose current
+  values, and remain readable
   in grayscale.
-- Narrow-screen layouts preserve every operation without requiring precise
+- [x] Narrow-screen layouts preserve every operation without requiring precise
   horizontal gestures.
-- A keyboard-only user can select a game, create a session, add a player, edit
+- [x] A keyboard-only user can select a game, create a session, add a player, edit
   all field types, change phase and round, and invoke print.
-- Sessions export to and import from a validated, versioned JSON file.
-- The README and game-author guide allow a contributor to add a valid game
-  without reading application source.
+- [x] Sessions export to and import from a validated, versioned JSON file; the
+  import is previewed before confirmation and exports are identified as
+  private table material.
+- [x] The README, contributor guide, game-format reference, and author guide
+  allow a contributor to add a valid game without reading application source.
 
 ## Later milestones
 

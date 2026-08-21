@@ -31,13 +31,14 @@ function isWithinDirectory(directory, targetPath) {
 }
 
 function extractAssetUrls(html) {
-  const urls = []
+  const assets = []
   const assetTags = html.matchAll(
     /<(script|link)\b(?:(?:"[^"]*"|'[^']*'|[^'"<>])*)>/giu,
   )
 
   for (const tag of assetTags) {
-    const attributeName = tag[1].toLowerCase() === 'script' ? 'src' : 'href'
+    const tagName = tag[1].toLowerCase()
+    const attributeName = tagName === 'script' ? 'src' : 'href'
     const attributeValue = extractTagAttribute(
       tag[0],
       tag[1].length + 1,
@@ -45,11 +46,11 @@ function extractAssetUrls(html) {
     )
 
     if (attributeValue !== undefined) {
-      urls.push(attributeValue)
+      assets.push({ tagName, url: attributeValue })
     }
   }
 
-  return urls
+  return assets
 }
 
 function extractTagAttribute(tag, start, wantedName) {
@@ -147,13 +148,25 @@ export function verifyStaticBuild(distDirectory) {
 
   const realArtifactDirectory = realpathSync(artifactDirectory)
   const html = readFileSync(indexPath, 'utf8')
-  const assetUrls = extractAssetUrls(html)
-  const localUrls = []
+  if (!html.includes('Ludocairn')) {
+    throw new Error(
+      'Static entry document does not contain the Ludocairn identity.',
+    )
+  }
 
-  for (const url of assetUrls) {
+  const assets = extractAssetUrls(html)
+  const localUrls = []
+  let hasRelativeJavaScriptAsset = false
+  let hasRelativeCssAsset = false
+
+  for (const { tagName, url } of assets) {
     const browserUrl = decodeHtmlEntities(url).trim()
     if (browserUrl === '' || /^[?#]/u.test(browserUrl)) {
       throw invalidAssetUrl(url)
+    }
+
+    if (/^https?:/iu.test(browserUrl) || browserUrl.startsWith('//')) {
+      throw new Error(`Remote runtime asset URL is not allowed: ${url}`)
     }
 
     if (browserUrl.startsWith('/')) {
@@ -216,7 +229,23 @@ export function verifyStaticBuild(distDirectory) {
       )
     }
 
+    hasRelativeJavaScriptAsset ||=
+      tagName === 'script' && /\.m?js$/iu.test(browserPathname)
+    hasRelativeCssAsset ||=
+      tagName === 'link' && /\.css$/iu.test(browserPathname)
     localUrls.push(url)
+  }
+
+  if (!hasRelativeJavaScriptAsset) {
+    throw new Error(
+      'Static entry document does not reference a relative JavaScript asset.',
+    )
+  }
+
+  if (!hasRelativeCssAsset) {
+    throw new Error(
+      'Static entry document does not reference a relative CSS asset.',
+    )
   }
 
   return localUrls
