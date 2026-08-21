@@ -22,7 +22,9 @@ software data, or other third-party expressive content was copied or adapted.
 
 ## Name clearance
 
-Preliminary searches were performed on 2026-08-21 before this title was added.
+Preliminary screening began on 2026-08-21 before this title was first added.
+The direct BOIP check documented below was completed later that day during
+corrective review, before the repository retained the title.
 
 - The planned title `Lantern Arc` was rejected because the preliminary screen
   found an active indie-games identity using `Lantern Arcade`.
@@ -41,15 +43,18 @@ Preliminary searches were performed on 2026-08-21 before this title was added.
   for `sereinfol`, `serenfol`, and `sereinfolio` spelling roots.
 - [EUIPO eSearch plus](https://euipo.europa.eu/eSearch/) returned zero trade
   marks for both `"Sereinfolio"` and `Sereinfolio`.
+- The direct [BOIP Trademarks Register](https://www.boip.int/en/trademarks-register)
+  returned zero results for the advanced exact-term search `Sereinfolio`.
+  With the register's BX, EUR, and INT result filters enabled, simple searches
+  used as a confusing-similarity screen also returned zero results for
+  `Sereinfolio`, the near-spelling variant `Serenfolio`, and the spaced variant
+  `Serein Folio`.
 - [TMview](https://www.tmdn.org/tmview/) returned no rows for either exact
   (`Is`) or fuzzy searches for `Sereinfolio`. Participating offices shown
   during the search included BX (Benelux), EM (EUIPO), US, and WO (WIPO).
 - Exact-name searches of the general web, BoardGameGeek, GitHub, npm, Apple
   App Store, Google Play, Steam, and common game results found no use of
   `Sereinfolio`.
-- The direct interactive BOIP result screen was not separately relied on;
-  TMview included BX data but does not replace a search and opinion by a
-  qualified professional.
 
 This is a preliminary conflict screen, not legal advice or a guarantee of
 registrability or freedom to use. Similar unregistered uses may exist, and

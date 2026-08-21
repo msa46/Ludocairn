@@ -22,7 +22,9 @@ third-party card design was copied or adapted.
 
 ## Name clearance
 
-Preliminary searches were performed on 2026-08-21 before this title was added.
+Preliminary screening began on 2026-08-21 before this title was first added.
+The direct BOIP check documented below was completed later that day during
+corrective review, before the repository retained the title.
 
 - The planned title `Highwater Trail` was rejected because the preliminary
   screen found an active commercial game using `Highwater`.
@@ -34,6 +36,12 @@ Preliminary searches were performed on 2026-08-21 before this title was added.
   `Rillward`.
 - [EUIPO eSearch plus](https://euipo.europa.eu/eSearch/) returned zero trade
   marks for both `"Rillward Gambit"` and `Rillward`.
+- The direct [BOIP Trademarks Register](https://www.boip.int/en/trademarks-register)
+  returned zero results for the advanced exact-term search `Rillward Gambit`.
+  With the register's BX, EUR, and INT result filters enabled, simple searches
+  used as a confusing-similarity screen also returned zero results for the
+  coined root `Rillward` and the near-spelling variants `Rilward` and
+  `Rillword`.
 - [TMview](https://www.tmdn.org/tmview/) returned no row for an exact (`Is`)
   search. Its fuzzy search surfaced many records based on the common word
   `Gambit`, but none used `Rillward` or the compound title. Participating
@@ -42,9 +50,6 @@ Preliminary searches were performed on 2026-08-21 before this title was added.
 - Exact-name and coined-word searches of the general web, BoardGameGeek,
   GitHub, npm, Apple App Store, Google Play, and common PC-game results found
   no use of `Rillward Gambit` or `Rillward`.
-- The direct interactive BOIP result screen was not separately relied on;
-  TMview included BX data but does not replace a search and opinion by a
-  qualified professional.
 
 `Gambit` is an ordinary word used in many existing marks and game titles. The
 repository uses it only as part of the full coined compound `Rillward Gambit`
