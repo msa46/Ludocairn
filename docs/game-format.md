@@ -28,9 +28,9 @@ after publication.
 ```markdown
 ---
 schema_version: 1
-id: card-mafia
-name: Card Mafia
-summary: A moderator-led social deduction game.
+id: example-game
+name: Example Game
+summary: A neutral example showing every version 1 field type.
 deck: standard-52
 
 players:
@@ -50,8 +50,8 @@ session:
     initial: 1
 
   player_fields:
-    - id: alive
-      label: Alive
+    - id: active
+      label: Active
       type: boolean
       default: true
 
@@ -59,13 +59,13 @@ session:
       label: Role
       type: choice
       choices:
-        - villager
-        - mafia
-        - detective
-      default: villager
+        - first
+        - second
+        - third
+      default: first
 
-    - id: votes
-      label: Votes
+    - id: score
+      label: Score
       type: number
       default: 0
       min: 0
@@ -78,7 +78,7 @@ session:
       multiline: true
 ---
 
-# Card Mafia
+# Example Game
 
 Place the rules after the closing frontmatter delimiter.
 ```

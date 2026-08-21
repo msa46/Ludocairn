@@ -204,13 +204,13 @@ git commit -m "feat: add canonical card domains"
 - Consumes: raw `games/*/game.md` strings from `import.meta.glob`.
 - Produces: `GameDefinition`, four discriminated `PlayerFieldDefinition` variants, `Diagnostic`, `parseGameSource(source, context): ParseGameResult`, `renderRules(markdown): string`, and `loadBundledGames(): CatalogResult`.
 
-- [ ] **Step 1: Install the exact parsing dependencies**
+- [x] **Step 1: Install the exact parsing dependencies**
 
 Run: `npm install --save-exact yaml@2.9.0 marked@18.0.10 dompurify@3.4.14`
 
 Expected: `package.json` and `package-lock.json` contain exact versions.
 
-- [ ] **Step 2: Write failing schema tests using one valid definition and one case per diagnostic**
+- [x] **Step 2: Write failing schema tests using one valid definition and one case per diagnostic**
 
 The valid fixture must include phases, an initial phase, enabled round state, and boolean, choice, number, and text fields. Assert normalized defaults. Add focused invalid fixtures for `schema.unsupported-version`, `schema.unknown-property`, `schema.invalid-id`, `schema.duplicate-field-id`, `schema.invalid-default`, `schema.initial-phase-missing`, `schema.invalid-round`, and `frontmatter.invalid`.
 
@@ -231,17 +231,17 @@ expect(result).toMatchObject({
 })
 ```
 
-- [ ] **Step 3: Run parser tests and verify missing implementation fails**
+- [x] **Step 3: Run parser tests and verify missing implementation fails**
 
 Run: `npm test -- src/games/parse.test.ts`
 
 Expected: FAIL with unresolved imports.
 
-- [ ] **Step 4: Implement explicit version-1 validation**
+- [x] **Step 4: Implement explicit version-1 validation**
 
 Split only a leading `---` YAML block, parse it with `YAML.parse`, require plain objects, reject unknown keys at every level, and normalize snake_case YAML to camelCase TypeScript. Use a discriminated union for the four field types. Return every diagnostic as `{ code, message, source, path? }`; never throw for author input.
 
-- [ ] **Step 5: Write and run failing Markdown safety tests**
+- [x] **Step 5: Write and run failing Markdown safety tests**
 
 ```ts
 const html = renderRules(
@@ -256,23 +256,23 @@ Run: `npm test -- src/games/render.test.ts`
 
 Expected: FAIL before `renderRules` exists.
 
-- [ ] **Step 6: Implement restricted Marked rendering plus DOMPurify sanitization**
+- [x] **Step 6: Implement restricted Marked rendering plus DOMPurify sanitization**
 
 Configure Marked so raw HTML is escaped or omitted and image tokens render no element. Sanitize with an allow-list for headings, paragraphs, emphasis, strong text, lists, tables, code, blockquotes, and anchors; allow only `href`, `title`, and safe `rel` attributes. Force external links to `rel="noreferrer noopener"`.
 
-- [ ] **Step 7: Implement the build-time catalog and tests**
+- [x] **Step 7: Implement the build-time catalog and tests**
 
 Use `import.meta.glob('/games/*/game.md', { eager: true, query: '?raw', import: 'default' })`. Parse in sorted source-path order, reject duplicate game IDs, and return either a frozen game array or diagnostics. Add a test-only `buildCatalog(sources: Record<string, string>)` export so duplicate and malformed catalogs do not depend on Vite glob fixtures.
 
-- [ ] **Step 8: Document exact YAML version-1 syntax and run gates**
+- [x] **Step 8: Document exact YAML version-1 syntax and run gates**
 
-Update `docs/game-format.md` with the full valid fixture used by the tests and a table of field-specific keys and defaults.
+Update `docs/game-format.md` with a structurally equivalent neutral fixture and a table of field-specific keys and defaults. Do not publish a candidate game name before its separate clearance task.
 
 Run: `npm test -- src/games && npm run ci`
 
 Expected: PASS.
 
-- [ ] **Step 9: Commit the game-definition engine**
+- [x] **Step 9: Commit the game-definition engine**
 
 ```bash
 git add package.json package-lock.json docs/game-format.md src/games src/vite-env.d.ts
