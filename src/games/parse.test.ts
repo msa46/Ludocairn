@@ -4,8 +4,8 @@ import { parseGameSource } from './parse'
 
 const validSource = `---
 schema_version: 1
-id: signal-cairn
-name: Signal Cairn
+id: veilquorum
+name: Veilquorum
 summary: Find the quiet signal before the trail goes dark.
 deck: standard-52
 players:
@@ -45,7 +45,7 @@ session:
       multiline: true
 ---
 
-# Signal Cairn
+# Veilquorum
 
 Original rules live here.
 `
@@ -62,8 +62,8 @@ describe('parseGameSource', () => {
       ok: true,
       game: {
         schemaVersion: 1,
-        id: 'signal-cairn',
-        name: 'Signal Cairn',
+        id: 'veilquorum',
+        name: 'Veilquorum',
         summary: 'Find the quiet signal before the trail goes dark.',
         deck: 'standard-52',
         players: { min: 4, max: 12 },
@@ -99,7 +99,7 @@ describe('parseGameSource', () => {
             multiline: true,
           },
         ],
-        rulesMarkdown: '# Signal Cairn\n\nOriginal rules live here.\n',
+        rulesMarkdown: '# Veilquorum\n\nOriginal rules live here.\n',
         source: 'fixture/game.md',
       },
     })
@@ -118,7 +118,7 @@ describe('parseGameSource', () => {
     },
     {
       name: 'invalid stable ID',
-      source: replaceOnce('id: signal-cairn', 'id: Signal_Cairn'),
+      source: replaceOnce('id: veilquorum', 'id: Veil_Quorum'),
       code: 'schema.invalid-id',
     },
     {

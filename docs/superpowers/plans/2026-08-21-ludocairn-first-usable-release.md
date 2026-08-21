@@ -220,7 +220,7 @@ expect(result).toMatchObject({
   ok: true,
   game: {
     schemaVersion: 1,
-    id: 'signal-cairn',
+    id: 'veilquorum',
     fields: [
       { type: 'boolean', default: true },
       { type: 'choice', default: 'wayfinder' },
@@ -284,51 +284,51 @@ git commit -m "feat: add validated game definitions"
 ### Task 4: Author and verify the first original game
 
 **Files:**
-- Create: `games/signal-cairn/game.md`
-- Create: `games/signal-cairn/RIGHTS.md`
+- Create: `games/veilquorum/game.md`
+- Create: `games/veilquorum/RIGHTS.md`
 - Create: `scripts/verify-bundled-games.test.ts`
 - Modify: `games/README.md`
 
 **Interfaces:**
 - Consumes: version-1 game schema and the name-clearance policy.
-- Produces: catalog game ID `signal-cairn`, a complete original social-deduction rules document, and a reusable repository verification contract for all bundled games.
+- Produces: catalog game ID `veilquorum`, a complete original social-deduction rules document, and a reusable repository verification contract for all bundled games.
 
-- [ ] **Step 1: Complete and record the public-name screen**
+- [x] **Step 1: Complete and record the public-name screen**
 
-Search exact and confusingly similar uses of `Signal Cairn` in USPTO, EUIPO, TMview/BOIP coverage, general web search, BoardGameGeek search, GitHub, npm, and common app stores. If a related-use conflict appears, stop this task and replace the name before authoring public content. Record the date, query scope, result summary, authorship `Ludocairn contributors`, provenance `original work using unprotected mechanics and common standard-deck facts`, and MIT license in `RIGHTS.md`.
+Search exact and confusingly similar uses of the proposed title in USPTO, EUIPO, TMview/BOIP coverage, general web search, BoardGameGeek search, GitHub, npm, and common app stores. Reject `Signal Cairn` because the fused form appears in a commercial naming catalog and `Cairn` is active in software and games. Adopt `Veilquorum` only after its exact web/catalog/registry searches and TMview fuzzy search return no result. Record the date, query scope, result summary, authorship `Ludocairn contributors`, provenance `original work using unprotected mechanics and common standard-deck facts`, and MIT license in `RIGHTS.md`.
 
-- [ ] **Step 2: Write a failing bundled-game contract test**
+- [x] **Step 2: Write a failing bundled-game contract test**
 
 Discover `games/*/game.md`, assert each adjacent `RIGHTS.md` exists and contains `Authorship`, `License`, `Provenance`, `Name clearance`, and an ISO date, then pass every source through `buildCatalog` and expect no diagnostics.
 
 ```ts
 expect(result).toMatchObject({ ok: true })
 expect(result.ok && result.games.map((game) => game.id)).toContain(
-  'signal-cairn',
+  'veilquorum',
 )
 ```
 
-- [ ] **Step 3: Run the repository game test and verify it fails**
+- [x] **Step 3: Run the repository game test and verify it fails**
 
 Run: `npm test -- scripts/verify-bundled-games.test.ts`
 
-Expected: FAIL because `signal-cairn` does not exist.
+Expected: FAIL because `veilquorum` does not exist.
 
-- [ ] **Step 4: Author the complete original game and rights record**
+- [x] **Step 4: Author the complete original game and rights record**
 
 Use alternating `night` and `day` phases, round `1`, active/inactive boolean, original `wayfinder`/`drifter`/`echo` role choice, numeric `signals` counter with minimum `0`, and text `clue` field. Write original setup, objective, phase, vote, resolution, tie, elimination, end, and facilitation rules. Use a standard deck only as a physical randomizer/marker and do not mention or imitate a commercial game title, character set, setting, or wording.
 
-- [ ] **Step 5: Run bundled-game and full gates**
+- [x] **Step 5: Run bundled-game and full gates**
 
 Run: `npm test -- scripts/verify-bundled-games.test.ts && npm run ci`
 
 Expected: PASS with exactly one bundled game.
 
-- [ ] **Step 6: Commit the first game**
+- [x] **Step 6: Commit the first game**
 
 ```bash
 git add games scripts/verify-bundled-games.test.ts
-git commit -m "feat: add original Signal Cairn game"
+git commit -m "feat: add original Veilquorum game"
 ```
 
 ---
@@ -414,7 +414,7 @@ git commit -m "feat: add validated session state"
 
 **Interfaces:**
 - Consumes: bundled catalog, rendered rules, session operations, and `SessionRepository`.
-- Produces: query views `?game=<id>` and `?session=<id>`, automatic persistence status, recovery cards, and a complete Signal Cairn journey.
+- Produces: query views `?game=<id>` and `?session=<id>`, automatic persistence status, recovery cards, and a complete Veilquorum journey.
 
 - [ ] **Step 1: Define repository behavior with failing memory-adapter tests**
 
@@ -426,10 +426,10 @@ Use key prefix `ludocairn.session.v1.`. Enumerate only prefixed keys, validate e
 
 - [ ] **Step 3: Write a failing accessible end-to-end component test**
 
-Render `App` with an in-memory repository, deterministic clock/IDs, and a history adapter. Drive the UI by roles: open Signal Cairn, start a session, enter two players, edit role/signals/active/clue, change phase/round/notes, return home, resume the saved session, and assert all values persist.
+Render `App` with an in-memory repository, deterministic clock/IDs, and a history adapter. Drive the UI by roles: open Veilquorum, start a session, enter two players, edit role/signals/active/clue, change phase/round/notes, return home, resume the saved session, and assert all values persist.
 
 ```ts
-await user.click(screen.getByRole('link', { name: /Signal Cairn/ }))
+await user.click(screen.getByRole('link', { name: /Veilquorum/ }))
 await user.click(screen.getByRole('button', { name: 'Start session' }))
 await user.type(screen.getByLabelText('Session name'), 'Friday table')
 await user.type(screen.getByLabelText('Player 1 name'), 'Ari')
@@ -475,7 +475,7 @@ git commit -m "feat: deliver facilitator session tracker"
 
 **Interfaces:**
 - Consumes: unchanged game schema, catalog, session, and tracker interfaces.
-- Produces: three-game catalog IDs `signal-cairn`, `highwater-trail`, and `lantern-arc` without game-specific application logic.
+- Produces: three-game catalog IDs `veilquorum`, `highwater-trail`, and `lantern-arc` without game-specific application logic.
 
 - [ ] **Step 1: Complete and record both public-name screens**
 
