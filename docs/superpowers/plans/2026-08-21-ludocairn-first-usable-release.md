@@ -346,7 +346,7 @@ git commit -m "feat: add original Veilquorum game"
 - Consumes: normalized `GameDefinition`.
 - Produces: `Session`, `Player`, `SessionDiagnostic`, `createSession(game, input, clock, ids)`, `addPlayer`, `renamePlayer`, `removePlayer`, `updatePlayerField`, `setPhase`, `setRound`, `adjustRound`, `updateNotes`, `renameSession`, and `validateSession(value, game)`.
 
-- [ ] **Step 1: Write failing creation and mutation tests**
+- [x] **Step 1: Write failing creation and mutation tests**
 
 Inject deterministic `clock(): string` and `ids.next(kind): string`; never mock global time or randomness. Assert copied field defaults, stable player IDs, immutable returns, updated timestamps, duplicate display names, and preservation of the previous object.
 
@@ -366,27 +366,27 @@ expect(created).toMatchObject({
 })
 ```
 
-- [ ] **Step 2: Run the focused tests and verify missing modules fail**
+- [x] **Step 2: Run the focused tests and verify missing modules fail**
 
 Run: `npm test -- src/sessions`
 
 Expected: FAIL with unresolved imports.
 
-- [ ] **Step 3: Implement session types, validation, and pure operations**
+- [x] **Step 3: Implement session types, validation, and pure operations**
 
 Every operation returns `{ ok: true, session } | { ok: false, diagnostic }`. Validate field values by field discriminant, reject unknown player/field/phase IDs, enforce number min/max/step and choice membership, and require nonblank session/player display names. Allow player counts outside recommendations; export `getPlayerCountWarning(session, game): string | undefined` instead of rejecting them.
 
-- [ ] **Step 4: Add malformed and unsupported-version validation tests**
+- [x] **Step 4: Add malformed and unsupported-version validation tests**
 
 Cover non-object JSON values, missing keys, unsupported `storageVersion`, incompatible `gameSchemaVersion`, invalid dates, duplicate player IDs, unknown fields, invalid phase/round, and field values that no longer conform to the bundled game.
 
-- [ ] **Step 5: Run session and full gates**
+- [x] **Step 5: Run session and full gates**
 
 Run: `npm test -- src/sessions && npm run ci`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the session domain**
+- [x] **Step 6: Commit the session domain**
 
 ```bash
 git add src/sessions
