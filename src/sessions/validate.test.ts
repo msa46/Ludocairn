@@ -10,12 +10,28 @@ type MutablePartialSession = {
 
 const game: GameDefinition = {
   schemaVersion: 1,
-  id: 'test-game',
-  name: 'Test Game',
+  id: 'veilquorum',
+  name: 'Veilquorum',
   summary: 'Validation fixture.',
   deck: 'standard-52',
   players: { min: 2, max: 4 },
-  roles: [],
+  roles: [
+    {
+      id: 'wayfinder',
+      label: 'Wayfinder',
+      summary: 'Finds the safest path forward.',
+    },
+    {
+      id: 'drifter',
+      label: 'Drifter',
+      summary: 'Moves between the group and the unknown.',
+    },
+    {
+      id: 'echo',
+      label: 'Echo',
+      summary: 'Repeats what the table needs to hear.',
+    },
+  ],
   roleDistributions: [],
   phases: [
     { id: 'night', label: 'Night' },
@@ -26,12 +42,13 @@ const game: GameDefinition = {
   fields: [
     { id: 'active', label: 'Active', type: 'boolean', default: true },
     {
-      id: 'role',
-      label: 'Role',
+      id: 'stance',
+      label: 'Stance',
       type: 'choice',
       choices: ['guide', 'guest'],
       default: 'guide',
     },
+    { id: 'role', label: 'Role', type: 'role', default: 'wayfinder' },
     {
       id: 'score',
       label: 'Score',
@@ -57,18 +74,30 @@ const validSession: Session = {
   storageVersion: 1,
   id: 'session-1',
   name: 'Friday table',
-  gameId: 'test-game',
+  gameId: 'veilquorum',
   gameSchemaVersion: 1,
   players: [
     {
       id: 'player-1',
       name: 'Ari',
-      fields: { active: true, role: 'guide', score: 2, clue: '' },
+      fields: {
+        active: true,
+        stance: 'guide',
+        role: 'wayfinder',
+        score: 2,
+        clue: '',
+      },
     },
     {
       id: 'player-2',
       name: 'Bea',
-      fields: { active: false, role: 'guest', score: 4, clue: 'Note' },
+      fields: {
+        active: false,
+        stance: 'guest',
+        role: 'drifter',
+        score: 4,
+        clue: 'Note',
+      },
     },
   ],
   currentPhase: 'day',
@@ -83,6 +112,42 @@ describe('validateSession', () => {
     expect(validateSession(validSession, game)).toEqual({
       ok: true,
       session: validSession,
+    })
+  })
+
+  it('accepts a storage-version-1 session with a declared semantic role', () => {
+    const raw = {
+      ...validSession,
+      players: [
+        {
+          ...validSession.players[0]!,
+          fields: { ...validSession.players[0]!.fields, role: 'echo' },
+        },
+        validSession.players[1]!,
+      ],
+    }
+
+    expect(validateSession(raw, game)).toMatchObject({ ok: true })
+  })
+
+  it('rejects a storage-version-1 session with an undeclared semantic role', () => {
+    const raw = {
+      ...validSession,
+      players: [
+        {
+          ...validSession.players[0]!,
+          fields: { ...validSession.players[0]!.fields, role: 'stranger' },
+        },
+        validSession.players[1]!,
+      ],
+    }
+
+    expect(validateSession(raw, game)).toMatchObject({
+      ok: false,
+      diagnostic: {
+        code: 'session.invalid-field-value',
+        path: 'players.0.fields.role',
+      },
     })
   })
 
@@ -186,7 +251,7 @@ describe('validateSession', () => {
         code: 'session.unknown-field',
       },
       {
-        fields: { active: true, role: 'guide', score: 2 },
+        fields: { active: true, stance: 'guide', role: 'wayfinder', score: 2 },
         code: 'session.invalid-record',
       },
       {

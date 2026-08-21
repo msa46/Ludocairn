@@ -13,6 +13,7 @@ import {
   setRound,
   updateNotes,
   updatePlayerField,
+  fieldValueIsValid,
 } from './operations'
 
 const game: GameDefinition = {
@@ -22,7 +23,23 @@ const game: GameDefinition = {
   summary: 'Exercises every session field.',
   deck: 'standard-52',
   players: { min: 2, max: 3 },
-  roles: [],
+  roles: [
+    {
+      id: 'wayfinder',
+      label: 'Wayfinder',
+      summary: 'Finds the safest path forward.',
+    },
+    {
+      id: 'drifter',
+      label: 'Drifter',
+      summary: 'Moves between the group and the unknown.',
+    },
+    {
+      id: 'echo',
+      label: 'Echo',
+      summary: 'Repeats what the table needs to hear.',
+    },
+  ],
   roleDistributions: [],
   phases: [
     { id: 'night', label: 'Night' },
@@ -33,12 +50,13 @@ const game: GameDefinition = {
   fields: [
     { id: 'active', label: 'Active', type: 'boolean', default: true },
     {
-      id: 'role',
-      label: 'Role',
+      id: 'stance',
+      label: 'Stance',
       type: 'choice',
       choices: ['guide', 'guest'],
       default: 'guide',
     },
+    { id: 'role', label: 'Role', type: 'role', default: 'wayfinder' },
     {
       id: 'score',
       label: 'Score',
@@ -104,12 +122,24 @@ describe('session creation', () => {
           {
             id: 'player-1',
             name: 'Ari',
-            fields: { active: true, role: 'guide', score: 0, clue: '' },
+            fields: {
+              active: true,
+              stance: 'guide',
+              role: 'wayfinder',
+              score: 0,
+              clue: '',
+            },
           },
           {
             id: 'player-2',
             name: 'Ari',
-            fields: { active: true, role: 'guide', score: 0, clue: '' },
+            fields: {
+              active: true,
+              stance: 'guide',
+              role: 'wayfinder',
+              score: 0,
+              clue: '',
+            },
           },
         ],
         currentPhase: 'night',
@@ -167,7 +197,13 @@ describe('player operations', () => {
           {
             id: 'player-3',
             name: 'Ari',
-            fields: { active: true, role: 'guide', score: 0, clue: '' },
+            fields: {
+              active: true,
+              stance: 'guide',
+              role: 'wayfinder',
+              score: 0,
+              clue: '',
+            },
           },
         ],
       },
@@ -231,13 +267,22 @@ describe('tracker operations', () => {
     if (!active.ok) return
     expect(active.session.players[0]?.fields.active).toBe(false)
     expect(active.session.players[1]?.fields.active).toBe(true)
-    const role = updatePlayerField(
+    const stance = updatePlayerField(
       active.session,
       game,
       'player-1',
-      'role',
+      'stance',
       'guest',
       clock('2026-08-21T18:02:00.000Z'),
+    )
+    if (!stance.ok) return
+    const role = updatePlayerField(
+      stance.session,
+      game,
+      'player-1',
+      'role',
+      'echo',
+      clock('2026-08-21T18:03:00.000Z'),
     )
     if (!role.ok) return
     const score = updatePlayerField(
@@ -246,7 +291,7 @@ describe('tracker operations', () => {
       'player-1',
       'score',
       4,
-      clock('2026-08-21T18:03:00.000Z'),
+      clock('2026-08-21T18:04:00.000Z'),
     )
     if (!score.ok) return
     const clue = updatePlayerField(
@@ -255,29 +300,60 @@ describe('tracker operations', () => {
       'player-1',
       'clue',
       'Quiet vote',
-      clock('2026-08-21T18:04:00.000Z'),
+      clock('2026-08-21T18:05:00.000Z'),
     )
 
     expect(clue.ok).toBe(true)
     if (!clue.ok) return
     expect(clue.session.players[0]?.fields).toEqual({
       active: false,
-      role: 'guest',
+      stance: 'guest',
+      role: 'echo',
       score: 4,
       clue: 'Quiet vote',
     })
     expect(clue.session.players[1]?.fields).toEqual({
       active: true,
-      role: 'guide',
+      stance: 'guide',
+      role: 'wayfinder',
       score: 0,
       clue: '',
     })
-    expect(clue.session.updatedAt).toBe('2026-08-21T18:04:00.000Z')
+    expect(clue.session.updatedAt).toBe('2026-08-21T18:05:00.000Z')
     expect(original.players[0]?.fields).toEqual({
       active: true,
-      role: 'guide',
+      stance: 'guide',
+      role: 'wayfinder',
       score: 0,
       clue: '',
+    })
+  })
+
+  it('validates role values against the owning game', () => {
+    const roleField = game.fields.find((field) => field.id === 'role')!
+
+    expect(fieldValueIsValid(game, roleField, 'echo')).toBe(true)
+    expect(fieldValueIsValid(game, roleField, 'outsider')).toBe(false)
+
+    const initial = createSession(
+      game,
+      { name: 'Friday table', playerNames: ['Ari'] },
+      clock('2026-08-21T18:00:00.000Z'),
+      ids('session-1', 'player-1'),
+    )
+    if (!initial.ok) return
+
+    const updated = updatePlayerField(
+      initial.session,
+      game,
+      'player-1',
+      'role',
+      'echo',
+      clock('2026-08-21T18:01:00.000Z'),
+    )
+    expect(updated).toMatchObject({
+      ok: true,
+      session: { players: [{ fields: { role: 'echo' } }] },
     })
   })
 

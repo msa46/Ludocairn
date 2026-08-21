@@ -164,7 +164,7 @@ export function validateSession(
           fieldPath,
         )
       }
-      if (!fieldValueIsValid(field, player.fields[field.id])) {
+      if (!fieldValueIsValid(game, field, player.fields[field.id])) {
         return failure(
           'session.invalid-field-value',
           `Value does not conform to field "${field.id}".`,

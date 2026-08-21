@@ -45,6 +45,7 @@ function playerById(session: Session, playerId: string): Player | undefined {
 }
 
 export function fieldValueIsValid(
+  game: GameDefinition,
   field: PlayerFieldDefinition,
   value: unknown,
 ): value is SessionFieldValue {
@@ -69,7 +70,10 @@ export function fieldValueIsValid(
     case 'text':
       return typeof value === 'string'
     case 'role':
-      return false
+      return (
+        typeof value === 'string' &&
+        game.roles.some((role) => role.id === value)
+      )
   }
 }
 
@@ -200,7 +204,7 @@ export function updatePlayerField(
   if (!field) {
     return failure('session.unknown-field', `Unknown field "${fieldId}".`)
   }
-  if (!fieldValueIsValid(field, value)) {
+  if (!fieldValueIsValid(game, field, value)) {
     return failure(
       'session.invalid-field-value',
       `Value does not conform to field "${fieldId}".`,
