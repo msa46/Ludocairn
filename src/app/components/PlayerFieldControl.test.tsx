@@ -74,8 +74,14 @@ describe('PlayerFieldControl number controls', () => {
     expect(input).toHaveValue(4)
   })
 
-  it('disables decrement when the previous aligned step would cross an unaligned minimum', () => {
-    render(<NumberHarness field={scoreField} initial={1} />)
+  it('disables decrement when the previous aligned step would cross a custom minimum', () => {
+    const minimumAnchoredField: PlayerFieldDefinition = {
+      ...scoreField,
+      default: 1,
+      min: 1,
+      max: 5,
+    }
+    render(<NumberHarness field={minimumAnchoredField} initial={1} />)
 
     const input = screen.getByLabelText('Ari — Score')
     const decrease = screen.getByRole('button', {
@@ -85,5 +91,32 @@ describe('PlayerFieldControl number controls', () => {
     expect(decrease).toBeDisabled()
     fireEvent.click(decrease)
     expect(input).toHaveValue(1)
+  })
+
+  it('normalizes bounded decimal increment and decrement without floating artifacts', () => {
+    const decimalField: PlayerFieldDefinition = {
+      ...scoreField,
+      default: 0,
+      min: 0,
+      max: 0.3,
+      step: 0.1,
+    }
+    render(<NumberHarness field={decimalField} initial={0.2} />)
+
+    const input = screen.getByLabelText('Ari — Score')
+    const decrease = screen.getByRole('button', {
+      name: 'Decrease Ari — Score',
+    })
+    const increase = screen.getByRole('button', {
+      name: 'Increase Ari — Score',
+    })
+
+    expect(increase).toBeEnabled()
+    fireEvent.click(increase)
+    expect(input).toHaveValue(0.3)
+    expect(increase).toBeDisabled()
+
+    fireEvent.click(decrease)
+    expect(input).toHaveValue(0.2)
   })
 })

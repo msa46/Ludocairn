@@ -8,6 +8,24 @@ interface PlayerFieldControlProps {
   readonly onChange: (value: SessionFieldValue) => void
 }
 
+function decimalPlaces(value: number): number {
+  const [coefficient, exponentText] = value.toString().toLowerCase().split('e')
+  const fractionLength = coefficient?.split('.')[1]?.length ?? 0
+  const exponent = Number(exponentText ?? 0)
+  return Math.max(0, fractionLength - exponent)
+}
+
+function stepBy(value: number, step: number, direction: -1 | 1): number {
+  const precision = Math.min(
+    15,
+    Math.max(decimalPlaces(value), decimalPlaces(step)),
+  )
+  const scale = 10 ** precision
+  return (
+    (Math.round(value * scale) + direction * Math.round(step * scale)) / scale
+  )
+}
+
 export function PlayerFieldControl({
   field,
   playerName,
@@ -65,8 +83,8 @@ export function PlayerFieldControl({
   if (field.type === 'number') {
     const numericValue = Number(value)
     const step = field.step ?? 1
-    const previousValue = numericValue - step
-    const nextValue = numericValue + step
+    const previousValue = stepBy(numericValue, step, -1)
+    const nextValue = stepBy(numericValue, step, 1)
     return (
       <>
         <div className="number-field-control editing-controls">
