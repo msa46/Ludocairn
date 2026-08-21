@@ -37,6 +37,14 @@ Repository games live at `games/<game-id>/game.md`. Read
 [`docs/game-format.md`](docs/game-format.md) before proposing a game. Game
 definitions must not contain JavaScript or raw HTML.
 
+Game contributors must also follow the
+[`game content rights policy`](docs/content-rights.md). Rules and presentation
+must be independently authored, and each game must include an adjacent
+`RIGHTS.md` documenting authorship, license, provenance, and name-clearance
+work. Do not submit copied or closely paraphrased rulebook text, third-party
+artwork, logos, branded characters, or other material without documented
+compatible permission.
+
 ## Pull requests
 
 Describe the user-visible outcome, list the verification commands you ran, and

@@ -43,10 +43,12 @@ and runtime boundaries.
 
 - [Architecture](docs/architecture.md)
 - [Game definition format](docs/game-format.md)
+- [Game content rights policy](docs/content-rights.md)
 - [Roadmap and milestone acceptance criteria](docs/roadmap.md)
 - [How to create a game](games/README.md)
 - [Decision records](docs/decisions/)
 - [Approved foundation design](docs/superpowers/specs/2026-08-20-deckwright-foundation-design.md)
+- [Approved first usable release design](docs/superpowers/specs/2026-08-21-deckwright-first-usable-release-design.md)
 
 ## Local development
 

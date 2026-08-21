@@ -2,9 +2,13 @@
 
 ## Delivery strategy
 
-The first usable product milestone is divided into four development increments.
-Each increment produces a reviewable, tested result. Together they satisfy the
-milestone described in the project brief.
+The first usable product milestone is divided into four capability increments.
+The foundation is complete. The remaining work follows the approved
+[first usable release design](superpowers/specs/2026-08-21-deckwright-first-usable-release-design.md):
+deliver one social-deduction vertical slice across the content and tracker
+increments, add the other two examples through the same boundaries, and then
+complete release hardening. Together the increments satisfy the milestone
+described in the project brief.
 
 ## Increment 1: Foundation
 
@@ -27,8 +31,11 @@ Acceptance criteria:
 ## Increment 2: Content engine
 
 Deliver the standard 52-card and tarot deck models, selectors, version 1 game
-schema, Markdown loader and renderer, catalog, and three repository games:
-Card Mafia, Higher or Lower, and Tarot Journey.
+schema, Markdown loader and renderer, catalog, and three originally authored
+repository games: a social-deduction game, a standard-card comparison game,
+and a tarot reflection game. Existing example names remain working titles
+until the name-clearance process in the
+[game content rights policy](content-rights.md) is complete.
 
 Acceptance criteria:
 
@@ -42,6 +49,8 @@ Acceptance criteria:
   diagnostics.
 - CI validates every repository game before deployment.
 - The catalog opens each example's safely rendered Markdown rules.
+- Every repository game has an adjacent rights record documenting authorship,
+  license, provenance, and name-clearance work.
 
 ## Increment 3: Local session tracker
 
