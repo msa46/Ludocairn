@@ -22,6 +22,7 @@ interface TrackerViewProps {
   readonly onNotes: (notes: string) => void
   readonly onAddPlayer: (name: string) => void
   readonly onRemovePlayer: (id: string) => void
+  readonly onRenamePlayer: (id: string, name: string) => void
   readonly onRename: (name: string) => void
   readonly onDeleteSession: () => void
 }
@@ -38,6 +39,7 @@ export function TrackerView({
   onNotes,
   onAddPlayer,
   onRemovePlayer,
+  onRenamePlayer,
   onRename,
   onDeleteSession,
 }: TrackerViewProps) {
@@ -242,6 +244,28 @@ export function TrackerView({
                 <p>{String(index + 1).padStart(2, '0')}</p>
                 <h3>{player.name}</h3>
               </header>
+              <form
+                className="print-hidden"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const data = new FormData(event.currentTarget)
+                  onRenamePlayer(
+                    player.id,
+                    String(data.get('player-name') ?? ''),
+                  )
+                }}
+              >
+                <label>
+                  {player.name} name
+                  <input
+                    key={player.name}
+                    defaultValue={player.name}
+                    name="player-name"
+                    required
+                  />
+                </label>
+                <button type="submit">Rename {player.name}</button>
+              </form>
               <div className="field-grid">
                 {game.fields.map((field) => (
                   <PlayerFieldControl

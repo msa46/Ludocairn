@@ -62,6 +62,7 @@ export function errorMessage(error: unknown, fallback: string): string {
 export function parseStoredSession(
   raw: string,
   resolveGame: GameResolver,
+  expectedId?: string,
 ): LoadResult {
   let value: unknown
   try {
@@ -106,6 +107,22 @@ export function parseStoredSession(
         code: 'storage.invalid-session',
         message: validated.diagnostic.message,
         cause: validated.diagnostic,
+      },
+    }
+  }
+  if (expectedId !== undefined && validated.session.id !== expectedId) {
+    const cause: SessionDiagnostic = {
+      code: 'session.invalid-record',
+      message: `Saved session ID "${validated.session.id}" does not match its browser storage key "${expectedId}".`,
+      path: 'id',
+    }
+    return {
+      ok: false,
+      raw,
+      diagnostic: {
+        code: 'storage.invalid-session',
+        message: cause.message,
+        cause,
       },
     }
   }

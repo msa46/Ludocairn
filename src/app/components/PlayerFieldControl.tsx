@@ -63,20 +63,50 @@ export function PlayerFieldControl({
   }
 
   if (field.type === 'number') {
+    const numericValue = Number(value)
+    const step = field.step ?? 1
     return (
       <>
-        <label className="editing-controls">
-          {field.label}
+        <div className="number-field-control editing-controls">
+          <span>{field.label}</span>
+          <button
+            aria-label={'Decrease ' + label}
+            disabled={field.min !== undefined && numericValue <= field.min}
+            type="button"
+            onClick={() =>
+              onChange(
+                field.min === undefined
+                  ? numericValue - step
+                  : Math.max(field.min, numericValue - step),
+              )
+            }
+          >
+            −
+          </button>
           <input
             aria-label={label}
             max={field.max}
             min={field.min}
             step={field.step}
             type="number"
-            value={Number(value)}
+            value={numericValue}
             onChange={(event) => onChange(event.target.valueAsNumber)}
           />
-        </label>
+          <button
+            aria-label={'Increase ' + label}
+            disabled={field.max !== undefined && numericValue >= field.max}
+            type="button"
+            onClick={() =>
+              onChange(
+                field.max === undefined
+                  ? numericValue + step
+                  : Math.min(field.max, numericValue + step),
+              )
+            }
+          >
+            +
+          </button>
+        </div>
         {printed}
       </>
     )

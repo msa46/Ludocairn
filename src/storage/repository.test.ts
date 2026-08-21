@@ -92,6 +92,29 @@ describe('MemorySessionRepository', () => {
     })
   })
 
+  it('reports a key and embedded session ID mismatch with raw recovery data', () => {
+    const raw = JSON.stringify({ ...session, id: 'embedded-session' })
+    const repository = new MemorySessionRepository(resolveGame, {
+      initial: { 'ludocairn.session.v1.storage-key-session': raw },
+    })
+
+    expect(repository.load('storage-key-session')).toMatchObject({
+      ok: false,
+      raw,
+      diagnostic: {
+        code: 'storage.invalid-session',
+        cause: { code: 'session.invalid-record', path: 'id' },
+      },
+    })
+    expect(repository.list()).toEqual([
+      expect.objectContaining({
+        id: 'storage-key-session',
+        ok: false,
+        raw,
+      }),
+    ])
+  })
+
   it('converts injected write failures into diagnostics', () => {
     const repository = new MemorySessionRepository(resolveGame, {
       failWrites: true,

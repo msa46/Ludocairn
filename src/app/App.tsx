@@ -7,6 +7,7 @@ import {
   addPlayer,
   createSession,
   removePlayer,
+  renamePlayer,
   renameSession,
   setPhase,
   setRound,
@@ -128,6 +129,9 @@ export function App({
             mutate(addPlayer(session, sessionGame, name, clock, ids))
           }
           onRemovePlayer={(id) => mutate(removePlayer(session, id, clock))}
+          onRenamePlayer={(id, name) =>
+            mutate(renamePlayer(session, id, name, clock))
+          }
           onRename={(name) => mutate(renameSession(session, name, clock))}
           onDeleteSession={() => {
             const removed = sessionRepository.remove(session.id)
@@ -188,7 +192,7 @@ export function App({
               ids,
             )
             if (accept(created) && created.ok) {
-              navigate('session=' + created.session.id)
+              navigate('session=' + encodeURIComponent(created.session.id))
             }
           }}
         />
@@ -217,7 +221,7 @@ export function App({
             ids={ids}
             repository={sessionRepository}
             resolveGame={resolveGame}
-            onImported={(id) => navigate('session=' + id)}
+            onImported={(id) => navigate('session=' + encodeURIComponent(id))}
           />
         }
         key={revision}

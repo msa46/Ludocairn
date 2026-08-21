@@ -37,7 +37,11 @@ export class MemorySessionRepository implements SessionRepository {
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, raw]) => ({
         id: key.slice(SESSION_KEY_PREFIX.length),
-        ...parseStoredSession(raw, this.#resolveGame),
+        ...parseStoredSession(
+          raw,
+          this.#resolveGame,
+          key.slice(SESSION_KEY_PREFIX.length),
+        ),
       }))
   }
 
@@ -45,7 +49,7 @@ export class MemorySessionRepository implements SessionRepository {
     const raw = this.#records.get(keyForSession(id))
     return raw === undefined
       ? notFound(id)
-      : parseStoredSession(raw, this.#resolveGame)
+      : parseStoredSession(raw, this.#resolveGame, id)
   }
 
   save(session: Session): SaveResult {

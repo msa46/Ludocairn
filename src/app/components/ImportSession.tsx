@@ -73,7 +73,18 @@ export function ImportSession({
 
   function confirmImport() {
     if (!result?.ok) return
-    const existingIds = new Set(repository.list().map((record) => record.id))
+    const records = repository.list()
+    const readFailure = records.find(
+      (record) =>
+        !record.ok && record.diagnostic.code === 'storage.read-failed',
+    )
+    if (readFailure && !readFailure.ok) {
+      setError(
+        'The session was not imported — ' + readFailure.diagnostic.message,
+      )
+      return
+    }
+    const existingIds = new Set(records.map((record) => record.id))
     const session = prepareImportedSession(result.session, existingIds, ids)
     const saved = repository.save(session)
     if (!saved.ok) {

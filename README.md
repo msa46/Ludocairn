@@ -17,8 +17,10 @@ handle it as private table material. Importing reads a selected JSON file
 locally, validates its game and schema, and shows a session/game/player/date
 preview before **Import session** saves anything. A colliding session ID is
 replaced with a new local ID rather than overwriting the existing session.
-Malformed, unsupported, and unavailable-game records remain recoverable and
-are never silently accepted.
+Imported session and player IDs must use URL-safe characters. Malformed,
+unsupported, mismatched, and unavailable-game records remain recoverable and
+are never silently accepted. Import confirmation also stops without writing if
+the browser cannot enumerate existing sessions safely.
 
 ## Bundled games
 

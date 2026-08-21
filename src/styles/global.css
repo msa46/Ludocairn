@@ -493,6 +493,24 @@ h3 {
   text-align: center;
 }
 
+.number-field-control {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+  align-items: end;
+  gap: 0.35rem;
+}
+
+.number-field-control > span {
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.number-field-control input {
+  min-width: 0;
+  text-align: center;
+}
+
 .player-card {
   padding: 1rem;
   break-inside: avoid;

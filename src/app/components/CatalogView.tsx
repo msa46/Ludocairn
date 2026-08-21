@@ -62,7 +62,7 @@ export function CatalogView({
                 href={'?game=' + encodeURIComponent(game.id)}
                 onClick={(event) => {
                   event.preventDefault()
-                  navigate('game=' + game.id)
+                  navigate('game=' + encodeURIComponent(game.id))
                 }}
               >
                 Open {game.name}
@@ -94,7 +94,7 @@ export function CatalogView({
                   href={'?session=' + encodeURIComponent(record.id)}
                   onClick={(event) => {
                     event.preventDefault()
-                    navigate('session=' + record.id)
+                    navigate('session=' + encodeURIComponent(record.id))
                   }}
                 >
                   Resume {record.session.name}

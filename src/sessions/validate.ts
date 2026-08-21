@@ -21,6 +21,12 @@ function isNonBlankString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+function isUrlSafeId(value: unknown): value is string {
+  return (
+    typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._~-]*$/.test(value)
+  )
+}
+
 function isIsoTimestamp(value: unknown): value is string {
   if (typeof value !== 'string') return false
   const timestamp = Date.parse(value)
@@ -42,8 +48,12 @@ export function validateSession(
       'storageVersion',
     )
   }
-  if (!isNonBlankString(value.id)) {
-    return failure('session.invalid-record', 'Session ID is required.', 'id')
+  if (!isUrlSafeId(value.id)) {
+    return failure(
+      'session.invalid-record',
+      'Session ID must use URL-safe characters.',
+      'id',
+    )
   }
   if (!isNonBlankString(value.name)) {
     return failure(
@@ -105,10 +115,10 @@ export function validateSession(
         playerPath,
       )
     }
-    if (!isNonBlankString(player.id)) {
+    if (!isUrlSafeId(player.id)) {
       return failure(
         'session.invalid-record',
-        'Player ID is required.',
+        'Player ID must use URL-safe characters.',
         `${playerPath}.id`,
       )
     }

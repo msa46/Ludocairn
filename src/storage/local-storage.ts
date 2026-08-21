@@ -31,9 +31,10 @@ export class LocalStorageSessionRepository implements SessionRepository {
         if (!key?.startsWith(SESSION_KEY_PREFIX)) continue
         const raw = this.#storage.getItem(key)
         if (raw === null) continue
+        const id = key.slice(SESSION_KEY_PREFIX.length)
         records.push({
-          id: key.slice(SESSION_KEY_PREFIX.length),
-          ...parseStoredSession(raw, this.#resolveGame),
+          id,
+          ...parseStoredSession(raw, this.#resolveGame, id),
         })
       }
       return records.sort((left, right) => left.id.localeCompare(right.id))
@@ -47,7 +48,7 @@ export class LocalStorageSessionRepository implements SessionRepository {
       const raw = this.#storage.getItem(keyForSession(id))
       return raw === null
         ? notFound(id)
-        : parseStoredSession(raw, this.#resolveGame)
+        : parseStoredSession(raw, this.#resolveGame, id)
     } catch (error) {
       return { ok: false, diagnostic: readFailure(error) }
     }

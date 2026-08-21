@@ -12,6 +12,7 @@ import { serializeSession } from '../files/session-files'
 import { loadBundledGames } from '../games/catalog'
 import type { IdProvider, Session } from '../sessions/model'
 import { MemorySessionRepository } from '../storage/memory'
+import type { SessionRepository } from '../storage/repository'
 import { App } from './App'
 
 const catalog = loadBundledGames()
@@ -146,6 +147,26 @@ describe('session file UI', () => {
     expect(repository.list()).toHaveLength(0)
   })
 
+  it('rejects an imported session with hostile session or player IDs', async () => {
+    const repository = new MemorySessionRepository(resolveGame)
+    render(<App games={catalog.games} repository={repository} />)
+
+    uploadJson(
+      serializeSession({
+        ...importedSession,
+        id: 'session&admin=true',
+        players: [
+          { ...importedSession.players[0]!, id: 'player/../../record' },
+        ],
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Session ID must use URL-safe characters.',
+    )
+    expect(repository.list()).toHaveLength(0)
+  })
+
   it('reassigns a colliding ID and preserves the existing saved session', async () => {
     const existing = { ...importedSession, name: 'Existing Friday' }
     const repository = new MemorySessionRepository(resolveGame)
@@ -173,6 +194,42 @@ describe('session file UI', () => {
       ok: true,
       session: { name: 'Imported Friday' },
     })
+  })
+
+  it('aborts confirmation when existing session enumeration cannot be read', async () => {
+    const writable = new MemorySessionRepository(resolveGame)
+    const repository: SessionRepository = {
+      list: () => [
+        {
+          id: '',
+          ok: false,
+          diagnostic: {
+            code: 'storage.read-failed',
+            message: 'Browser storage is blocked.',
+          },
+        },
+      ],
+      load: (id) => writable.load(id),
+      save: (session) => writable.save(session),
+      remove: (id) => writable.remove(id),
+      raw: (id) => writable.raw(id),
+    }
+    render(<App games={catalog.games} repository={repository} />)
+
+    uploadJson(serializeSession(importedSession))
+    await screen.findByRole('heading', { name: 'Review import' })
+    fireEvent.click(screen.getByRole('button', { name: 'Import session' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The session was not imported — Browser storage is blocked.',
+    )
+    expect(writable.load(importedSession.id)).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'storage.not-found' },
+    })
+    expect(
+      screen.getByRole('heading', { name: 'Review import' }),
+    ).toBeInTheDocument()
   })
 
   it('exports observable UTF-8 JSON through a sanitized download', async () => {

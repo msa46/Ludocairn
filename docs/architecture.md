@@ -84,14 +84,17 @@ version.
 
 Loading treats browser data as untrusted. Malformed or unsupported records
 produce a recoverable diagnostic instead of crashing the application or being
-silently overwritten.
+silently overwritten. Session and player IDs use a stable URL-safe grammar,
+and a stored session's embedded ID must match the ID in its storage key;
+mismatches retain their raw bytes for recovery.
 
 Session export serializes the validated session as UTF-8 JSON and triggers a
 user download. Import reads one selected JSON file in the browser, resolves
 its bundled game, validates the complete session, presents a preview, and only
 then allows confirmation. An imported ID collision receives a fresh ID. Files
-are never uploaded, but after export their confidentiality depends on how the
-user stores and shares them.
+are never uploaded. Confirmation aborts before any write if existing browser
+sessions cannot be enumerated safely. After export, file confidentiality
+depends on how the user stores and shares the download.
 
 ### React application
 

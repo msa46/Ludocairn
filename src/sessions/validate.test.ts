@@ -104,6 +104,27 @@ describe('validateSession', () => {
     })
   })
 
+  it.each([
+    {
+      label: 'session',
+      candidate: { ...validSession, id: 'session&admin=true' },
+      path: 'id',
+    },
+    {
+      label: 'player',
+      candidate: {
+        ...validSession,
+        players: [{ ...validSession.players[0]!, id: 'player/../../record' }],
+      },
+      path: 'players.0.id',
+    },
+  ])('rejects a URL-unsafe $label ID', ({ candidate, path }) => {
+    expect(validateSession(candidate, game)).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'session.invalid-record', path },
+    })
+  })
+
   it('rejects unsupported storage and incompatible game versions', () => {
     expect(
       validateSession({ ...validSession, storageVersion: 2 }, game),
