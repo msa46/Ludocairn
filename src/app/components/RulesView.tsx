@@ -1,5 +1,6 @@
 import type { GameDefinition } from '../../games/model'
 import { renderRules } from '../../games/render'
+import { RoleGuide } from './RoleGuide'
 
 interface RulesViewProps {
   readonly game: GameDefinition
@@ -31,6 +32,7 @@ export function RulesView({ game, onStart, navigateHome }: RulesViewProps) {
           Print rules
         </button>
       </div>
+      <RoleGuide game={game} />
       <article
         className="rules-print prose"
         dangerouslySetInnerHTML={{ __html: renderRules(game.rulesMarkdown) }}

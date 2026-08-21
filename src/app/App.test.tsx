@@ -11,6 +11,55 @@ if (!catalog.ok) throw new Error('Bundled catalog fixture failed to load')
 const veilquorum = catalog.games.find((game) => game.id === 'veilquorum')
 if (!veilquorum) throw new Error('Veilquorum fixture was not found')
 
+const structuredVeilquorum = {
+  ...veilquorum,
+  roles: [
+    {
+      id: 'echo',
+      label: 'Echo',
+      team: 'Quorum',
+      summary: 'Privately tests one active player.',
+      card: { label: 'Heart', selector: { suits: ['hearts'] } },
+    },
+    {
+      id: 'drifter',
+      label: 'Drifter',
+      team: 'Drifters',
+      summary: 'Quietly reduces the quorum.',
+    },
+    {
+      id: 'wayfinder',
+      label: 'Wayfinder',
+      team: 'Quorum',
+      summary: 'Finds Drifters through public discussion.',
+    },
+  ],
+  roleDistributions: [
+    {
+      players: { min: 5, max: 6 },
+      counts: { echo: 1, drifter: 1, wayfinder: 'remaining' },
+    },
+    {
+      players: { min: 7, max: 9 },
+      counts: { echo: 1, drifter: 2, wayfinder: 'remaining' },
+    },
+    {
+      players: { min: 10, max: 12 },
+      counts: { echo: 1, drifter: 3, wayfinder: 'remaining' },
+    },
+  ],
+  fields: veilquorum.fields.map((field) =>
+    field.id === 'role'
+      ? {
+          id: 'role',
+          label: 'Role',
+          type: 'role' as const,
+          default: 'wayfinder',
+        }
+      : field,
+  ),
+} satisfies typeof veilquorum
+
 const gameJourneys = [
   {
     id: 'veilquorum',
@@ -68,6 +117,87 @@ describe('App', () => {
     expect(
       screen.getByRole('link', { name: /Open Veilquorum/ }),
     ).toBeInTheDocument()
+  })
+
+  it('shows the shared role guide through setup and live tracker quantities', () => {
+    const repository = new MemorySessionRepository(() => structuredVeilquorum)
+    render(
+      <App
+        games={[structuredVeilquorum]}
+        repository={repository}
+        clock={() => '2026-08-21T21:00:00.000Z'}
+        ids={ids(
+          'role-session',
+          'player-1',
+          'player-2',
+          'player-3',
+          'player-4',
+          'player-5',
+          'player-6',
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('link', { name: /Open Veilquorum/ }))
+    expect(screen.getAllByRole('heading', { name: 'Role guide' })).toHaveLength(
+      1,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }))
+    expect(screen.getAllByRole('heading', { name: 'Role guide' })).toHaveLength(
+      1,
+    )
+    fireEvent.change(screen.getByLabelText('Session name'), {
+      target: { value: 'Role table' },
+    })
+    for (const [index, name] of ['Ari', 'Bea', 'Cy', 'Dee', 'Eli'].entries()) {
+      if (index >= 2) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Add another player' }),
+        )
+      }
+      fireEvent.change(screen.getByLabelText(`Player ${index + 1} name`), {
+        target: { value: name },
+      })
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Create session' }))
+
+    expect(screen.getAllByRole('heading', { name: 'Role guide' })).toHaveLength(
+      1,
+    )
+    expect(screen.getByText('Quantities for 5 players')).toBeInTheDocument()
+    expect(screen.getByText('3 Wayfinders')).toBeInTheDocument()
+
+    const role = screen.getByRole('combobox', { name: 'Ari — Role' })
+    fireEvent.change(role, { target: { value: 'echo' } })
+    expect(role).toHaveDisplayValue('Echo')
+    expect(role).toHaveValue('echo')
+
+    fireEvent.change(screen.getByLabelText('New player name'), {
+      target: { value: 'Fox' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add player' }))
+    expect(screen.getByText('Quantities for 6 players')).toBeInTheDocument()
+    expect(screen.getByText('4 Wayfinders')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Fox' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm remove Fox' }))
+    expect(screen.getByText('Quantities for 5 players')).toBeInTheDocument()
+    expect(screen.getByText('3 Wayfinders')).toBeInTheDocument()
+  })
+
+  it('does not show an empty role guide for games without roles', () => {
+    const repository = new MemorySessionRepository(() => veilquorum)
+    render(<App games={[veilquorum]} repository={repository} />)
+
+    fireEvent.click(screen.getByRole('link', { name: /Open Veilquorum/ }))
+    expect(
+      screen.queryAllByRole('heading', { name: 'Role guide' }),
+    ).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }))
+    expect(
+      screen.queryAllByRole('heading', { name: 'Role guide' }),
+    ).toHaveLength(0)
   })
 
   it('encodes route values before navigating', () => {

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 
 import type { GameDefinition } from '../../games/model'
+import { RoleGuide } from './RoleGuide'
 
 interface SessionSetupProps {
   readonly game: GameDefinition
@@ -36,6 +37,7 @@ export function SessionSetup({
         create a smaller practice table.
       </p>
       {error && <p role="alert">{error}</p>}
+      <RoleGuide game={game} />
       <form onSubmit={submit}>
         <label>
           Session name

@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import type { PlayerFieldDefinition } from '../../games/model'
+import type { PlayerFieldDefinition, RoleDefinition } from '../../games/model'
 import { PlayerFieldControl } from './PlayerFieldControl'
 
 const scoreField: PlayerFieldDefinition = {
@@ -118,5 +118,43 @@ describe('PlayerFieldControl number controls', () => {
 
     fireEvent.click(decrease)
     expect(input).toHaveValue(0.2)
+  })
+})
+
+describe('PlayerFieldControl role controls', () => {
+  it('labels a native select with role labels while emitting the stable role ID', () => {
+    const roles: readonly RoleDefinition[] = [
+      {
+        id: 'echo',
+        label: 'Echo',
+        summary: 'Privately tests one active player.',
+      },
+      {
+        id: 'wayfinder',
+        label: 'Wayfinder',
+        summary: 'Finds Drifters through public discussion.',
+      },
+    ]
+    const onChange = vi.fn()
+
+    render(
+      <PlayerFieldControl
+        field={{
+          id: 'role',
+          label: 'Role',
+          type: 'role',
+          default: 'wayfinder',
+        }}
+        playerName="Ari"
+        roles={roles}
+        value="wayfinder"
+        onChange={onChange}
+      />,
+    )
+
+    const select = screen.getByRole('combobox', { name: 'Ari — Role' })
+    expect(select).toHaveDisplayValue('Wayfinder')
+    fireEvent.change(select, { target: { value: 'echo' } })
+    expect(onChange).toHaveBeenCalledWith('echo')
   })
 })

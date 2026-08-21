@@ -5,6 +5,7 @@ import type { GameDefinition } from '../../games/model'
 import type { Session, SessionFieldValue } from '../../sessions/model'
 import { getPlayerCountWarning } from '../../sessions/operations'
 import { PlayerFieldControl } from './PlayerFieldControl'
+import { RoleGuide } from './RoleGuide'
 
 interface TrackerViewProps {
   readonly game: GameDefinition
@@ -122,6 +123,7 @@ export function TrackerView({
 
       {warning && <p className="guidance">{warning}</p>}
       {(error || exportError) && <p role="alert">{error ?? exportError}</p>}
+      <RoleGuide game={game} playerCount={session.players.length} />
 
       <section
         className="session-management print-hidden"
@@ -272,6 +274,7 @@ export function TrackerView({
                     field={field}
                     key={field.id}
                     playerName={player.name}
+                    roles={game.roles}
                     value={player.fields[field.id]!}
                     onChange={(value) => onField(player.id, field.id, value)}
                   />

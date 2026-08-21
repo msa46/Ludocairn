@@ -1,9 +1,10 @@
-import type { PlayerFieldDefinition } from '../../games/model'
+import type { PlayerFieldDefinition, RoleDefinition } from '../../games/model'
 import type { SessionFieldValue } from '../../sessions/model'
 
 interface PlayerFieldControlProps {
   readonly field: PlayerFieldDefinition
   readonly playerName: string
+  readonly roles?: readonly RoleDefinition[]
   readonly value: SessionFieldValue
   readonly onChange: (value: SessionFieldValue) => void
 }
@@ -29,6 +30,7 @@ function stepBy(value: number, step: number, direction: -1 | 1): number {
 export function PlayerFieldControl({
   field,
   playerName,
+  roles = [],
   value,
   onChange,
 }: PlayerFieldControlProps) {
@@ -120,7 +122,27 @@ export function PlayerFieldControl({
     )
   }
 
-  if (field.type === 'role') return null
+  if (field.type === 'role') {
+    return (
+      <>
+        <label className="editing-controls">
+          {field.label}
+          <select
+            aria-label={label}
+            value={String(value)}
+            onChange={(event) => onChange(event.target.value)}
+          >
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {printed}
+      </>
+    )
+  }
 
   return (
     <>

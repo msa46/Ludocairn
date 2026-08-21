@@ -32,6 +32,17 @@ describe('print stylesheet contract', () => {
   it('keeps each player record together when practical', () => {
     expect(printCss).toMatch(/\.player-card\s*{[^}]*break-inside:\s*avoid/s)
   })
+
+  it('keeps the role guide visible and avoids splitting its records', () => {
+    const hiddenSelectors = printCss.match(
+      /(?<selectors>[^{}]+)\{\s*display:\s*none\s*!important/s,
+    )?.groups?.selectors
+
+    expect(hiddenSelectors).not.toContain('.role-guide')
+    expect(printCss).toMatch(
+      /\.role-guide-card,\s*\.role-guide tr\s*{[^}]*break-inside:\s*avoid/s,
+    )
+  })
 })
 
 describe('narrow rules stylesheet contract', () => {
