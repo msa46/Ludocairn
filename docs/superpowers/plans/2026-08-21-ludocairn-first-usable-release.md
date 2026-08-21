@@ -113,7 +113,7 @@ git commit -m "docs: adopt Ludocairn identity"
 - Consumes: no application or browser state.
 - Produces: `Card`, `StandardCard`, `TarotCard`, `DeckType`, `createStandardDeck(): readonly StandardCard[]`, `createTarotDeck(): readonly TarotCard[]`, `CardSelector`, and `selectCards(deck, selector): SelectionResult`.
 
-- [ ] **Step 1: Write failing deck-composition tests**
+- [x] **Step 1: Write failing deck-composition tests**
 
 ```ts
 expect(createStandardDeck()).toHaveLength(52)
@@ -130,23 +130,23 @@ expect(createTarotDeck().filter((card) => card.arcana === 'minor')).toHaveLength
 )
 ```
 
-- [ ] **Step 2: Run the deck test and verify missing modules fail it**
+- [x] **Step 2: Run the deck test and verify missing modules fail it**
 
 Run: `npm test -- src/cards/decks.test.ts`
 
 Expected: FAIL with unresolved imports from `./decks` and `./model`.
 
-- [ ] **Step 3: Implement immutable types and generated canonical decks**
+- [x] **Step 3: Implement immutable types and generated canonical decks**
 
 Use literal tuples for four standard suits, thirteen standard ranks, 22 major arcana names, four tarot suits, and fourteen minor ranks. Generate IDs exactly as `standard-52:<suit>:<rank>`, `tarot:major:<slug>`, and `tarot:minor:<suit>:<rank>`. Freeze each card and returned array; assign useful tags such as `red`, `black`, `face`, `number`, `major`, and `minor` without artwork or interpretive tarot text.
 
-- [ ] **Step 4: Run deck tests and verify they pass**
+- [x] **Step 4: Run deck tests and verify they pass**
 
 Run: `npm test -- src/cards/decks.test.ts`
 
 Expected: PASS for counts, IDs, uniqueness, discriminants, and tags.
 
-- [ ] **Step 5: Write failing selector tests**
+- [x] **Step 5: Write failing selector tests**
 
 Cover ID, suit, rank, arcana, and tag filters; OR within a property; AND between properties; unknown values; empty selectors; and inapplicable properties.
 
@@ -169,17 +169,17 @@ expect(
 })
 ```
 
-- [ ] **Step 6: Implement selector validation and matching**
+- [x] **Step 6: Implement selector validation and matching**
 
 Define `SelectionResult` as a discriminated union. Reject empty arrays, unknown values, and properties unsupported by the deck before filtering. Return `selector.no-matches` when a valid selector selects nothing.
 
-- [ ] **Step 7: Run the card domain and full gates**
+- [x] **Step 7: Run the card domain and full gates**
 
 Run: `npm test -- src/cards && npm run ci`
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit the card domain**
+- [x] **Step 8: Commit the card domain**
 
 ```bash
 git add src/cards
