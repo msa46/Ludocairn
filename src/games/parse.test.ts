@@ -243,7 +243,13 @@ role_distributions:
     },
     {
       name: 'choice default outside choices',
-      source: replaceOnce('default: wayfinder', 'default: stranger'),
+      source: validSource.replace(
+        `      type: role
+      default: wayfinder`,
+        `      type: choice
+      choices: [wayfinder, drifter, echo]
+      default: stranger`,
+      ),
       code: 'schema.invalid-default',
     },
     {
