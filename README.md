@@ -106,9 +106,30 @@ Pages workflow runs the complete CI gate, uploads only `dist/`, and deploys on
 a push to `main` or a manual workflow dispatch. Repository settings must use
 **GitHub Actions** as the Pages source. Pull requests run CI but do not deploy.
 
-No production URL is recorded here yet; it will be added only after the
-`main` deployment succeeds and the published repository-subpath build is
-manually verified.
+The first usable release is published at
+[https://msa46.github.io/Deckwright/](https://msa46.github.io/Deckwright/) and
+was manually verified on 2026-08-21. The repository-subpath build rendered all
+three games, then created `Production verification` in Veilquorum with Ari and
+Bea, added Cy, advanced to round 2, unchecked Ari, reported `Saved`, and
+restored all of that state after reload. Browser inspection found only
+same-origin GitHub Pages JavaScript, CSS, and favicon assets, with no
+application-origin console warnings or errors.
+
+The reviewed release head was safely fast-forwarded to `main` after the feature
+branch was pushed. Pull-request creation was unavailable because the local
+GitHub CLI token had expired and the GitHub integration returned HTTP 403; the
+remote `main` branch was still the reviewed head's ancestor. The resulting
+[CI run](https://github.com/msa46/Deckwright/actions/runs/32508019269) and
+[Pages deployment](https://github.com/msa46/Deckwright/actions/runs/32508019317)
+both succeeded.
+
+Local release verification also exercised import preview and confirmation,
+the export action, and both print actions. The browser backend did not expose
+the export download event, so the downloaded file was not independently
+opened in that manual run; automated tests separately verify its UTF-8 JSON
+contents, filename, extension, and privacy copy. The native print dialog was
+not introspected, so verification stops at the successful browser/system print
+action boundary.
 
 ## Documentation
 

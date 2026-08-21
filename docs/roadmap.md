@@ -15,12 +15,32 @@ Release publication is intentionally separate from implementation status:
   alert/status semantics, a narrow tracker journey, and a keyboard-only primary
   journey.
 - [x] Prepare a fully static GitHub Pages artifact with relative assets.
-- [ ] Publish from `main`, verify the Pages workflow and repository-subpath
+- [x] Publish from `main`, verify the Pages workflow and repository-subpath
   journey, then record the production URL and verification date.
 
-The unchecked publication item does not imply a production URL has been
-verified. Accounts, cloud synchronization, and multiplayer networking are not
-part of this milestone.
+The first usable release was verified on 2026-08-21 at
+[https://msa46.github.io/Deckwright/](https://msa46.github.io/Deckwright/).
+The production browser journey rendered all three games, created Veilquorum
+session `Production verification` with Ari and Bea, added Cy, advanced to round
+2, unchecked Ari, reached `Saved`, and restored all of that state after reload.
+It loaded only same-origin GitHub Pages JavaScript, CSS, and favicon assets. No
+application-origin console warnings or errors were observed. Accounts, cloud
+synchronization, and multiplayer networking are not part of this milestone.
+
+The feature branch was pushed and reviewed at `b164647`. Pull-request creation
+could not be used because the local GitHub CLI token had expired and the
+GitHub integration returned HTTP 403. Because `origin/main` remained
+`a303853`, an ancestor of the reviewed head, `b164647` was safely
+fast-forwarded directly to `main`. The
+[CI run](https://github.com/msa46/Deckwright/actions/runs/32508019269) and
+[Pages deployment](https://github.com/msa46/Deckwright/actions/runs/32508019317)
+both succeeded.
+
+Local manual verification reached the export and print action boundaries, but
+the browser backend did not surface the export download event and the native
+print dialog was not introspected. The downloaded file therefore was not
+independently opened in that run; automated tests separately verify export
+contents and metadata.
 
 ## Increment 1: Foundation
 

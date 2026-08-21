@@ -602,16 +602,16 @@ Expected: lint, formatting, types, all tests, production build, and static artif
 
 Serve the production artifact and exercise, at narrow and wide widths, catalog → each rules page → new session → all field types → refresh restoration → export → import preview/confirm → print rules → print tracker. Repeat the primary journey using only the keyboard and inspect the accessibility tree for labels, landmarks, alerts, and status regions.
 
-- [ ] **Step 5: Push the feature branch and review integration**
+- [x] **Step 5: Push the feature branch and review integration**
 
 Run: `git push -u origin codex/first-usable-release`
 
 Expected: the remote branch is created and GitHub Actions passes. Review the full diff against the approved spec, then merge or fast-forward to `main` only with the user's existing authorization for this release workflow.
 
-- [ ] **Step 6: Verify GitHub Pages production**
+- [x] **Step 6: Verify GitHub Pages production**
 
 Wait for the Pages workflow to report success. Open the environment URL from the workflow output, hard-refresh under the repository subpath, and repeat the catalog-to-restored-session journey. Confirm no network requests are made except same-origin static files.
 
-- [ ] **Step 7: Record the production URL and commit any evidence-only documentation**
+- [x] **Step 7: Record the production URL and commit any evidence-only documentation**
 
 Add the final Pages URL and verification date to `README.md` and `docs/roadmap.md`, rerun `npm run ci`, commit those documentation changes, and push `main`.
