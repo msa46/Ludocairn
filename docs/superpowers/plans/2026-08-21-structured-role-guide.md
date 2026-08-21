@@ -37,7 +37,7 @@
 - Consumes: existing `CardSelector`, `PlayersDefinition`, and `GameDefinition` conventions.
 - Produces: `RoleDefinition`, `RoleCardMarker`, `RoleCount`, `RoleDistribution`, `RoleFieldDefinition`, `ResolvedRoleCount`, and `resolveRoleCounts(game, playerCount)`.
 
-- [ ] **Step 1: Write failing distribution-resolution tests**
+- [x] **Step 1: Write failing distribution-resolution tests**
 
 Create `src/games/roles.test.ts` with a complete normalized fixture and observable expectations:
 
@@ -96,13 +96,13 @@ describe('resolveRoleCounts', () => {
 })
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- src/games/roles.test.ts`
 
 Expected: FAIL because `RoleDefinition`, normalized `roles`, normalized `roleDistributions`, and `resolveRoleCounts` do not exist.
 
-- [ ] **Step 3: Add exact role types to the game model**
+- [x] **Step 3: Add exact role types to the game model**
 
 Import `CardSelector` into `src/games/model.ts`, add these definitions, add `RoleFieldDefinition` to `PlayerFieldDefinition`, and add normalized arrays to `GameDefinition`:
 
@@ -141,7 +141,7 @@ export interface GameDefinition {
 
 Keep `BasePlayerFieldDefinition` non-exported unless another production module truly requires it.
 
-- [ ] **Step 4: Implement the pure resolver**
+- [x] **Step 4: Implement the pure resolver**
 
 Create `src/games/roles.ts`:
 
@@ -177,20 +177,20 @@ export function resolveRoleCounts(
 }
 ```
 
-- [ ] **Step 5: Update existing typed fixtures with normalized empty arrays**
+- [x] **Step 5: Update existing typed fixtures with normalized empty arrays**
 
 Add `roles: []` and `roleDistributions: []` to the direct `GameDefinition`
 literals in `src/files/session-files.test.ts`,
 `src/sessions/operations.test.ts`, `src/sessions/validate.test.ts`, and
 `src/storage/repository.test.ts`. Do not change bundled content yet.
 
-- [ ] **Step 6: Run focused and type gates**
+- [x] **Step 6: Run focused and type gates**
 
 Run: `npm test -- src/games/roles.test.ts && npm run typecheck`
 
 Expected: role tests PASS and TypeScript reports no missing normalized role properties.
 
-- [ ] **Step 7: Commit the role domain**
+- [x] **Step 7: Commit the role domain**
 
 ```bash
 git add src/games/model.ts src/games/roles.ts src/games/roles.test.ts src/files/session-files.test.ts src/sessions/operations.test.ts src/sessions/validate.test.ts src/storage/repository.test.ts
@@ -210,7 +210,7 @@ git commit -m "feat: add structured role domain"
 - Consumes: Task 1 role types, `CardSelector`, `selectCards`, `createStandardDeck()`, and `createTarotDeck()`.
 - Produces: `parseGameSource()` results with normalized `roles`, `roleDistributions`, and `RoleFieldDefinition` values.
 
-- [ ] **Step 1: Extend the valid parser fixture and expected normalized result**
+- [x] **Step 1: Extend the valid parser fixture and expected normalized result**
 
 In `src/games/parse.test.ts`, place this YAML between `players` and `session` in `validSource`:
 
@@ -257,7 +257,7 @@ Change the role player field to:
 
 Update the success expectation with the exact camel-cased normalized role data, selectors, distributions, `type: 'role'`, and empty arrays only for definitions that omit the optional YAML.
 
-- [ ] **Step 2: Add table-driven invalid-role parser tests**
+- [x] **Step 2: Add table-driven invalid-role parser tests**
 
 Add cases that each mutate `validSource` once and assert the exact diagnostic code and path:
 
@@ -278,13 +278,13 @@ it.each([
 
 Add separate cases for an uncovered supported player count, distributions without roles, a band with fixed counts that cannot exactly fill a multi-player range, a negative/non-integer count, an unknown count key, a role field without roles, and unknown properties inside role/card/distribution objects.
 
-- [ ] **Step 3: Run parser tests and verify RED**
+- [x] **Step 3: Run parser tests and verify RED**
 
 Run: `npm test -- src/games/parse.test.ts`
 
 Expected: FAIL because the parser rejects the new top-level properties and does not recognize `type: role`.
 
-- [ ] **Step 4: Implement focused parser helpers**
+- [x] **Step 4: Implement focused parser helpers**
 
 In `src/games/parse.ts`, keep `parseMetadata` orchestration small by adding these internal signatures:
 
@@ -324,19 +324,19 @@ function parseFields(
 
 Add `roles` and `role_distributions` to the top-level allowlist. Parse players and roles before distributions, then pass roles into field parsing. Add a `role` switch branch that permits only `id`, `label`, `type`, and `default` and validates the default against the role IDs. Update the invalid-type message to list `role`.
 
-- [ ] **Step 5: Run parser tests and verify GREEN**
+- [x] **Step 5: Run parser tests and verify GREEN**
 
 Run: `npm test -- src/games/parse.test.ts`
 
 Expected: all parser tests PASS with exact diagnostic paths.
 
-- [ ] **Step 6: Run game-domain regression tests**
+- [x] **Step 6: Run game-domain regression tests**
 
 Run: `npm test -- src/cards src/games`
 
 Expected: canonical deck, selector, parser, renderer, catalog, and role resolver tests PASS.
 
-- [ ] **Step 7: Commit structured role parsing**
+- [x] **Step 7: Commit structured role parsing**
 
 ```bash
 git add src/games/parse.ts src/games/parse.test.ts src/cards/decks.ts
@@ -359,7 +359,7 @@ Omit `src/cards/decks.ts` from `git add` when it was not changed.
 - Consumes: `GameDefinition.roles`, `RoleFieldDefinition`, current session storage version 1, and unchanged string-valued `SessionFieldValue`.
 - Produces: `fieldValueIsValid(game, field, value)` and compatible creation, mutation, restore, and import validation.
 
-- [ ] **Step 1: Write failing operation tests for semantic role values**
+- [x] **Step 1: Write failing operation tests for semantic role values**
 
 Update the operations fixture with roles and a role field. Add assertions:
 
@@ -373,17 +373,17 @@ expect(updated).toMatchObject({ ok: true, session: { players: [{ fields: { role:
 
 Keep the existing generic choice test to prove stance/tone behavior is unchanged.
 
-- [ ] **Step 2: Write a failing version-1 restoration test**
+- [x] **Step 2: Write a failing version-1 restoration test**
 
 In `src/sessions/validate.test.ts`, construct a raw storage-version-1 Veilquorum session containing `fields.role: 'echo'` and assert `validateSession(raw, game)` returns `{ ok: true }`. Add a sibling case with `fields.role: 'stranger'` and assert `session.invalid-field-value` at `players.0.fields.role`.
 
-- [ ] **Step 3: Run session tests and verify RED**
+- [x] **Step 3: Run session tests and verify RED**
 
 Run: `npm test -- src/sessions/operations.test.ts src/sessions/validate.test.ts`
 
 Expected: FAIL because `fieldValueIsValid` has no game context and no `role` case.
 
-- [ ] **Step 4: Change field validation to receive the owning game**
+- [x] **Step 4: Change field validation to receive the owning game**
 
 Change the signature and switch:
 
@@ -406,19 +406,19 @@ export function fieldValueIsValid(
 
 Update `updatePlayerField` to call `fieldValueIsValid(game, field, value)` and update `validateSession` identically. Update direct test calls. Do not change serialized session shape or add migrations.
 
-- [ ] **Step 5: Run session tests and verify GREEN**
+- [x] **Step 5: Run session tests and verify GREEN**
 
 Run: `npm test -- src/sessions/operations.test.ts src/sessions/validate.test.ts`
 
 Expected: all operation and restoration tests PASS.
 
-- [ ] **Step 6: Run storage and file compatibility tests**
+- [x] **Step 6: Run storage and file compatibility tests**
 
 Run: `npm test -- src/storage src/files`
 
 Expected: stored and imported version-1 sessions continue to validate with unchanged role ID strings.
 
-- [ ] **Step 7: Commit semantic session validation**
+- [x] **Step 7: Commit semantic session validation**
 
 ```bash
 git add src/sessions/operations.ts src/sessions/operations.test.ts src/sessions/validate.ts src/sessions/validate.test.ts
@@ -445,7 +445,7 @@ git commit -m "feat: validate semantic session roles"
 - Consumes: `GameDefinition.roles`, `GameDefinition.roleDistributions`, `resolveRoleCounts(game, playerCount)`, and `RoleFieldDefinition`.
 - Produces: `RoleGuide({ game, playerCount?, headingLevel? })`, labeled role selects, responsive role-guide styles, and print-visible guide content.
 
-- [ ] **Step 1: Write failing shared-guide component tests**
+- [x] **Step 1: Write failing shared-guide component tests**
 
 Create a valid structured-role fixture in `RoleGuide.test.tsx` and assert:
 
@@ -464,7 +464,7 @@ expect(screen.getByText('5 Wayfinders')).toBeInTheDocument()
 
 Add a no-role fixture assertion that the component returns no region or heading.
 
-- [ ] **Step 2: Write failing role-control tests**
+- [x] **Step 2: Write failing role-control tests**
 
 Extend `PlayerFieldControl.test.tsx` with a role field and roles prop:
 
@@ -484,19 +484,19 @@ fireEvent.change(select, { target: { value: 'echo' } })
 expect(onChange).toHaveBeenCalledWith('echo')
 ```
 
-- [ ] **Step 3: Write failing application-placement and print tests**
+- [x] **Step 3: Write failing application-placement and print tests**
 
 In `App.test.tsx`, assert Veilquorum shows `Role guide` on rules, setup, and tracker; the tracker guide for five players shows exact resolved counts; adding/removing a player changes the displayed applicable quantity; the Ari role control displays `Echo` while retaining value `echo`; and non-role games expose zero `Role guide` headings.
 
 In `print-contract.test.ts`, assert `.role-guide` is not included in the interactive `display: none` print selectors and that role guide cards/rows use `break-inside: avoid`.
 
-- [ ] **Step 4: Run component tests and verify RED**
+- [x] **Step 4: Run component tests and verify RED**
 
 Run: `npm test -- src/app/components/RoleGuide.test.tsx src/app/components/PlayerFieldControl.test.tsx src/app/App.test.tsx src/styles/print-contract.test.ts`
 
 Expected: FAIL because the guide, role field rendering, placements, and styles do not exist.
 
-- [ ] **Step 5: Implement the read-only RoleGuide**
+- [x] **Step 5: Implement the read-only RoleGuide**
 
 Create `RoleGuide.tsx` with this public interface:
 
@@ -526,19 +526,19 @@ Return `null` when `game.roles.length === 0`. Render a `.role-guide` section wit
 
 Use text such as `1 Echo` and `5 Wayfinders`; use a local singular/plural helper based on count. Display `No fixed card` for missing card markers.
 
-- [ ] **Step 6: Add the guide to rules, setup, and tracker**
+- [x] **Step 6: Add the guide to rules, setup, and tracker**
 
 Render `<RoleGuide game={game} />` after rules actions and before the Markdown article. Render it after setup guidance and before the form. Render `<RoleGuide game={game} playerCount={session.players.length} />` after tracker error/guidance and before session management/round controls.
 
 Do not wrap the guide in `print-hidden`. Keep DOM order identical between narrow and wide layouts.
 
-- [ ] **Step 7: Render semantic role fields with labels**
+- [x] **Step 7: Render semantic role fields with labels**
 
 Add `readonly roles?: readonly RoleDefinition[]` to `PlayerFieldControlProps`. Add a `role` case that renders the same labeled native select pattern as choice fields, but maps `roles` to `<option value={role.id}>{role.label}</option>`. Pass `roles={game.roles}` from `TrackerView`.
 
 Do not humanize role IDs or store labels as values.
 
-- [ ] **Step 8: Add responsive and print-safe styles**
+- [x] **Step 8: Add responsive and print-safe styles**
 
 In `global.css`, add focused classes:
 
@@ -570,13 +570,13 @@ In `global.css`, add focused classes:
 
 Use existing typography, borders, muted colors, and spacing. Add no animation or decorative suit-color dependency. In the print media block, preserve the guide border, remove unnecessary background/shadow, and keep role cards/tables from splitting where practical.
 
-- [ ] **Step 9: Run component tests and verify GREEN**
+- [x] **Step 9: Run component tests and verify GREEN**
 
 Run: `npm test -- src/app/components/RoleGuide.test.tsx src/app/components/PlayerFieldControl.test.tsx src/app/App.test.tsx src/styles/print-contract.test.ts`
 
 Expected: shared guide, semantic select, placement, live quantity, no-role, accessibility, and print tests PASS.
 
-- [ ] **Step 10: Commit the role guide UI**
+- [x] **Step 10: Commit the role guide UI**
 
 ```bash
 git add src/app/components/RoleGuide.tsx src/app/components/RoleGuide.test.tsx src/app/components/RulesView.tsx src/app/components/SessionSetup.tsx src/app/components/TrackerView.tsx src/app/components/PlayerFieldControl.tsx src/app/components/PlayerFieldControl.test.tsx src/app/App.test.tsx src/styles/global.css src/styles/print-contract.test.ts
@@ -672,7 +672,7 @@ Run: `npm run ci`
 
 Expected: ESLint, Prettier, strict TypeScript, all Vitest files, Vite production build, and static artifact verification PASS.
 
-- [ ] **Step 8: Serve and manually verify the production artifact**
+- [x] **Step 8: Serve and manually verify the production artifact**
 
 Run: `npm run preview -- --host 127.0.0.1`
 
@@ -688,6 +688,15 @@ In a browser, verify at 320px and a wide viewport:
 8. Keyboard navigation reaches every role control and guide content remains exposed to the accessibility tree.
 9. No runtime request leaves the preview origin.
 
+Verification record (2026-08-21): the production artifact was exercised at
+320 and 1440 CSS pixels. The rules, setup, five-player tracker, seven-player
+threshold update, role labels and stored IDs, reload restoration, roleless
+games, print actions, accessibility tree, same-origin asset boundary, and
+console were checked. The browser backend did not expose the native print
+dialog; verification stops at the successful browser/system print boundary,
+with automated print-state tests covering rendered values and hidden editing
+controls.
+
 - [x] **Step 9: Commit the bundled game and documentation**
 
 ```bash
@@ -695,9 +704,15 @@ git add games/veilquorum/game.md src/games/catalog.test.ts README.md docs/game-f
 git commit -m "feat: publish Veilquorum role guide"
 ```
 
-- [ ] **Step 10: Request final whole-branch review before integration**
+- [x] **Step 10: Request final whole-branch review before integration**
 
 Review the range from the approved spec commit `48aeb20` through the final implementation head against `docs/superpowers/specs/2026-08-21-structured-role-guide-design.md`. Fix every Critical and Important finding through witnessed regression tests and request scoped re-review. Defer only explicitly categorized Minor findings with a recorded rationale.
+
+Review record (2026-08-21): independent whole-range review found no Critical
+issues and one Important issue: printed tracker roles exposed stable IDs rather
+than human-readable labels. A witnessed regression test now protects the label
+output. The review's Minor semantic-structure finding was also resolved by
+rendering labeled definition content for team, card, and purpose.
 
 - [ ] **Step 11: Finish the branch through the user's selected integration path**
 

@@ -46,15 +46,34 @@ export function RoleGuide({
 
       <div className="role-guide-grid">
         {game.roles.map((role) => (
-          <article className="role-guide-card" key={role.id}>
+          <article
+            aria-labelledby={`role-guide-${game.id}-${role.id}`}
+            className="role-guide-card"
+            key={role.id}
+          >
             <header>
-              <DetailHeading>{role.label}</DetailHeading>
-              {role.team && <p className="role-guide-team">{role.team}</p>}
+              <DetailHeading id={`role-guide-${game.id}-${role.id}`}>
+                {role.label}
+              </DetailHeading>
             </header>
-            <p className="role-guide-card-marker">
-              {role.card?.label ?? 'No fixed card'}
-            </p>
-            <p className="role-guide-summary">{role.summary}</p>
+            <dl className="role-guide-details">
+              {role.team && (
+                <>
+                  <dt>Team</dt>
+                  <dd aria-label="Team" className="role-guide-team">
+                    {role.team}
+                  </dd>
+                </>
+              )}
+              <dt>Card</dt>
+              <dd aria-label="Card" className="role-guide-card-marker">
+                {role.card?.label ?? 'No fixed card'}
+              </dd>
+              <dt>Purpose</dt>
+              <dd aria-label="Purpose" className="role-guide-summary">
+                {role.summary}
+              </dd>
+            </dl>
           </article>
         ))}
       </div>

@@ -36,7 +36,13 @@ export function PlayerFieldControl({
 }: PlayerFieldControlProps) {
   const label = playerName + ' — ' + field.label
   const printValue =
-    field.type === 'boolean' ? (value === true ? 'Yes' : 'No') : String(value)
+    field.type === 'boolean'
+      ? value === true
+        ? 'Yes'
+        : 'No'
+      : field.type === 'role'
+        ? (roles.find((role) => role.id === value)?.label ?? String(value))
+        : String(value)
   const printed = (
     <p className="print-only" aria-hidden="true">
       {field.label}: {printValue}

@@ -382,10 +382,26 @@ h3 {
 }
 
 .role-guide-card header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+  display: block;
+}
+
+.role-guide-details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.4rem 0.75rem;
+  margin: 0.6rem 0 0;
+}
+
+.role-guide-details dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.role-guide-details dd {
+  min-width: 0;
 }
 
 .role-guide-team,
@@ -400,12 +416,11 @@ h3 {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  text-align: right;
+  text-align: left;
   text-transform: uppercase;
 }
 
 .role-guide-card-marker {
-  margin-top: 0.6rem;
   color: var(--accent-dark);
   font-size: 0.78rem;
   font-weight: 700;
@@ -415,9 +430,12 @@ h3 {
 
 .role-guide-summary,
 .role-guide-guidance {
-  margin-top: 0.45rem;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.role-guide-guidance {
+  margin-top: 0.45rem;
 }
 
 .role-guide-table-wrap {

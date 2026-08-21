@@ -414,7 +414,7 @@ describe('valid saved session management', () => {
     })
     expect(screen.getByText('Phase: Night')).toHaveClass('print-only')
     expect(screen.getByText('Round: 1')).toHaveClass('print-only')
-    expect(screen.getByText('Role: wayfinder')).toHaveClass('print-only')
+    expect(screen.getByText('Role: Wayfinder')).toHaveClass('print-only')
     expect(
       screen.getByText('Facilitator notes: Keep this private.'),
     ).toHaveClass('print-only')

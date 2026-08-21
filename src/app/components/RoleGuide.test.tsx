@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { GameDefinition } from '../../games/model'
@@ -61,7 +61,19 @@ describe('RoleGuide', () => {
       screen.getByRole('heading', { name: 'Role guide' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Echo' })).toBeInTheDocument()
-    expect(screen.getByText('Heart')).toBeInTheDocument()
+    expect(screen.getAllByRole('term')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ textContent: 'Team' }),
+        expect.objectContaining({ textContent: 'Card' }),
+        expect.objectContaining({ textContent: 'Purpose' }),
+      ]),
+    )
+    expect(
+      within(screen.getByRole('article', { name: 'Echo' })).getByRole(
+        'definition',
+        { name: 'Card' },
+      ),
+    ).toHaveTextContent('Heart')
     expect(
       screen.getByText('Privately tests one active player.'),
     ).toBeInTheDocument()

@@ -54,6 +54,16 @@ contents and metadata.
 Automated role assignment, private reveals, and scripted role behavior remain
 future work and are outside the structured guide's scope.
 
+The structured role increment was locally release-verified on 2026-08-21 from
+the production artifact at 320- and 1440-pixel viewport widths. Veilquorum's
+rules, setup, and tracker exposed the same three labeled role definitions; a
+five-player tracker resolved 1 Echo, 1 Drifter, and 3 Wayfinders, then updated
+at seven players to 1 Echo, 2 Drifters, and 4 Wayfinders. Human-readable role
+labels, all field types, phase, round, notes, and saved role IDs survived a
+reload. Rillward Gambit and Sereinfolio rendered no empty guide. Both print
+actions returned successfully at the browser/system boundary, and the preview
+loaded only same-origin JavaScript and CSS with no console warnings or errors.
+
 ## Increment 1: Foundation
 
 Deliver the Vite, React, and TypeScript project; formatting, linting,
@@ -137,7 +147,7 @@ Acceptance criteria:
 - [x] Manually verify that narrow-screen layouts preserve every operation
   without requiring precise
   horizontal gestures.
-- [ ] A keyboard-only user can select a game, create a session, add a player, edit
+- [x] A keyboard-only user can select a game, create a session, add a player, edit
   all field types, change phase and round, and invoke print.
 - [x] Sessions export to and import from a validated, versioned JSON file; the
   import is previewed before confirmation and exports are identified as
@@ -146,6 +156,24 @@ Acceptance criteria:
   allow a contributor to add a valid game without reading application source.
 
 ## Later milestones
+
+### Planned mobile PWA milestone
+
+Ludocairn should remain a normal static website while gaining an installable,
+mobile-first Progressive Web App mode:
+
+- [ ] Provide a repository-subpath-safe web app manifest, mobile icons, theme
+  colors, standalone display metadata, and safe-area-aware layouts.
+- [ ] Cache the app shell and bundled games so they remain usable offline after
+  one successful load, without caching or transmitting private session data.
+- [ ] Preserve the current browser-local session model and make installation
+  optional; accounts, analytics, cloud sync, and background data transfer stay
+  out of scope.
+- [ ] Use an explicit, recoverable service-worker update flow so a stale app
+  cannot silently misread newer game definitions or session files.
+- [ ] Verify installation, launch, offline reload, update recovery, keyboard and
+  screen-reader behavior, and narrow layouts on representative iOS and Android
+  browsers while retaining the full non-installed web journey.
 
 Later work may add file sharing, compact fragment sharing for suitably small
 state, custom deck definitions, printable role/reference sheets, automated

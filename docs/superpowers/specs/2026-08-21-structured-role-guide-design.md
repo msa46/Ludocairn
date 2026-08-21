@@ -1,7 +1,7 @@
 # Structured Roles and Card Guide Design
 
 **Date:** 2026-08-21  
-**Status:** Proposed for user review  
+**Status:** Delivered and release-verified
 **Project:** Ludocairn / Deckwright
 
 ## Purpose

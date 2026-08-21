@@ -157,4 +157,33 @@ describe('PlayerFieldControl role controls', () => {
     fireEvent.change(select, { target: { value: 'echo' } })
     expect(onChange).toHaveBeenCalledWith('echo')
   })
+
+  it('prints the human-readable role label instead of its stored ID', () => {
+    const roles: readonly RoleDefinition[] = [
+      {
+        id: 'wayfinder',
+        label: 'Wayfinder',
+        summary: 'Finds Drifters through public discussion.',
+      },
+    ]
+
+    const { container } = render(
+      <PlayerFieldControl
+        field={{
+          id: 'role',
+          label: 'Role',
+          type: 'role',
+          default: 'wayfinder',
+        }}
+        playerName="Ari"
+        roles={roles}
+        value="wayfinder"
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(container.querySelector('.print-only')).toHaveTextContent(
+      'Role: Wayfinder',
+    )
+  })
 })
