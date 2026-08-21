@@ -2,17 +2,17 @@
 
 ## Purpose
 
-Deckwright stores game definitions as distributable Markdown. A game's rules,
+Ludocairn stores game definitions as distributable Markdown. A game's rules,
 artwork, branding, and other expressive content can therefore raise rights
-questions independently from the Deckwright application code.
+questions independently from the Ludocairn application code.
 
 This document sets a conservative contribution policy for the repository. It
-is operational guidance for Deckwright contributors, not legal advice.
+is operational guidance for Ludocairn contributors, not legal advice.
 
 ## What may be reused
 
 Game ideas, procedures, systems, and methods of play do not need to be in the
-public domain before Deckwright can implement them. Copyright protects an
+public domain before Ludocairn can implement them. Copyright protects an
 author's particular expression rather than the underlying method.
 
 Official guidance supporting that distinction includes:
@@ -26,7 +26,7 @@ Official guidance supporting that distinction includes:
 - Article 2 of the [WIPO Copyright Treaty](https://www.wipo.int/edocs/mdocs/mdocs/en/wipo_int_sin_98/wipo_int_sin_98_8-main1.html),
   which states the same international idea/expression principle.
 
-Accordingly, a Deckwright game may use general mechanics such as hidden roles,
+Accordingly, a Ludocairn game may use general mechanics such as hidden roles,
 alternating phases, elimination votes, score counters, drawing cards, or
 comparing card values. Its rule text, examples, role descriptions, setting,
 and presentation must be independently written.
@@ -65,12 +65,12 @@ Before a built-in example receives its final name:
 5. Record the search date and result in the example's rights record.
 
 A phrase such as “social-deduction example” may describe mechanics. It must
-not imply that Deckwright publishes an official edition of another product.
+not imply that Ludocairn publishes an official edition of another product.
 
 ## Repository content policy
 
 For the first usable release, every built-in example must be original
-Deckwright content:
+Ludocairn content:
 
 - contributors write the rules and examples themselves;
 - only common deck facts and general game mechanics are reused;

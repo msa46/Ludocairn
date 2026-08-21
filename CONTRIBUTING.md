@@ -1,6 +1,6 @@
-# Contributing to Deckwright
+# Contributing to Ludocairn
 
-Deckwright welcomes focused bug fixes, accessible interface improvements,
+Ludocairn welcomes focused bug fixes, accessible interface improvements,
 documentation, tests, and repository-hosted games.
 
 ## Development setup

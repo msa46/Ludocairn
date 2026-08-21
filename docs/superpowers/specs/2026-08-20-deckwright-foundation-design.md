@@ -3,6 +3,9 @@
 - Status: approved; foundation increment implemented
 - Date: 2026-08-20
 
+> Historical note: the project adopted the Ludocairn name on 2026-08-21. This
+> foundation record retains the name used when it was approved.
+
 ## Objective
 
 Establish a coherent, documented foundation for Deckwright before application

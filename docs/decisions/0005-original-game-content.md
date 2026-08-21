@@ -5,7 +5,7 @@
 
 ## Context
 
-Deckwright needs three built-in games to validate its game-definition and
+Ludocairn needs three built-in games to validate its game-definition and
 session abstractions. General game mechanics do not require public-domain
 status, but particular rule text, artwork, branding, and other expression can
 be protected. Game names also require a separate trademark assessment.
@@ -17,7 +17,7 @@ downstream users to avoidable uncertainty.
 
 ## Decision
 
-Build all first-release examples as original Deckwright works under the
+Build all first-release examples as original Ludocairn works under the
 repository's MIT License. Reuse only general mechanics and common deck facts.
 Write all rules, role descriptions, examples, and presentation independently,
 and include no third-party artwork.

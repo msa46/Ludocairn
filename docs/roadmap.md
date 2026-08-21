@@ -4,7 +4,7 @@
 
 The first usable product milestone is divided into four capability increments.
 The foundation is complete. The remaining work follows the approved
-[first usable release design](superpowers/specs/2026-08-21-deckwright-first-usable-release-design.md):
+[first usable release design](superpowers/specs/2026-08-21-ludocairn-first-usable-release-design.md):
 deliver one social-deduction vertical slice across the content and tracker
 increments, add the other two examples through the same boundaries, and then
 complete release hardening. Together the increments satisfy the milestone

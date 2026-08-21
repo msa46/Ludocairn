@@ -2,7 +2,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="site-header">
-        <p className="wordmark">Deckwright</p>
+        <p className="wordmark">Ludocairn</p>
         <p className="tagline">A local-first tabletop card-game toolkit</p>
       </header>
 

@@ -1,4 +1,4 @@
-# Deckwright First Usable Release Design
+# Ludocairn First Usable Release Design
 
 - Status: approved
 - Date: 2026-08-21
@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Deliver the first genuinely usable Deckwright release as a fully static,
+Deliver the first genuinely usable Ludocairn release as a fully static,
 facilitator-oriented tabletop game reference and session tracker. A user can
 choose an included game, read and print its rules, start a local session, add
 players, track game-defined fields and time state, reload the session, and
@@ -29,7 +29,7 @@ name-clearance process defined in
   tarot examples through the same interfaces.
 - Reuse only unprotected game mechanics and common deck facts. All built-in
   rule text, examples, roles, presentation, and rights records are original
-  Deckwright content released under MIT.
+  Ludocairn content released under MIT.
 - Keep the initial schema explicit and small. Do not add arbitrary scripts,
   automated rules, special-purpose role concepts, or a selector language.
 
@@ -292,7 +292,7 @@ context, and remain readable in grayscale.
 ## Security and privacy
 
 No session data leaves the browser unless the user explicitly exports a file.
-Deckwright has no analytics, remote API, account, or third-party runtime. Game
+Ludocairn has no analytics, remote API, account, or third-party runtime. Game
 Markdown cannot execute code or raw HTML. Imported files and stored JSON are
 validated before use. Downloaded exports may contain private facilitator notes,
 so the export UI warns the user to handle them accordingly.

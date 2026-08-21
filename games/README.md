@@ -1,4 +1,4 @@
-# Creating a Deckwright Game
+# Creating a Ludocairn Game
 
 Repository games are ordinary Markdown files with validated YAML frontmatter.
 The format is designed so that most game contributions do not require changes

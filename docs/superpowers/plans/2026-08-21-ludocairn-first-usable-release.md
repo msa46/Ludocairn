@@ -50,52 +50,27 @@
 - Create: `docs/decisions/0006-ludocairn-name.md`
 - Rename: `docs/superpowers/specs/2026-08-21-deckwright-first-usable-release-design.md` to `docs/superpowers/specs/2026-08-21-ludocairn-first-usable-release-design.md`
 - Modify: `README.md`, `CONTRIBUTING.md`, `index.html`, `package.json`, `package-lock.json`, `src/app/App.tsx`, `src/app/App.test.tsx`, `docs/architecture.md`, `docs/content-rights.md`, `docs/game-format.md`, `docs/roadmap.md`, `docs/decisions/*.md`, `docs/superpowers/specs/*.md`, `docs/superpowers/plans/*.md`, `games/README.md`
-- Test: `scripts/repository-docs.test.ts`
+- Test: `src/app/App.test.tsx`
 
 **Interfaces:**
 - Consumes: the approved replacement name `Ludocairn` and the screening performed on 2026-08-21.
 - Produces: public product name `Ludocairn`, npm package name `ludocairn`, and a dated record that clearly distinguishes preliminary screening from legal advice.
 
-- [ ] **Step 1: Write a failing repository identity test**
+- [x] **Step 1: Write a failing rendered-identity test**
 
-Create `scripts/repository-docs.test.ts` with an explicit list of public files and assertions that they contain `Ludocairn`, that `package.json` is named `ludocairn`, and that no public source or current decision/spec contains the word-boundary regex `/\bDeckwright\b/`. Exclude the historical foundation plan and spec from the negative assertion, because immutable historical records retain their original title.
+Extend the real application component test so it verifies the user-visible product name in the rendered banner. A regression that leaves the old public identity in the application will make this test fail.
 
 ```ts
-import { readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
-
-const currentPublicFiles = [
-  'README.md',
-  'CONTRIBUTING.md',
-  'index.html',
-  'src/app/App.tsx',
-  'docs/architecture.md',
-  'docs/content-rights.md',
-  'docs/game-format.md',
-  'docs/roadmap.md',
-  'games/README.md',
-]
-
-describe('repository identity', () => {
-  it('uses the Ludocairn name in current public material', () => {
-    for (const path of currentPublicFiles) {
-      expect(readFileSync(path, 'utf8'), path).toContain('Ludocairn')
-      expect(readFileSync(path, 'utf8'), path).not.toMatch(/\bDeckwright\b/)
-    }
-    expect(JSON.parse(readFileSync('package.json', 'utf8')).name).toBe(
-      'ludocairn',
-    )
-  })
-})
+expect(screen.getByRole('banner')).toHaveTextContent('Ludocairn')
 ```
 
-- [ ] **Step 2: Run the focused test and verify the old identity fails it**
+- [x] **Step 2: Run the focused test and verify the old identity fails it**
 
-Run: `npm test -- scripts/repository-docs.test.ts`
+Run: `npm test -- src/app/App.test.tsx`
 
-Expected: FAIL because current files and the package still use `Deckwright`.
+Expected: FAIL because the rendered banner still uses `Deckwright`.
 
-- [ ] **Step 3: Record the screening evidence and rename current material**
+- [x] **Step 3: Record the screening evidence and rename current material**
 
 Write `docs/name-clearance.md` with the date, query, scope, zero-result outcomes for USPTO Wordmark, EUIPO eSearch, exact and fuzzy TMview, general web, GitHub, npm, and PyPI, and `.com`/`.org` WHOIS availability at the time checked. Include this exact limitation:
 
@@ -108,18 +83,18 @@ Obtain professional clearance before material commercial investment.
 
 Create decision `0006` with status `accepted`, the `Ludocairn` spelling, pronunciation `LOO-doh-kairn`, rationale (`ludo` for play plus `cairn` for a durable guide marker), known tradeoff (the invented word needs a short descriptive tagline), and the decision not to claim a registered mark.
 
-Rename the current spec, replace current product references, set `package.json` and lockfile package names to `ludocairn`, change the document title and metadata description, and render `Ludocairn` in the app wordmark. Preserve Git history and the historical foundation records; add a short supersession note to those historical files rather than rewriting their original titles.
+Rename the current spec, replace current product references, set `package.json` and lockfile package names to `ludocairn`, change the document title and metadata description, and render `Ludocairn` in the app wordmark. Preserve Git history and the historical foundation records; add a short supersession note to those historical files rather than rewriting their original titles. Verify current public files with `rg -n '\bDeckwright\b' README.md CONTRIBUTING.md index.html src/app docs/architecture.md docs/content-rights.md docs/game-format.md docs/roadmap.md games/README.md`; expected output is empty.
 
-- [ ] **Step 4: Run identity and full gates**
+- [x] **Step 4: Run identity and full gates**
 
-Run: `npm test -- scripts/repository-docs.test.ts && npm run ci`
+Run: `npm test -- src/app/App.test.tsx && npm run ci`
 
 Expected: PASS, with the static artifact still using only relative asset URLs.
 
-- [ ] **Step 5: Commit the identity decision**
+- [x] **Step 5: Commit the identity decision**
 
 ```bash
-git add README.md CONTRIBUTING.md index.html package.json package-lock.json src/app docs games/README.md scripts/repository-docs.test.ts
+git add README.md CONTRIBUTING.md index.html package.json package-lock.json src/app docs games/README.md
 git commit -m "docs: adopt Ludocairn identity"
 ```
 

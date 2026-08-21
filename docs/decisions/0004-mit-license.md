@@ -1,18 +1,18 @@
-# 0004: Publish Deckwright under the MIT License
+# 0004: Publish Ludocairn under the MIT License
 
 - Status: accepted
 - Date: 2026-08-20
 
 ## Context
 
-Deckwright is intended to be a public open-source application and to accept
+Ludocairn is intended to be a public open-source application and to accept
 community code and game contributions. The repository needs an explicit grant
 before public release.
 
 ## Decision
 
 Publish the code and repository-authored documentation under the MIT License,
-with the copyright line `Deckwright contributors`. Contributions are accepted
+with the copyright line `Ludocairn contributors`. Contributions are accepted
 under the same repository license.
 
 ## Alternatives considered

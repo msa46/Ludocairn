@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A Deckwright game definition combines machine-readable YAML frontmatter with
+A Ludocairn game definition combines machine-readable YAML frontmatter with
 human-readable Markdown rules. Authors should be able to create and review a
 game in a normal text editor and contribute it through a pull request without
 writing application code.

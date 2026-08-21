@@ -2,7 +2,7 @@
 
 ## Goals and constraints
 
-Deckwright is a browser-only application. Its deployable output must be a set
+Ludocairn is a browser-only application. Its deployable output must be a set
 of static files that GitHub Pages can serve from either a repository subpath,
 a fork, or a custom domain. No feature in the first usable milestone may
 require server-side rendering, a runtime API, a database, authentication, or
@@ -20,10 +20,10 @@ the static `dist/` artifact. A GitHub Actions workflow will type-check, test,
 validate repository-hosted games, build the application, and deploy that
 artifact through GitHub Pages.
 
-Vite will use a relative public base (`base: "./"`). Deckwright will keep its
+Vite will use a relative public base (`base: "./"`). Ludocairn will keep its
 first-milestone navigation on one physical `index.html`, so relative assets
-work under `/Deckwright/`, renamed forks, and custom domains. Public game
-selection may use a query parameter such as `?game=card-mafia`. URL fragments
+work under repository subpaths, renamed forks, and custom domains. Public game
+selection may use a query parameter such as `?game=example-game`. URL fragments
 remain available for future private state sharing because fragments are not
 sent in HTTP requests.
 
@@ -146,7 +146,7 @@ GitHub Pages artifact; end-to-end tests are not the primary domain test layer.
 
 ## Security and privacy
 
-Deckwright does not enable raw HTML in Markdown, evaluate game-authored code,
+Ludocairn does not enable raw HTML in Markdown, evaluate game-authored code,
 or trust deserialized data. Session data remains on the device unless a user
 later performs an explicit export or sharing action. Future fragment sharing
 must document that fragments avoid server transmission but can still appear in

@@ -2,6 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> Historical note: the project adopted the Ludocairn name on 2026-08-21. This
+> completed plan retains the name used when it was written.
+
 **Goal:** Produce a tested Vite, React, and TypeScript application shell that builds to a static GitHub Pages artifact and establishes the repository's quality, accessibility, print, contribution, and deployment baselines.
 
 **Architecture:** This increment creates only the browser application shell and delivery infrastructure. Vite emits one physical `index.html` with relative asset URLs; React owns the semantic shell; Vitest checks behavior and repository contracts; GitHub Actions runs the same local `npm run ci` gate before deploying `dist/`. Card, game-definition, and session domains belong to separate follow-on plans.

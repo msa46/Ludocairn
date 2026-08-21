@@ -7,7 +7,7 @@ import { App } from './app/App'
 const root = document.querySelector<HTMLDivElement>('#root')
 
 if (!root) {
-  throw new Error('Deckwright root element was not found')
+  throw new Error('Ludocairn root element was not found')
 }
 
 createRoot(root).render(

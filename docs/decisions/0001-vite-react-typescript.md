@@ -5,7 +5,7 @@
 
 ## Context
 
-Deckwright needs an interactive browser application that emits static files for
+Ludocairn needs an interactive browser application that emits static files for
 GitHub Pages. The repository has no existing stack. Contributor familiarity,
 strong TypeScript support, and low deployment complexity are priorities.
 

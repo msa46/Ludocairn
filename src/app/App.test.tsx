@@ -8,6 +8,7 @@ describe('App', () => {
     render(<App />)
 
     expect(screen.getByRole('banner')).toBeInTheDocument()
+    expect(screen.getByRole('banner')).toHaveTextContent('Ludocairn')
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content')
     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
     expect(

@@ -1,6 +1,6 @@
-# Deckwright
+# Ludocairn
 
-Deckwright is an open-source, static web application for defining,
+Ludocairn is an open-source, static web application for defining,
 running, tracking, sharing, and printing tabletop games that use card decks.
 It is designed to run entirely in the browser and to deploy to GitHub Pages
 without a backend, database, account system, or cloud service.
@@ -21,7 +21,7 @@ The first usable release will provide:
 - responsive, accessible, and printable views; and
 - three example games that exercise different parts of the format.
 
-Deckwright will not initially provide accounts, networking, cloud sync,
+Ludocairn will not initially provide accounts, networking, cloud sync,
 real-time collaboration, arbitrary game scripts, or a comprehensive rules
 engine.
 
@@ -30,7 +30,6 @@ engine.
 - Vite
 - React
 - TypeScript
-- Zod for runtime schema validation
 - a YAML parser and a safe Markdown renderer
 - Vitest and React Testing Library
 - GitHub Actions and GitHub Pages
@@ -48,11 +47,12 @@ and runtime boundaries.
 - [How to create a game](games/README.md)
 - [Decision records](docs/decisions/)
 - [Approved foundation design](docs/superpowers/specs/2026-08-20-deckwright-foundation-design.md)
-- [Approved first usable release design](docs/superpowers/specs/2026-08-21-deckwright-first-usable-release-design.md)
+- [Approved first usable release design](docs/superpowers/specs/2026-08-21-ludocairn-first-usable-release-design.md)
+- [Preliminary product-name screening](docs/name-clearance.md)
 
 ## Local development
 
-Deckwright requires Node.js 22.22.2 or newer within Node.js 22 and npm 10 or
+Ludocairn requires Node.js 22.22.2 or newer within Node.js 22 and npm 10 or
 newer.
 
 ```bash
@@ -69,7 +69,7 @@ npm run ci
 
 ## Deployment
 
-Vite builds Deckwright into the static `dist/` directory with relative asset
+Vite builds Ludocairn into the static `dist/` directory with relative asset
 paths. The GitHub Pages workflow checks the repository, uploads only `dist/`,
 and deploys it from pushes to `main` or a manual workflow run. In repository
 settings, configure Pages to use **GitHub Actions** as its source.
@@ -88,4 +88,4 @@ do not require JavaScript.
 
 ## License
 
-Deckwright is available under the [MIT License](LICENSE).
+Ludocairn is available under the [MIT License](LICENSE).
