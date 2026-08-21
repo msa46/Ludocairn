@@ -79,6 +79,11 @@ npm ci
 npm run dev
 ```
 
+Then open [http://127.0.0.1:5173/](http://127.0.0.1:5173/). Do not open the
+source `index.html` as a `file://` URL: Vite must serve the React and TypeScript
+modules. If port 5173 is already occupied, use the replacement local URL shown
+by Vite in the terminal.
+
 Run the complete local quality and production-artifact gate with:
 
 ```bash
