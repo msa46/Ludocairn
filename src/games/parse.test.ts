@@ -11,6 +11,35 @@ deck: standard-52
 players:
   min: 4
   max: 12
+roles:
+  - id: echo
+    label: Echo
+    team: Quorum
+    summary: Privately tests one active player.
+    card:
+      label: Heart
+      selector: { suits: [hearts] }
+  - id: drifter
+    label: Drifter
+    team: Drifters
+    summary: Quietly reduces the quorum.
+    card:
+      label: Spade
+      selector: { suits: [spades] }
+  - id: wayfinder
+    label: Wayfinder
+    team: Quorum
+    summary: Identifies the Drifters.
+    card:
+      label: Club or diamond
+      selector: { suits: [clubs, diamonds] }
+role_distributions:
+  - players: { min: 4, max: 6 }
+    counts: { echo: 1, drifter: 1, wayfinder: remaining }
+  - players: { min: 7, max: 9 }
+    counts: { echo: 1, drifter: 2, wayfinder: remaining }
+  - players: { min: 10, max: 12 }
+    counts: { echo: 1, drifter: 3, wayfinder: remaining }
 session:
   phases:
     - id: night
@@ -28,8 +57,7 @@ session:
       default: true
     - id: role
       label: Role
-      type: choice
-      choices: [wayfinder, drifter, echo]
+      type: role
       default: wayfinder
     - id: signals
       label: Signals
@@ -67,8 +95,46 @@ describe('parseGameSource', () => {
         summary: 'Find the quiet signal before the trail goes dark.',
         deck: 'standard-52',
         players: { min: 4, max: 12 },
-        roles: [],
-        roleDistributions: [],
+        roles: [
+          {
+            id: 'echo',
+            label: 'Echo',
+            team: 'Quorum',
+            summary: 'Privately tests one active player.',
+            card: { label: 'Heart', selector: { suits: ['hearts'] } },
+          },
+          {
+            id: 'drifter',
+            label: 'Drifter',
+            team: 'Drifters',
+            summary: 'Quietly reduces the quorum.',
+            card: { label: 'Spade', selector: { suits: ['spades'] } },
+          },
+          {
+            id: 'wayfinder',
+            label: 'Wayfinder',
+            team: 'Quorum',
+            summary: 'Identifies the Drifters.',
+            card: {
+              label: 'Club or diamond',
+              selector: { suits: ['clubs', 'diamonds'] },
+            },
+          },
+        ],
+        roleDistributions: [
+          {
+            players: { min: 4, max: 6 },
+            counts: { echo: 1, drifter: 1, wayfinder: 'remaining' },
+          },
+          {
+            players: { min: 7, max: 9 },
+            counts: { echo: 1, drifter: 2, wayfinder: 'remaining' },
+          },
+          {
+            players: { min: 10, max: 12 },
+            counts: { echo: 1, drifter: 3, wayfinder: 'remaining' },
+          },
+        ],
         phases: [
           { id: 'night', label: 'Night' },
           { id: 'day', label: 'Day' },
@@ -80,8 +146,7 @@ describe('parseGameSource', () => {
           {
             id: 'role',
             label: 'Role',
-            type: 'choice',
-            choices: ['wayfinder', 'drifter', 'echo'],
+            type: 'role',
             default: 'wayfinder',
           },
           {
@@ -104,6 +169,54 @@ describe('parseGameSource', () => {
         rulesMarkdown: '# Veilquorum\n\nOriginal rules live here.\n',
         source: 'fixture/game.md',
       },
+    })
+  })
+
+  it('normalizes absent role data to empty arrays', () => {
+    const source = replaceOnce(
+      `roles:
+  - id: echo
+    label: Echo
+    team: Quorum
+    summary: Privately tests one active player.
+    card:
+      label: Heart
+      selector: { suits: [hearts] }
+  - id: drifter
+    label: Drifter
+    team: Drifters
+    summary: Quietly reduces the quorum.
+    card:
+      label: Spade
+      selector: { suits: [spades] }
+  - id: wayfinder
+    label: Wayfinder
+    team: Quorum
+    summary: Identifies the Drifters.
+    card:
+      label: Club or diamond
+      selector: { suits: [clubs, diamonds] }
+role_distributions:
+  - players: { min: 4, max: 6 }
+    counts: { echo: 1, drifter: 1, wayfinder: remaining }
+  - players: { min: 7, max: 9 }
+    counts: { echo: 1, drifter: 2, wayfinder: remaining }
+  - players: { min: 10, max: 12 }
+    counts: { echo: 1, drifter: 3, wayfinder: remaining }
+`,
+      '',
+    ).replace(
+      `      type: role
+      default: wayfinder`,
+      `      type: choice
+      choices: [wayfinder, drifter, echo]
+      default: wayfinder`,
+    )
+    const result = parseGameSource(source, 'legacy/game.md')
+
+    expect(result).toMatchObject({
+      ok: true,
+      game: { roles: [], roleDistributions: [] },
     })
   })
 
@@ -149,6 +262,112 @@ describe('parseGameSource', () => {
     expect(result).toMatchObject({
       ok: false,
       diagnostics: [{ code, source: 'broken/game.md' }],
+    })
+  })
+
+  it.each([
+    ['duplicate role ID', 'id: drifter', 'id: echo', 'schema.invalid-value', 'roles.1.id'],
+    ['empty role summary', 'summary: Quietly reduces the quorum.', 'summary: ""', 'schema.invalid-value', 'roles.1.summary'],
+    ['unknown suit', '[spades]', '[stars]', 'schema.invalid-value', 'roles.1.card.selector.suits'],
+    ['role default missing', 'default: wayfinder', 'default: stranger', 'schema.invalid-default', 'session.player_fields.1.default'],
+    ['overlapping bands', 'players: { min: 7, max: 9 }', 'players: { min: 6, max: 9 }', 'schema.invalid-value', 'role_distributions.1.players'],
+    ['missing role count', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }', 'counts: { echo: 1, drifter: 1 }', 'schema.invalid-value', 'role_distributions.0.counts'],
+    ['multiple remaining roles', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }', 'counts: { echo: remaining, drifter: 1, wayfinder: remaining }', 'schema.invalid-value', 'role_distributions.0.counts'],
+  ])('%s is rejected', (_name, search, replacement, code, path) => {
+    const result = parseGameSource(replaceOnce(search, replacement), 'broken/game.md')
+
+    expect(result).toMatchObject({ ok: false, diagnostics: [{ code, path }] })
+  })
+
+  it.each([
+    ['an uncovered supported player count', 'players: { min: 7, max: 9 }', 'players: { min: 8, max: 9 }', 'schema.invalid-value', 'role_distributions.1.players'],
+    ['a multi-player fixed-only band', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }', 'counts: { echo: 1, drifter: 1, wayfinder: 2 }', 'schema.invalid-value', 'role_distributions.0.counts'],
+    ['a negative count', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }', 'counts: { echo: -1, drifter: 1, wayfinder: remaining }', 'schema.invalid-value', 'role_distributions.0.counts.echo'],
+    ['a fractional count', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }', 'counts: { echo: 1.5, drifter: 1, wayfinder: remaining }', 'schema.invalid-value', 'role_distributions.0.counts.echo'],
+    ['an unknown count key', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }', 'counts: { echo: 1, drifter: 1, wayfinder: remaining, stranger: 0 }', 'schema.invalid-value', 'role_distributions.0.counts.stranger'],
+    ['an unknown role property', 'id: echo', 'id: echo\n    extra: true', 'schema.unknown-property', 'roles.0.extra'],
+    ['an unknown card property', 'label: Heart', 'label: Heart\n      extra: true', 'schema.unknown-property', 'roles.0.card.extra'],
+    ['an unknown distribution property', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }\n    extra: true', 'schema.unknown-property', 'role_distributions.0.extra'],
+  ])('%s is rejected with a stable path', (_name, search, replacement, code, path) => {
+    const result = parseGameSource(replaceOnce(search, replacement), 'broken/game.md')
+
+    expect(result).toMatchObject({ ok: false, diagnostics: [{ code, path }] })
+  })
+
+  it('rejects distributions without roles', () => {
+    const source = replaceOnce(
+      `roles:
+  - id: echo
+    label: Echo
+    team: Quorum
+    summary: Privately tests one active player.
+    card:
+      label: Heart
+      selector: { suits: [hearts] }
+  - id: drifter
+    label: Drifter
+    team: Drifters
+    summary: Quietly reduces the quorum.
+    card:
+      label: Spade
+      selector: { suits: [spades] }
+  - id: wayfinder
+    label: Wayfinder
+    team: Quorum
+    summary: Identifies the Drifters.
+    card:
+      label: Club or diamond
+      selector: { suits: [clubs, diamonds] }
+`,
+      '',
+    ).replace('      type: role', '      type: choice\n      choices: [wayfinder, drifter, echo]')
+    const result = parseGameSource(source, 'broken/game.md')
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: [{ code: 'schema.invalid-value', path: 'role_distributions' }],
+    })
+  })
+
+  it('rejects a role field without roles', () => {
+    const source = replaceOnce(
+      `roles:
+  - id: echo
+    label: Echo
+    team: Quorum
+    summary: Privately tests one active player.
+    card:
+      label: Heart
+      selector: { suits: [hearts] }
+  - id: drifter
+    label: Drifter
+    team: Drifters
+    summary: Quietly reduces the quorum.
+    card:
+      label: Spade
+      selector: { suits: [spades] }
+  - id: wayfinder
+    label: Wayfinder
+    team: Quorum
+    summary: Identifies the Drifters.
+    card:
+      label: Club or diamond
+      selector: { suits: [clubs, diamonds] }
+role_distributions:
+  - players: { min: 4, max: 6 }
+    counts: { echo: 1, drifter: 1, wayfinder: remaining }
+  - players: { min: 7, max: 9 }
+    counts: { echo: 1, drifter: 2, wayfinder: remaining }
+  - players: { min: 10, max: 12 }
+    counts: { echo: 1, drifter: 3, wayfinder: remaining }
+`,
+      '',
+    )
+    const result = parseGameSource(source, 'broken/game.md')
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: [{ code: 'schema.invalid-default', path: 'session.player_fields.1.default' }],
     })
   })
 

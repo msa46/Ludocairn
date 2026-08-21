@@ -1,5 +1,8 @@
 import { parse } from 'yaml'
 
+import { createStandardDeck, createTarotDeck } from '../cards/decks'
+import type { DeckType } from '../cards/model'
+import { selectCards, type CardSelector } from '../cards/select'
 import type {
   Diagnostic,
   GameDefinition,
@@ -7,10 +10,15 @@ import type {
   PhaseDefinition,
   PlayerFieldDefinition,
   PlayersDefinition,
+  RoleDefinition,
+  RoleDistribution,
   RoundDefinition,
 } from './model'
 
 type UnknownRecord = Record<string, unknown>
+type MutableCardSelector = {
+  -readonly [Property in keyof CardSelector]: CardSelector[Property]
+}
 
 const ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
 
@@ -202,9 +210,383 @@ function parseRound(
   )
 }
 
+function parseCardSelector(
+  value: unknown,
+  deck: DeckType,
+  source: string,
+  path: string,
+): CardSelector | ParseGameResult {
+  if (!isRecord(value)) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'A card selector must be an object.',
+      path,
+    )
+  }
+  const allowed = ['ids', 'suits', 'ranks', 'arcana', 'tags'] as const
+  const extra = unknownProperty(value, allowed)
+  if (extra) {
+    return failure(
+      source,
+      'schema.unknown-property',
+      `Unknown property "${path}.${extra}".`,
+      `${path}.${extra}`,
+    )
+  }
+
+  const selector: MutableCardSelector = {}
+  for (const property of allowed) {
+    const selected = value[property]
+    if (selected === undefined) continue
+    if (
+      !Array.isArray(selected) ||
+      selected.length === 0 ||
+      !selected.every(nonEmptyString)
+    ) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        `Selector property "${property}" must be a non-empty array of non-empty strings.`,
+        `${path}.${property}`,
+      )
+    }
+    selector[property] = selected
+  }
+
+  const selectedCards = selectCards(
+    deck === 'standard-52' ? createStandardDeck() : createTarotDeck(),
+    selector,
+  )
+  if (!selectedCards.ok) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      selectedCards.diagnostic.message,
+      selectedCards.diagnostic.property
+        ? `${path}.${selectedCards.diagnostic.property}`
+        : path,
+    )
+  }
+  return selector
+}
+
+function parseRoles(
+  value: unknown,
+  deck: DeckType,
+  source: string,
+): readonly RoleDefinition[] | ParseGameResult {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.length === 0) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'roles must be a non-empty array when present.',
+      'roles',
+    )
+  }
+
+  const roles: RoleDefinition[] = []
+  for (const [index, candidate] of value.entries()) {
+    const path = `roles.${index}`
+    if (!isRecord(candidate)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Each role must be an object.',
+        path,
+      )
+    }
+    const extra = unknownProperty(candidate, [
+      'id',
+      'label',
+      'team',
+      'summary',
+      'card',
+    ])
+    if (extra) {
+      return failure(
+        source,
+        'schema.unknown-property',
+        `Unknown property "${path}.${extra}".`,
+        `${path}.${extra}`,
+      )
+    }
+    if (!validId(candidate.id)) {
+      return failure(
+        source,
+        'schema.invalid-id',
+        'Role IDs must be lowercase stable identifiers.',
+        `${path}.id`,
+      )
+    }
+    if (roles.some((role) => role.id === candidate.id)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        `Duplicate role ID "${candidate.id}".`,
+        `${path}.id`,
+      )
+    }
+    if (!nonEmptyString(candidate.label)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Role labels must be non-empty strings.',
+        `${path}.label`,
+      )
+    }
+    if (!nonEmptyString(candidate.summary)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Role summaries must be non-empty strings.',
+        `${path}.summary`,
+      )
+    }
+    if (candidate.team !== undefined && !nonEmptyString(candidate.team)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Role teams must be non-empty strings when present.',
+        `${path}.team`,
+      )
+    }
+
+    let card: RoleDefinition['card']
+    if (candidate.card !== undefined) {
+      const cardPath = `${path}.card`
+      if (!isRecord(candidate.card)) {
+        return failure(
+          source,
+          'schema.invalid-value',
+          'A role card marker must be an object.',
+          cardPath,
+        )
+      }
+      const cardExtra = unknownProperty(candidate.card, ['label', 'selector'])
+      if (cardExtra) {
+        return failure(
+          source,
+          'schema.unknown-property',
+          `Unknown property "${cardPath}.${cardExtra}".`,
+          `${cardPath}.${cardExtra}`,
+        )
+      }
+      if (!nonEmptyString(candidate.card.label)) {
+        return failure(
+          source,
+          'schema.invalid-value',
+          'A role card label must be a non-empty string.',
+          `${cardPath}.label`,
+        )
+      }
+      const selector = parseCardSelector(
+        candidate.card.selector,
+        deck,
+        source,
+        `${cardPath}.selector`,
+      )
+      if ('ok' in selector) return selector
+      card = { label: candidate.card.label.trim(), selector }
+    }
+
+    roles.push({
+      id: candidate.id,
+      label: candidate.label.trim(),
+      ...(candidate.team === undefined ? {} : { team: candidate.team.trim() }),
+      summary: candidate.summary.trim(),
+      ...(card === undefined ? {} : { card }),
+    })
+  }
+  return roles
+}
+
+function parseRoleDistributions(
+  value: unknown,
+  roles: readonly RoleDefinition[],
+  players: PlayersDefinition,
+  source: string,
+): readonly RoleDistribution[] | ParseGameResult {
+  if (value === undefined) return []
+  if (roles.length === 0) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'role_distributions requires at least one role.',
+      'role_distributions',
+    )
+  }
+  if (!Array.isArray(value) || value.length === 0) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'role_distributions must be a non-empty array when present.',
+      'role_distributions',
+    )
+  }
+  if (players.max === undefined) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'role_distributions requires players.max.',
+      'role_distributions',
+    )
+  }
+
+  const roleIds = new Set(roles.map((role) => role.id))
+  const distributions: RoleDistribution[] = []
+  let nextMin = players.min
+  for (const [index, candidate] of value.entries()) {
+    const path = `role_distributions.${index}`
+    if (!isRecord(candidate)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Each role distribution must be an object.',
+        path,
+      )
+    }
+    const extra = unknownProperty(candidate, ['players', 'counts'])
+    if (extra) {
+      return failure(
+        source,
+        'schema.unknown-property',
+        `Unknown property "${path}.${extra}".`,
+        `${path}.${extra}`,
+      )
+    }
+    const playersPath = `${path}.players`
+    if (!isRecord(candidate.players)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Distribution players must be an object.',
+        playersPath,
+      )
+    }
+    const playersExtra = unknownProperty(candidate.players, ['min', 'max'])
+    if (playersExtra) {
+      return failure(
+        source,
+        'schema.unknown-property',
+        `Unknown property "${playersPath}.${playersExtra}".`,
+        `${playersPath}.${playersExtra}`,
+      )
+    }
+    if (
+      !Number.isInteger(candidate.players.min) ||
+      !Number.isInteger(candidate.players.max) ||
+      (candidate.players.min as number) !== nextMin ||
+      (candidate.players.max as number) < (candidate.players.min as number) ||
+      (candidate.players.max as number) > players.max
+    ) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Distribution player bands must be ordered and within the supported range.',
+        playersPath,
+      )
+    }
+
+    const countsPath = `${path}.counts`
+    if (!isRecord(candidate.counts)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Distribution counts must be an object.',
+        countsPath,
+      )
+    }
+    const candidateCounts = candidate.counts
+    const countKeys = Object.keys(candidateCounts)
+    const unknownKey = countKeys.find((key) => !roleIds.has(key))
+    if (unknownKey) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        `Unknown role count "${unknownKey}".`,
+        `${countsPath}.${unknownKey}`,
+      )
+    }
+    if (countKeys.length !== roles.length || roles.some((role) => !(role.id in candidateCounts))) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Distribution counts must include every role exactly once.',
+        countsPath,
+      )
+    }
+
+    const counts: Record<string, number | 'remaining'> = {}
+    let fixed = 0
+    let remaining = 0
+    for (const role of roles) {
+      const count = candidateCounts[role.id]
+      if (count === 'remaining') {
+        remaining += 1
+        counts[role.id] = count
+        continue
+      }
+      if (!Number.isInteger(count) || (count as number) < 0) {
+        return failure(
+          source,
+          'schema.invalid-value',
+          'Role counts must be non-negative integers or remaining.',
+          `${countsPath}.${role.id}`,
+        )
+      }
+      fixed += count as number
+      counts[role.id] = count as number
+    }
+    if (remaining > 1) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'At most one role count may be remaining.',
+        countsPath,
+      )
+    }
+    const bandMin = candidate.players.min as number
+    const bandMax = candidate.players.max as number
+    if (fixed > bandMin) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Fixed role counts cannot exceed the band minimum.',
+        countsPath,
+      )
+    }
+    if (remaining === 0 && (bandMin !== bandMax || fixed !== bandMin)) {
+      return failure(
+        source,
+        'schema.invalid-value',
+        'Fixed-only role counts must exactly fill one player count.',
+        countsPath,
+      )
+    }
+
+    distributions.push({
+      players: { min: bandMin, max: bandMax },
+      counts,
+    })
+    nextMin = bandMax + 1
+  }
+  if (nextMin !== players.max + 1) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'Role distribution bands must cover every supported player count.',
+      `role_distributions.${value.length - 1}.players`,
+    )
+  }
+  return distributions
+}
+
 function parseField(
   value: unknown,
   index: number,
+  roles: readonly RoleDefinition[],
   source: string,
 ): PlayerFieldDefinition | ParseGameResult {
   const path = `session.player_fields.${index}`
@@ -302,6 +684,29 @@ function parseField(
         default: value.default,
       }
     }
+    case 'role': {
+      const extra = unknownProperty(value, ['id', 'label', 'type', 'default'])
+      if (extra) {
+        return failure(
+          source,
+          'schema.unknown-property',
+          `Unknown property "${path}.${extra}".`,
+          `${path}.${extra}`,
+        )
+      }
+      if (
+        typeof value.default !== 'string' ||
+        !roles.some((role) => role.id === value.default)
+      ) {
+        return failure(
+          source,
+          'schema.invalid-default',
+          'A role field default must name one declared role.',
+          `${path}.default`,
+        )
+      }
+      return { ...base, type: 'role', default: value.default }
+    }
     case 'number': {
       const extra = unknownProperty(value, [
         'id',
@@ -386,7 +791,7 @@ function parseField(
       return failure(
         source,
         'schema.invalid-value',
-        'Field type must be boolean, choice, number, or text.',
+        'Field type must be boolean, choice, number, role, or text.',
         `${path}.type`,
       )
   }
@@ -394,6 +799,7 @@ function parseField(
 
 function parseFields(
   value: unknown,
+  roles: readonly RoleDefinition[],
   source: string,
 ): readonly PlayerFieldDefinition[] | ParseGameResult {
   if (!Array.isArray(value)) {
@@ -406,7 +812,7 @@ function parseFields(
   }
   const fields: PlayerFieldDefinition[] = []
   for (const [index, candidate] of value.entries()) {
-    const parsed = parseField(candidate, index, source)
+    const parsed = parseField(candidate, index, roles, source)
     if ('ok' in parsed) return parsed
     if (fields.some((field) => field.id === parsed.id)) {
       return failure(
@@ -440,6 +846,8 @@ function parseMetadata(
     'summary',
     'deck',
     'players',
+    'roles',
+    'role_distributions',
     'session',
   ])
   if (extra) {
@@ -485,6 +893,15 @@ function parseMetadata(
 
   const players = parsePlayers(metadata.players, source)
   if ('ok' in players) return players
+  const roles = parseRoles(metadata.roles, metadata.deck, source)
+  if ('ok' in roles) return roles
+  const roleDistributions = parseRoleDistributions(
+    metadata.role_distributions,
+    roles,
+    players,
+    source,
+  )
+  if ('ok' in roleDistributions) return roleDistributions
   if (!isRecord(metadata.session)) {
     return failure(
       source,
@@ -532,7 +949,7 @@ function parseMetadata(
   }
   const round = parseRound(session.round, source)
   if ('ok' in round) return round
-  const fields = parseFields(session.player_fields, source)
+  const fields = parseFields(session.player_fields, roles, source)
   if ('ok' in fields) return fields
 
   const game: GameDefinition = {
@@ -542,8 +959,8 @@ function parseMetadata(
     summary: metadata.summary.trim(),
     deck: metadata.deck,
     players,
-    roles: [],
-    roleDistributions: [],
+    roles,
+    roleDistributions,
     phases,
     ...(phases.length === 0
       ? {}
