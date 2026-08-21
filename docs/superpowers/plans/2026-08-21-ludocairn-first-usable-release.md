@@ -467,45 +467,45 @@ git commit -m "feat: deliver facilitator session tracker"
 ### Task 7: Add original standard-card and tarot games through the same engine
 
 **Files:**
-- Create: `games/highwater-trail/game.md`
-- Create: `games/highwater-trail/RIGHTS.md`
-- Create: `games/lantern-arc/game.md`
-- Create: `games/lantern-arc/RIGHTS.md`
+- Create: `games/rillward-gambit/game.md`
+- Create: `games/rillward-gambit/RIGHTS.md`
+- Create: `games/sereinfolio/game.md`
+- Create: `games/sereinfolio/RIGHTS.md`
 - Modify: `src/app/App.test.tsx`, `scripts/verify-bundled-games.test.ts`, `docs/roadmap.md`
 
 **Interfaces:**
 - Consumes: unchanged game schema, catalog, session, and tracker interfaces.
-- Produces: three-game catalog IDs `veilquorum`, `highwater-trail`, and `lantern-arc` without game-specific application logic.
+- Produces: three-game catalog IDs `veilquorum`, `rillward-gambit`, and `sereinfolio` without game-specific application logic.
 
-- [ ] **Step 1: Complete and record both public-name screens**
+- [x] **Step 1: Complete and record both public-name screens**
 
-For `Highwater Trail` and `Lantern Arc`, repeat the exact and confusing-similarity searches required in Task 4. Record each scope and result in its adjacent `RIGHTS.md`; replace a conflicted title before public use.
+For `Rillward Gambit` and `Sereinfolio`, repeat the exact and confusing-similarity searches required in Task 4. Record each scope and result in its adjacent `RIGHTS.md`; replace a conflicted title before public use. `Vellum Constellation` and `Quillora Mosaic` were screened and rejected before `Sereinfolio` was adopted.
 
-- [ ] **Step 2: Extend failing catalog and flow tests**
+- [x] **Step 2: Extend failing catalog and flow tests**
 
-Assert exactly three unique bundled IDs. Parameterize a setup test over all three games and assert each reaches a tracker with its configured controls. Add explicit assertions that Highwater Trail exposes score/streak/stance/notes fields and that Lantern Arc exposes reflection text, tone choice, round, and prompt notes.
+Assert exactly three unique bundled IDs. Parameterize a setup test over all three games and assert each reaches a tracker with its configured controls. Add explicit assertions that Rillward Gambit exposes score/streak/stance/notes fields and that Sereinfolio exposes reflection text, tone choice, round, and prompt notes.
 
-- [ ] **Step 3: Run focused tests and verify missing games fail them**
+- [x] **Step 3: Run focused tests and verify missing games fail them**
 
 Run: `npm test -- scripts/verify-bundled-games.test.ts src/app/App.test.tsx`
 
 Expected: FAIL with only one catalog game.
 
-- [ ] **Step 4: Author Highwater Trail**
+- [x] **Step 4: Author Rillward Gambit**
 
 Write an original standard-card comparison game with a complete setup, turn, comparison, tie, scoring, end, and facilitation procedure. Configure round tracking plus numeric score and streak, a `steady`/`bold`/`reset` stance choice, and optional text notes. Do not reproduce published rulebook prose or branding.
 
-- [ ] **Step 5: Author Lantern Arc**
+- [x] **Step 5: Author Sereinfolio**
 
 Write an original non-divinatory tarot reflection/storytelling activity with a complete setup, draw, observation, prompt, sharing, pass, round, and close procedure. Use only canonical card names and original prompts; configure reflection text, `quiet`/`curious`/`vivid` tone choice, round state, and notes. Include no imagery or copied guidebook meanings.
 
-- [ ] **Step 6: Run the three-game and full gates**
+- [x] **Step 6: Run the three-game and full gates**
 
 Run: `npm test -- scripts/verify-bundled-games.test.ts src/app/App.test.tsx && npm run ci`
 
 Expected: PASS with exactly three games and no app code branching on a game ID.
 
-- [ ] **Step 7: Commit the examples**
+- [x] **Step 7: Commit the examples**
 
 ```bash
 git add games src/app/App.test.tsx scripts/verify-bundled-games.test.ts docs/roadmap.md

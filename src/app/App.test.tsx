@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { loadBundledGames } from '../games/catalog'
 import type { IdProvider } from '../sessions/model'
@@ -11,12 +11,50 @@ if (!catalog.ok) throw new Error('Bundled catalog fixture failed to load')
 const veilquorum = catalog.games.find((game) => game.id === 'veilquorum')
 if (!veilquorum) throw new Error('Veilquorum fixture was not found')
 
+const gameJourneys = [
+  {
+    id: 'veilquorum',
+    name: 'Veilquorum',
+    controls: [
+      ['Ari — Active', true],
+      ['Ari — Role', 'wayfinder'],
+      ['Ari — Signals', 0],
+      ['Ari — Private clue', ''],
+      ['Phase', 'night'],
+      ['Round', 1],
+    ],
+  },
+  {
+    id: 'rillward-gambit',
+    name: 'Rillward Gambit',
+    controls: [
+      ['Ari — Score', 0],
+      ['Ari — Streak', 0],
+      ['Ari — Stance', 'steady'],
+      ['Ari — Notes', ''],
+      ['Round', 1],
+    ],
+  },
+  {
+    id: 'sereinfolio',
+    name: 'Sereinfolio',
+    controls: [
+      ['Ari — Reflection', ''],
+      ['Ari — Tone', 'quiet'],
+      ['Ari — Prompt notes', ''],
+      ['Round', 1],
+    ],
+  },
+] as const
+
 function ids(...values: string[]): IdProvider {
   let index = 0
   return { next: () => values[index++] ?? `generated-${index}` }
 }
 
 describe('App', () => {
+  beforeEach(() => window.history.replaceState({}, '', '/'))
+
   it('renders the catalog in a semantic application shell', () => {
     const repository = new MemorySessionRepository(() => veilquorum)
     render(<App games={[veilquorum]} repository={repository} />)
@@ -99,4 +137,47 @@ describe('App', () => {
       'Watch the next vote.',
     )
   })
+
+  it.each(gameJourneys)(
+    'starts a $name session with its configured tracker controls',
+    ({ id, name, controls }) => {
+      const game = catalog.games.find((candidate) => candidate.id === id)
+      expect(game, `${name} fixture`).toBeDefined()
+      if (!game) return
+
+      const repository = new MemorySessionRepository((candidateId) =>
+        catalog.games.find((candidate) => candidate.id === candidateId),
+      )
+      render(
+        <App
+          games={catalog.games}
+          repository={repository}
+          clock={() => '2026-08-21T19:00:00.000Z'}
+          ids={ids(`${id}-session`, `${id}-player`)}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('link', { name: `Open ${name}` }))
+      fireEvent.click(screen.getByRole('button', { name: 'Start session' }))
+      fireEvent.change(screen.getByLabelText('Session name'), {
+        target: { value: `${name} table` },
+      })
+      fireEvent.change(screen.getByLabelText('Player 1 name'), {
+        target: { value: 'Ari' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Create session' }))
+
+      expect(
+        screen.getByRole('heading', { level: 1, name: `${name} table` }),
+      ).toBeInTheDocument()
+      for (const [label, value] of controls) {
+        const control = screen.getByLabelText(label)
+        if (typeof value === 'boolean') {
+          expect(control).toBeChecked()
+        } else {
+          expect(control).toHaveValue(value)
+        }
+      }
+    },
+  )
 })

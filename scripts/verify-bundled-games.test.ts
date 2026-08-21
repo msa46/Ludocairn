@@ -16,8 +16,6 @@ describe('bundled games', () => {
     const directories = gameDirectories()
     const sources: Record<string, string> = {}
 
-    expect(directories).toContain('veilquorum')
-
     for (const directory of directories) {
       const gamePath = join('games', directory, 'game.md')
       const rightsPath = join('games', directory, 'RIGHTS.md')
@@ -37,9 +35,13 @@ describe('bundled games', () => {
     }
 
     const result = buildCatalog(sources)
-    expect(result).toMatchObject({ ok: true })
-    expect(result.ok && result.games.map((game) => game.id)).toContain(
-      'veilquorum',
-    )
+    expect(
+      result,
+      result.ok ? undefined : JSON.stringify(result.diagnostics, null, 2),
+    ).toMatchObject({ ok: true })
+    const ids = result.ok ? result.games.map((game) => game.id) : []
+
+    expect(ids).toEqual(['rillward-gambit', 'sereinfolio', 'veilquorum'])
+    expect(new Set(ids)).toHaveProperty('size', 3)
   })
 })

@@ -32,10 +32,12 @@ Acceptance criteria:
 
 Deliver the standard 52-card and tarot deck models, selectors, version 1 game
 schema, Markdown loader and renderer, catalog, and three originally authored
-repository games: a social-deduction game, a standard-card comparison game,
-and a tarot reflection game. Existing example names remain working titles
-until the name-clearance process in the
-[game content rights policy](content-rights.md) is complete.
+repository games: the social-deduction game Veilquorum, the standard-card
+comparison game Rillward Gambit, and the tarot reflection activity
+Sereinfolio. Each public name has a dated preliminary screen in its adjacent
+rights record under the process in the
+[game content rights policy](content-rights.md); those records are not legal
+clearance opinions.
 
 Acceptance criteria:
 
@@ -48,6 +50,8 @@ Acceptance criteria:
   unsupported versions, duplicate IDs, and invalid defaults produce structured
   diagnostics.
 - CI validates every repository game before deployment.
+- The bundled catalog contains exactly `veilquorum`, `rillward-gambit`, and
+  `sereinfolio`.
 - The catalog opens each example's safely rendered Markdown rules.
 - Every repository game has an adjacent rights record documenting authorship,
   license, provenance, and name-clearance work.
