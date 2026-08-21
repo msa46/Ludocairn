@@ -10,9 +10,10 @@ work follows the approved
 
 Release publication is intentionally separate from implementation status:
 
-- [ ] Complete the full local production-browser release verification,
-  including import, print, keyboard-only, alert/status, and narrow tracker
-  journeys.
+- [x] Complete Task 9 local production-browser release verification at the
+  supported browser boundaries, including import confirmation, print actions,
+  alert/status semantics, a narrow tracker journey, and a keyboard-only primary
+  journey.
 - [x] Prepare a fully static GitHub Pages artifact with relative assets.
 - [ ] Publish from `main`, verify the Pages workflow and repository-subpath
   journey, then record the production URL and verification date.
@@ -101,7 +102,7 @@ Acceptance criteria:
 - [x] Rules and tracker print modes omit interactive chrome, expose current
   values, and remain readable
   in grayscale.
-- [ ] Manually verify that narrow-screen layouts preserve every operation
+- [x] Manually verify that narrow-screen layouts preserve every operation
   without requiring precise
   horizontal gestures.
 - [ ] A keyboard-only user can select a game, create a session, add a player, edit

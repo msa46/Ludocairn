@@ -598,7 +598,7 @@ Run: `npm run ci`
 
 Expected: lint, formatting, types, all tests, production build, and static artifact verification PASS.
 
-- [ ] **Step 4: Run local browser release checks**
+- [x] **Step 4: Run local browser release checks**
 
 Serve the production artifact and exercise, at narrow and wide widths, catalog → each rules page → new session → all field types → refresh restoration → export → import preview/confirm → print rules → print tracker. Repeat the primary journey using only the keyboard and inspect the accessibility tree for labels, landmarks, alerts, and status regions.
 
