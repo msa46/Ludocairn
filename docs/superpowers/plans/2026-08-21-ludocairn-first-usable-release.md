@@ -528,7 +528,7 @@ git commit -m "feat: add three original game examples"
 - Consumes: session validator, catalog resolver, repository, browser `File` and download APIs.
 - Produces: `serializeSession(session): string`, `parseSessionFile(text, resolveGame): ImportResult`, `prepareImportedSession(session, existingIds, ids): Session`, preview-before-save import UI, JSON export, rules print, and tracker print.
 
-- [ ] **Step 1: Write failing file-boundary tests**
+- [x] **Step 1: Write failing file-boundary tests**
 
 Assert stable pretty JSON with trailing newline, UTF-8-safe text, malformed JSON diagnostics, unsupported storage/game versions, missing game, invalid fields, and ID collision reassignment without mutation.
 
@@ -542,29 +542,29 @@ expect(prepareImportedSession(session, new Set([session.id]), ids).id).not.toBe(
 )
 ```
 
-- [ ] **Step 2: Implement serialization, parsing, and collision preparation**
+- [x] **Step 2: Implement serialization, parsing, and collision preparation**
 
 Use `JSON.stringify(session, null, 2) + '\n'`; parse inside `try/catch`, resolve the bundled game before validation, and return preview data containing only session name, game name, player count, and updated time. Never call a repository from this module.
 
-- [ ] **Step 3: Write failing import/export component tests**
+- [x] **Step 3: Write failing import/export component tests**
 
 Upload a valid local `File`, assert preview appears before repository mutation, confirm import, and assert the saved session opens. Test cancel, malformed file, missing game, and collision reassignment. Stub `URL.createObjectURL`, `URL.revokeObjectURL`, and anchor click for export; assert the privacy warning mentions facilitator notes.
 
-- [ ] **Step 4: Implement import preview and export actions**
+- [x] **Step 4: Implement import preview and export actions**
 
 Accept only one `.json` file, read as text, show non-mutating metadata and diagnostics, and require an explicit `Import session` confirmation. Export through a UTF-8 `Blob` named from a sanitized session name plus `.ludocairn-session.json`; revoke the object URL after click.
 
-- [ ] **Step 5: Write and satisfy print-contract tests**
+- [x] **Step 5: Write and satisfy print-contract tests**
 
 Assert CSS contains `@media print`, `.rules-print` and `.tracker-print` selectors, hides `.print-hidden`, navigation, editing, save state, and destructive controls, sets monochrome output, and applies `break-inside: avoid` to player records.
 
-- [ ] **Step 6: Run file, print, component, and full gates**
+- [x] **Step 6: Run file, print, component, and full gates**
 
 Run: `npm test -- src/files src/app/ImportSession.test.tsx src/styles/print-contract.test.ts && npm run ci`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit portability and print behavior**
+- [x] **Step 7: Commit portability and print behavior**
 
 ```bash
 git add src/files src/app src/styles/global.css src/styles/print-contract.test.ts
