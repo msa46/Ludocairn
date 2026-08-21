@@ -9,6 +9,24 @@ The repository contains the tested static application and delivery foundation.
 Card, game-definition, and session functionality is delivered in the next
 increments.
 
+## What the names mean
+
+**Ludocairn** is pronounced *LOO-doh-kairn*. It is a coined name combining
+`ludo-`, associated with play and games, with `cairn`, a durable marker that
+helps people find their way. Together, the name describes a guidepost for
+choosing, understanding, and tracking tabletop games.
+
+The project previously used **Deckwright** as a working name. That name was
+retired after unrelated card-game and software products were found using it.
+Historical planning file names and the current GitHub repository path may
+still contain `Deckwright` until the repository itself is renamed.
+
+The first bundled game, **Veilquorum**, is also a coined name: `veil` refers to
+its hidden allegiances, while `quorum` refers to the group of active voices the
+players are trying to protect or control. Name searches and their limitations
+are recorded in [the project screening record](docs/name-clearance.md) and the
+game's [rights record](games/veilquorum/RIGHTS.md).
+
 ## Product direction
 
 The first usable release will provide:
@@ -77,8 +95,9 @@ settings, configure Pages to use **GitHub Actions** as its source.
 ## Project status
 
 The static application and delivery foundation is in place. The next increment
-implements card decks, structured selectors, game-definition validation, safe
-Markdown rendering, and the three example games.
+implements the local session tracker and user-facing game catalog. Canonical
+card decks, selectors, game-definition validation, safe Markdown rendering,
+and the first original game are already implemented on the release branch.
 
 ## Contributing
 
