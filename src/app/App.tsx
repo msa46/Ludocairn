@@ -57,7 +57,7 @@ export function App({
   const [setupGameId, setSetupGameId] = useState<string>()
   const [revision, setRevision] = useState(0)
   const [actionError, setActionError] = useState<string>()
-  const { session, saveStatus, error, open, accept } =
+  const { session, saveStatus, error, open, accept, cancelPendingSave } =
     useSessionStore(sessionRepository)
 
   const parameters = new URLSearchParams(search)
@@ -132,6 +132,7 @@ export function App({
           onDeleteSession={() => {
             const removed = sessionRepository.remove(session.id)
             if (removed.ok) {
+              cancelPendingSave()
               navigate('')
             } else {
               setActionError(removed.diagnostic.message)

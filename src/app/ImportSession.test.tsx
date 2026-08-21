@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -238,6 +239,7 @@ describe('session file UI', () => {
 
 describe('valid saved session management', () => {
   beforeEach(() => window.history.replaceState({}, '', '/'))
+  afterEach(() => vi.useRealTimers())
 
   it('renames the current session through the saved domain flow', async () => {
     const repository = new MemorySessionRepository(resolveGame)
@@ -312,6 +314,35 @@ describe('valid saved session management', () => {
     expect(
       screen.queryByRole('button', { name: 'Delete unreadable record' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('cancels a pending text autosave before deleting a valid session', async () => {
+    vi.useFakeTimers()
+    const repository = new MemorySessionRepository(resolveGame)
+    repository.save(importedSession)
+    window.history.replaceState({}, '', '/?session=imported-session')
+    render(<App games={catalog.games} repository={repository} />)
+
+    await act(async () => undefined)
+    fireEvent.change(screen.getByLabelText('Session notes'), {
+      target: { value: 'Pending private note.' },
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('Saving')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review delete session' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete saved session' }),
+    )
+    expect(repository.load('imported-session')).toMatchObject({ ok: false })
+
+    act(() => vi.advanceTimersByTime(300))
+
+    expect(repository.load('imported-session')).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'storage.not-found' },
+    })
   })
 
   it('prints the tracker through the browser print boundary', async () => {

@@ -66,5 +66,11 @@ export function useSessionStore(repository: SessionRepository) {
     [save],
   )
 
-  return { session, saveStatus, error, open, accept }
+  const cancelPendingSave = useCallback(() => {
+    window.clearTimeout(saveTimer.current)
+    saveTimer.current = undefined
+    pendingSession.current = undefined
+  }, [])
+
+  return { session, saveStatus, error, open, accept, cancelPendingSave }
 }
