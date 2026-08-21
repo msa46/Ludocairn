@@ -1,6 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { verifyStaticBuild } from './verify-static-build.mjs'
@@ -21,6 +27,15 @@ function createDist(indexHtml: string, assets: Record<string, string> = {}) {
   return directory
 }
 
+function createExternalAsset() {
+  const directory = mkdtempSync(join(tmpdir(), 'deckwright-external-'))
+  temporaryDirectories.push(directory)
+  const assetPath = join(directory, 'external.js')
+  writeFileSync(assetPath, 'console.log("outside Deckwright")')
+
+  return assetPath
+}
+
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true })
@@ -37,9 +52,24 @@ describe('verifyStaticBuild', () => {
     expect(verifyStaticBuild(directory)).toEqual(['./assets/app.js'])
   })
 
+  it('recognizes asset attributes across case, spacing, and quote forms', () => {
+    const directory = createDist(
+      "<script SRC = './assets/app.js'></script><link HREF = ./assets/app.css />",
+      {
+        'assets/app.js': 'console.log("Deckwright")',
+        'assets/app.css': 'body {}',
+      },
+    )
+
+    expect(verifyStaticBuild(directory)).toEqual([
+      './assets/app.js',
+      './assets/app.css',
+    ])
+  })
+
   it('rejects root-absolute asset paths that break repository subpaths', () => {
     const directory = createDist(
-      '<script type="module" src="/assets/app.js"></script>',
+      "<script type='module' src='/assets/app.js'></script>",
       { 'assets/app.js': 'console.log("Deckwright")' },
     )
 
@@ -55,6 +85,38 @@ describe('verifyStaticBuild', () => {
 
     expect(() => verifyStaticBuild(directory)).toThrow(
       'Referenced asset is missing: ./assets/app.css',
+    )
+  })
+
+  it('rejects existing assets resolved outside the artifact directory', () => {
+    const externalAsset = createExternalAsset()
+    const externalDirectory = basename(dirname(externalAsset))
+    const directory = createDist(
+      `<script src="../${externalDirectory}/external.js"></script>`,
+    )
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Referenced asset resolves outside the static artifact: ../${externalDirectory}/external.js`,
+    )
+  })
+
+  it('rejects symlinked assets that resolve outside the artifact directory', () => {
+    const externalAsset = createExternalAsset()
+    const directory = createDist('<script src="./assets/external.js"></script>')
+    mkdirSync(join(directory, 'assets'))
+    symlinkSync(externalAsset, join(directory, 'assets', 'external.js'))
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced asset resolves outside the static artifact: ./assets/external.js',
+    )
+  })
+
+  it('rejects an artifact without an entry document', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'deckwright-static-'))
+    temporaryDirectories.push(directory)
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Static entry document is missing: ${join(directory, 'index.html')}`,
     )
   })
 })
