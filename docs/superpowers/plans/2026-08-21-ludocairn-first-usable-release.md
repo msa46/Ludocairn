@@ -416,15 +416,15 @@ git commit -m "feat: add validated session state"
 - Consumes: bundled catalog, rendered rules, session operations, and `SessionRepository`.
 - Produces: query views `?game=<id>` and `?session=<id>`, automatic persistence status, recovery cards, and a complete Veilquorum journey.
 
-- [ ] **Step 1: Define repository behavior with failing memory-adapter tests**
+- [x] **Step 1: Define repository behavior with failing memory-adapter tests**
 
 Define `SessionRepository` methods `list(): RepositoryRecord[]`, `load(id): LoadResult`, `save(session): SaveResult`, `remove(id): RemoveResult`, and `raw(id): string | undefined`. Test valid round trips, corrupt raw records, unsupported versions, deletion, and injected save failures. A corrupt load result must retain the raw string.
 
-- [ ] **Step 2: Implement memory and localStorage adapters**
+- [x] **Step 2: Implement memory and localStorage adapters**
 
 Use key prefix `ludocairn.session.v1.`. Enumerate only prefixed keys, validate each value through the game resolver supplied to the adapter, never overwrite malformed data during reads, and convert browser security/quota exceptions into `storage.read-failed` or `storage.write-failed` diagnostics.
 
-- [ ] **Step 3: Write a failing accessible end-to-end component test**
+- [x] **Step 3: Write a failing accessible end-to-end component test**
 
 Render `App` with an in-memory repository, deterministic clock/IDs, and a history adapter. Drive the UI by roles: open Veilquorum, start a session, enter two players, edit role/signals/active/clue, change phase/round/notes, return home, resume the saved session, and assert all values persist.
 
@@ -437,25 +437,25 @@ await user.click(screen.getByRole('button', { name: 'Create session' }))
 expect(screen.getByRole('heading', { name: 'Friday table' })).toBeVisible()
 ```
 
-- [ ] **Step 4: Implement URL coordination and catalog/rules/setup views**
+- [x] **Step 4: Implement URL coordination and catalog/rules/setup views**
 
 Read only `game` and `session` query parameters. Use anchor navigation so links remain copyable and testable; invalid IDs show an alert plus a catalog action. Render sanitized rules in a semantic `article`; implement `Print rules` with `window.print`. Setup accepts a session name and dynamic player-name inputs, shows min/max guidance, and creates state only after domain validation.
 
-- [ ] **Step 5: Implement tracker controls and automatic saves**
+- [x] **Step 5: Implement tracker controls and automatic saves**
 
 Render phase and round before player cards. Use native checkbox, select, number input with named decrement/increment buttons, and labeled input/textarea. Confirm player removal with a `<dialog>` or an accessible inline confirmation region. Save every valid mutation through `useSessionStore`, debounce text saves by 300ms, and expose `Saving`, `Saved`, or `Not saved — <reason>` in a polite status region without discarding in-memory changes.
 
-- [ ] **Step 6: Implement responsive and recovery UI**
+- [x] **Step 6: Implement responsive and recovery UI**
 
 Stack player cards at 20rem; at 64rem use a grid only while preserving DOM order. Ensure 44px action targets, visible focus, non-color error labels, and no horizontal precision gestures. Recovery cards for corrupt/unsupported records provide `Download raw record` and a separately confirmed `Delete unreadable record` action.
 
-- [ ] **Step 7: Run storage, component, accessibility, and full gates**
+- [x] **Step 7: Run storage, component, accessibility, and full gates**
 
 Run: `npm test -- src/storage src/app && npm run ci`
 
 Expected: PASS for the complete catalog-to-resumed-session flow.
 
-- [ ] **Step 8: Commit the social vertical slice**
+- [x] **Step 8: Commit the social vertical slice**
 
 ```bash
 git add src/storage src/app src/styles/global.css
