@@ -65,21 +65,17 @@ export function PlayerFieldControl({
   if (field.type === 'number') {
     const numericValue = Number(value)
     const step = field.step ?? 1
+    const previousValue = numericValue - step
+    const nextValue = numericValue + step
     return (
       <>
         <div className="number-field-control editing-controls">
           <span>{field.label}</span>
           <button
             aria-label={'Decrease ' + label}
-            disabled={field.min !== undefined && numericValue <= field.min}
+            disabled={field.min !== undefined && previousValue < field.min}
             type="button"
-            onClick={() =>
-              onChange(
-                field.min === undefined
-                  ? numericValue - step
-                  : Math.max(field.min, numericValue - step),
-              )
-            }
+            onClick={() => onChange(previousValue)}
           >
             −
           </button>
@@ -94,15 +90,9 @@ export function PlayerFieldControl({
           />
           <button
             aria-label={'Increase ' + label}
-            disabled={field.max !== undefined && numericValue >= field.max}
+            disabled={field.max !== undefined && nextValue > field.max}
             type="button"
-            onClick={() =>
-              onChange(
-                field.max === undefined
-                  ? numericValue + step
-                  : Math.min(field.max, numericValue + step),
-              )
-            }
+            onClick={() => onChange(nextValue)}
           >
             +
           </button>

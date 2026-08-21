@@ -15,11 +15,17 @@ const scoreField: PlayerFieldDefinition = {
   step: 2,
 }
 
-function NumberHarness() {
-  const [value, setValue] = useState(0)
+function NumberHarness({
+  field = scoreField,
+  initial = 0,
+}: {
+  readonly field?: PlayerFieldDefinition
+  readonly initial?: number
+}) {
+  const [value, setValue] = useState(initial)
   return (
     <PlayerFieldControl
-      field={scoreField}
+      field={field}
       playerName="Ari"
       value={value}
       onChange={(next) => setValue(Number(next))}
@@ -53,5 +59,31 @@ describe('PlayerFieldControl number controls', () => {
 
     fireEvent.click(decrease)
     expect(input).toHaveValue(2)
+  })
+
+  it('disables increment when the next aligned step would cross an unaligned maximum', () => {
+    render(<NumberHarness field={{ ...scoreField, max: 5 }} initial={4} />)
+
+    const input = screen.getByLabelText('Ari — Score')
+    const increase = screen.getByRole('button', {
+      name: 'Increase Ari — Score',
+    })
+
+    expect(increase).toBeDisabled()
+    fireEvent.click(increase)
+    expect(input).toHaveValue(4)
+  })
+
+  it('disables decrement when the previous aligned step would cross an unaligned minimum', () => {
+    render(<NumberHarness field={scoreField} initial={1} />)
+
+    const input = screen.getByLabelText('Ari — Score')
+    const decrease = screen.getByRole('button', {
+      name: 'Decrease Ari — Score',
+    })
+
+    expect(decrease).toBeDisabled()
+    fireEvent.click(decrease)
+    expect(input).toHaveValue(1)
   })
 })
