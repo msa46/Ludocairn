@@ -1,4 +1,5 @@
 import type { DeckType } from '../cards/model'
+import type { CardSelector } from '../cards/select'
 
 export interface PlayersDefinition {
   readonly min: number
@@ -8,6 +9,26 @@ export interface PlayersDefinition {
 export interface PhaseDefinition {
   readonly id: string
   readonly label: string
+}
+
+export interface RoleCardMarker {
+  readonly label: string
+  readonly selector: CardSelector
+}
+
+export interface RoleDefinition {
+  readonly id: string
+  readonly label: string
+  readonly team?: string
+  readonly summary: string
+  readonly card?: RoleCardMarker
+}
+
+export type RoleCount = number | 'remaining'
+
+export interface RoleDistribution {
+  readonly players: Required<PlayersDefinition>
+  readonly counts: Readonly<Record<string, RoleCount>>
 }
 
 export type RoundDefinition =
@@ -44,11 +65,17 @@ export interface TextFieldDefinition extends BasePlayerFieldDefinition {
   readonly multiline: boolean
 }
 
+export interface RoleFieldDefinition extends BasePlayerFieldDefinition {
+  readonly type: 'role'
+  readonly default: string
+}
+
 export type PlayerFieldDefinition =
   | BooleanFieldDefinition
   | ChoiceFieldDefinition
   | NumberFieldDefinition
   | TextFieldDefinition
+  | RoleFieldDefinition
 
 export interface GameDefinition {
   readonly schemaVersion: 1
@@ -57,6 +84,8 @@ export interface GameDefinition {
   readonly summary: string
   readonly deck: DeckType
   readonly players: PlayersDefinition
+  readonly roles: readonly RoleDefinition[]
+  readonly roleDistributions: readonly RoleDistribution[]
   readonly phases: readonly PhaseDefinition[]
   readonly initialPhase?: string
   readonly round: RoundDefinition

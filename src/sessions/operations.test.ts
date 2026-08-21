@@ -22,6 +22,8 @@ const game: GameDefinition = {
   summary: 'Exercises every session field.',
   deck: 'standard-52',
   players: { min: 2, max: 3 },
+  roles: [],
+  roleDistributions: [],
   phases: [
     { id: 'night', label: 'Night' },
     { id: 'day', label: 'Day' },

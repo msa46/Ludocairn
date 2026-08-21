@@ -15,6 +15,8 @@ const game: GameDefinition = {
   summary: 'Validation fixture.',
   deck: 'standard-52',
   players: { min: 2, max: 4 },
+  roles: [],
+  roleDistributions: [],
   phases: [
     { id: 'night', label: 'Night' },
     { id: 'day', label: 'Day' },

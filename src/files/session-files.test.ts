@@ -15,6 +15,8 @@ const game: GameDefinition = {
   summary: 'Import fixture.',
   deck: 'standard-52',
   players: { min: 1 },
+  roles: [],
+  roleDistributions: [],
   phases: [],
   round: { enabled: false },
   fields: [

@@ -120,6 +120,8 @@ export function PlayerFieldControl({
     )
   }
 
+  if (field.type === 'role') return null
+
   return (
     <>
       <label className="editing-controls">

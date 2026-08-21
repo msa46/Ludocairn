@@ -542,6 +542,8 @@ function parseMetadata(
     summary: metadata.summary.trim(),
     deck: metadata.deck,
     players,
+    roles: [],
+    roleDistributions: [],
     phases,
     ...(phases.length === 0
       ? {}

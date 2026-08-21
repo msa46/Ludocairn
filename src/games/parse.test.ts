@@ -67,6 +67,8 @@ describe('parseGameSource', () => {
         summary: 'Find the quiet signal before the trail goes dark.',
         deck: 'standard-52',
         players: { min: 4, max: 12 },
+        roles: [],
+        roleDistributions: [],
         phases: [
           { id: 'night', label: 'Night' },
           { id: 'day', label: 'Day' },

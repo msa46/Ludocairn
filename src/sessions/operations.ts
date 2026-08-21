@@ -68,6 +68,8 @@ export function fieldValueIsValid(
     }
     case 'text':
       return typeof value === 'string'
+    case 'role':
+      return false
   }
 }
 
