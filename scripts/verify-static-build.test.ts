@@ -162,6 +162,51 @@ describe('verifyStaticBuild', () => {
     )
   })
 
+  it('rejects an ASCII-control-normalized remote runtime asset URL', () => {
+    const url = 'ht\ntps://example.com/evil.js'
+    const directory = createDist(
+      `<script src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css"><script src="${url}"></script>`,
+      {
+        'assets/app.js': 'console.log("Ludocairn")',
+        'assets/app.css': 'body {}',
+      },
+    )
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Remote runtime asset URL is not allowed: ${url}`,
+    )
+  })
+
+  it('rejects a remote document base that relocates relative assets', () => {
+    const baseUrl = 'https://example.com/'
+    const directory = createDist(
+      `<base href="${baseUrl}"><script src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css">`,
+      {
+        'assets/app.js': 'console.log("Ludocairn")',
+        'assets/app.css': 'body {}',
+      },
+    )
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Document base URL is not allowed: ${baseUrl}`,
+    )
+  })
+
+  it('rejects a remote document base after a base tag without href', () => {
+    const baseUrl = 'https://example.com/'
+    const directory = createDist(
+      `<base target="_blank"><base href="${baseUrl}"><script src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css">`,
+      {
+        'assets/app.js': 'console.log("Ludocairn")',
+        'assets/app.css': 'body {}',
+      },
+    )
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Document base URL is not allowed: ${baseUrl}`,
+    )
+  })
+
   it.each([
     { label: 'empty', url: '' },
     { label: 'query-only', url: '?cache=1' },

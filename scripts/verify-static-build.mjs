@@ -53,6 +53,17 @@ function extractAssetUrls(html) {
   return assets
 }
 
+function extractDocumentBaseUrl(html) {
+  const baseTags = html.matchAll(/<base\b(?:(?:"[^"]*"|'[^']*'|[^'"<>])*)>/giu)
+
+  for (const baseTag of baseTags) {
+    const url = extractTagAttribute(baseTag[0], 'base'.length + 1, 'href')
+    if (url !== undefined) return url
+  }
+
+  return undefined
+}
+
 function extractTagAttribute(tag, start, wantedName) {
   let cursor = start
 
@@ -154,6 +165,13 @@ export function verifyStaticBuild(distDirectory) {
     )
   }
 
+  const documentBaseUrl = extractDocumentBaseUrl(html)
+  if (documentBaseUrl !== undefined) {
+    throw new Error(
+      `Document base URL is not allowed: ${documentBaseUrl || '(empty)'}`,
+    )
+  }
+
   const assets = extractAssetUrls(html)
   const localUrls = []
   let hasRelativeJavaScriptAsset = false
@@ -180,6 +198,13 @@ export function verifyStaticBuild(distDirectory) {
       resolvedUrl = new URL(browserUrl, syntheticEntryUrl)
     } catch {
       throw invalidAssetUrl(url)
+    }
+
+    if (
+      resolvedUrl.origin !== syntheticEntryUrl.origin &&
+      (resolvedUrl.protocol === 'http:' || resolvedUrl.protocol === 'https:')
+    ) {
+      throw new Error(`Remote runtime asset URL is not allowed: ${url}`)
     }
 
     if (resolvedUrl.origin !== syntheticEntryUrl.origin) {

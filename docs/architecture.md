@@ -124,8 +124,9 @@ No application step sends session state across the network.
 production build, and static verification must all pass. The verifier requires
 `dist/index.html` to contain the Ludocairn identity and relative JavaScript and
 CSS references; rejects root-absolute and HTTP(S) runtime asset references;
-and proves each local entry asset is a real file beneath `dist/`, including
-after symlink resolution.
+rejects document base URLs that could relocate relative assets; and proves each
+local entry asset is a real file beneath `dist/`, including after symlink
+resolution.
 
 `.github/workflows/ci.yml` runs the gate for pull requests and pushes to
 `main`. `.github/workflows/deploy-pages.yml` deploys only from `main` or a
