@@ -13,8 +13,8 @@ to application code.
 4. Write the rules as Markdown after the closing `---` delimiter.
 5. Keep version 1 rules self-contained; embedded images and game-owned assets
    are not yet part of the format.
-6. Run the repository validation and test commands documented by the
-   implementation once the application foundation is in place.
+6. Run `npm run ci`. Executable game-schema validation arrives with the
+   content-engine increment.
 7. Submit the game through a pull request.
 
 ## Authoring principles

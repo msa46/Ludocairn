@@ -67,6 +67,35 @@ describe('verifyStaticBuild', () => {
     ])
   })
 
+  it('ignores navigational anchor hrefs', () => {
+    const directory = createDist(
+      '<a href="./rules/missing.html">Read the rules</a>',
+    )
+
+    expect(verifyStaticBuild(directory)).toEqual([])
+  })
+
+  it('ignores asset-like text inside another tag attribute', () => {
+    const directory = createDist(
+      `<script data-example='src="./assets/missing.js"'></script>`,
+    )
+
+    expect(verifyStaticBuild(directory)).toEqual([])
+  })
+
+  it.each([
+    { label: 'empty', url: '' },
+    { label: 'query-only', url: '?cache=1' },
+    { label: 'fragment-only', url: '#module' },
+  ])('rejects $label asset references', ({ url }) => {
+    const directory = createDist(`<script src="${url}"></script>`)
+    const displayUrl = url || '(empty)'
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Invalid local asset URL: ${displayUrl}`,
+    )
+  })
+
   it('rejects root-absolute asset paths that break repository subpaths', () => {
     const directory = createDist(
       "<script type='module' src='/assets/app.js'></script>",
@@ -88,6 +117,15 @@ describe('verifyStaticBuild', () => {
     )
   })
 
+  it('rejects a directory referenced as an asset', () => {
+    const directory = createDist('<script src="./assets/"></script>')
+    mkdirSync(join(directory, 'assets'))
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced asset is not a file: ./assets/',
+    )
+  })
+
   it('rejects existing assets resolved outside the artifact directory', () => {
     const externalAsset = createExternalAsset()
     const externalDirectory = basename(dirname(externalAsset))
@@ -97,6 +135,20 @@ describe('verifyStaticBuild', () => {
 
     expect(() => verifyStaticBuild(directory)).toThrow(
       `Referenced asset resolves outside the static artifact: ../${externalDirectory}/external.js`,
+    )
+  })
+
+  it.each([
+    { label: 'backslash traversal', url: '..\\escape.js' },
+    { label: 'percent-encoded traversal', url: '%2e%2e/escape.js' },
+    { label: 'entity-encoded traversal', url: '&#46;&#46;/escape.js' },
+  ])('rejects browser-normalized $label', ({ url }) => {
+    const directory = createDist(`<script src="${url}"></script>`, {
+      [url]: 'console.log("not browser-safe")',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Referenced asset resolves outside the static artifact: ${url}`,
     )
   })
 

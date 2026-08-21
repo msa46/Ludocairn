@@ -50,7 +50,8 @@ and runtime boundaries.
 
 ## Local development
 
-Deckwright requires Node.js 22 and npm 10 or newer.
+Deckwright requires Node.js 22.22.2 or newer within Node.js 22 and npm 10 or
+newer.
 
 ```bash
 nvm use

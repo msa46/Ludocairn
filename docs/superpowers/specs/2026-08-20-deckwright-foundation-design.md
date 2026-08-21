@@ -1,6 +1,6 @@
 # Deckwright Foundation Design
 
-- Status: approved in conversation; awaiting written-spec review
+- Status: approved; foundation increment implemented
 - Date: 2026-08-20
 
 ## Objective
