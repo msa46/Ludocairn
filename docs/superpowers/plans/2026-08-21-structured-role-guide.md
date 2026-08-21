@@ -714,6 +714,13 @@ than human-readable labels. A witnessed regression test now protects the label
 output. The review's Minor semantic-structure finding was also resolved by
 rendering labeled definition content for team, card, and purpose.
 
-- [ ] **Step 11: Finish the branch through the user's selected integration path**
+- [x] **Step 11: Finish the branch through the user's selected integration path**
 
 Use `superpowers:verification-before-completion` and `superpowers:finishing-a-development-branch`. Re-run `npm run ci` on the exact head, then offer the required merge/push/keep choices. If the user selects publication, wait for CI and Pages, exercise the repository-subpath production URL, and update README/roadmap evidence only after the deployed guide is verified.
+
+Integration record (2026-08-21): the reviewed closure commits `3011f0b` and
+`433b3c8` were fast-forwarded to `main` and pushed. GitHub CI run
+`32527013767` and Pages run `32527013761` succeeded. The deployed
+repository-subpath artifact rendered the labeled Echo, Drifter, and Wayfinder
+definitions from the reviewed asset hashes, loaded only same-origin assets,
+and produced no console warnings or errors.

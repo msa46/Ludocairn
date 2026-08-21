@@ -135,6 +135,14 @@ contents, filename, extension, and privacy copy. The native print dialog was
 not introspected, so verification stops at the successful browser/system print
 action boundary.
 
+The structured Veilquorum role guide and its release-closure fixes were
+published from `main` at `433b3c8` on 2026-08-21. The
+[CI run](https://github.com/msa46/Deckwright/actions/runs/32527013767) and
+[Pages deployment](https://github.com/msa46/Deckwright/actions/runs/32527013761)
+succeeded. Production rendered the reviewed role definitions and labeled
+Team/Card/Purpose structure from same-origin assets without application console
+warnings or errors.
+
 ## Documentation
 
 - [Architecture and privacy boundaries](docs/architecture.md)

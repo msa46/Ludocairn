@@ -64,6 +64,14 @@ reload. Rillward Gambit and Sereinfolio rendered no empty guide. Both print
 actions returned successfully at the browser/system boundary, and the preview
 loaded only same-origin JavaScript and CSS with no console warnings or errors.
 
+The closure fixes were published from `main` at `433b3c8`. The
+[CI run](https://github.com/msa46/Deckwright/actions/runs/32527013767) and
+[Pages deployment](https://github.com/msa46/Deckwright/actions/runs/32527013761)
+both succeeded. The live repository-subpath artifact exposed labeled
+Team/Card/Purpose definitions for Echo, Drifter, and Wayfinder from the exact
+reviewed JavaScript and CSS assets, with no off-origin assets or console
+warnings and errors.
+
 ## Increment 1: Foundation
 
 Deliver the Vite, React, and TypeScript project; formatting, linting,
