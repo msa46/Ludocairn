@@ -68,6 +68,7 @@ export function useSessionStore(repository: SessionRepository) {
         saveTimer.current = window.setTimeout(() => save(result.session), 300)
         return true
       }
+      pendingSession.current = result.session
       return save(result.session)
     },
     [save],
