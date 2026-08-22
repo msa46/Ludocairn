@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { loadBundledGames } from '../games/catalog'
 import type { GameDefinition } from '../games/model'
+import type { RegisterWorker } from '../pwa/register'
 import type { IdProvider, Session } from '../sessions/model'
 import { MemorySessionRepository } from '../storage/memory'
 import { App } from './App'
@@ -137,6 +138,42 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: /Open Veilquorum/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the application available when service-worker registration fails', () => {
+    const repository = new MemorySessionRepository(() => veilquorum)
+    const registerWorker: RegisterWorker = (callbacks) => {
+      callbacks.onRegisterError(new Error('registration failed'))
+      return () => Promise.resolve()
+    }
+
+    render(
+      <App
+        games={[veilquorum]}
+        repository={repository}
+        registerWorker={registerWorker}
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Offline support could not be started. You can keep using the app.',
+    )
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Choose a game' }),
+    ).toBeInTheDocument()
+  })
+
+  it('uses a service-worker-free default without creating an update notice', () => {
+    const repository = new MemorySessionRepository(() => veilquorum)
+
+    render(<App games={[veilquorum]} repository={repository} />)
+
+    expect(
+      screen.queryByRole('button', { name: 'Update and reload' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Choose a game' }),
     ).toBeInTheDocument()
   })
 

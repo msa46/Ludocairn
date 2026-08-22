@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react'
 import type { RandomSource } from '../assignments/model'
 import { loadBundledGames } from '../games/catalog'
 import type { GameDefinition } from '../games/model'
+import { PwaStatus } from '../pwa/PwaStatus'
+import type { RegisterWorker } from '../pwa/register'
 import type { Clock, IdProvider, SessionFieldValue } from '../sessions/model'
 import {
   addPlayer,
@@ -32,6 +34,7 @@ interface AppProps {
   readonly clock?: Clock
   readonly ids?: IdProvider
   readonly random?: RandomSource
+  readonly registerWorker?: RegisterWorker
 }
 
 const bundledCatalog = loadBundledGames()
@@ -41,6 +44,7 @@ const systemClock: Clock = () => new Date().toISOString()
 const systemIds: IdProvider = {
   next: (kind) => kind + '-' + crypto.randomUUID(),
 }
+const noPwaRegistration: RegisterWorker = () => () => Promise.resolve()
 
 export function App({
   games = bundledGames,
@@ -48,6 +52,7 @@ export function App({
   clock = systemClock,
   ids = systemIds,
   random = Math.random,
+  registerWorker = noPwaRegistration,
 }: AppProps) {
   const resolveGame = useMemo(
     () => (id: string) => games.find((game) => game.id === id),
@@ -63,8 +68,15 @@ export function App({
   const [setupGameId, setSetupGameId] = useState<string>()
   const [revision, setRevision] = useState(0)
   const [actionError, setActionError] = useState<string>()
-  const { session, saveStatus, error, open, accept, cancelPendingSave } =
-    useSessionStore(sessionRepository)
+  const {
+    session,
+    saveStatus,
+    error,
+    open,
+    accept,
+    cancelPendingSave,
+    flushPendingSave,
+  } = useSessionStore(sessionRepository)
 
   const parameters = new URLSearchParams(search)
   const gameId = parameters.get('game')
@@ -289,6 +301,11 @@ export function App({
         </a>
         <p className="tagline">A local-first tabletop card-game toolkit</p>
       </header>
+
+      <PwaStatus
+        prepareForReload={flushPendingSave}
+        registerWorker={registerWorker}
+      />
 
       <main id="main-content" className="site-main">
         {content}
