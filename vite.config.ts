@@ -2,8 +2,6 @@ import react from '@vitejs/plugin-react'
 import { configDefaults, defineConfig } from 'vitest/config'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- The app project compiles a tooling test that imports this no-emit config.
-// @ts-ignore The app project compiles a tooling test that imports this no-emit config.
 import { pwaManifest } from './src/pwa/manifest.ts'
 
 export default defineConfig({
