@@ -116,6 +116,45 @@ describe('startPwaRegistration', () => {
     expect(updateSW).toHaveBeenCalledWith(true)
   })
 
+  it('reports a rejected activation while preserving the rejection for the caller', async () => {
+    const states: PwaState[] = []
+    const visibility = createVisibility()
+    const timers = createTimers()
+    const failure = new Error('activation failed')
+    const controller = startPwaRegistration({
+      registerWorker: () =>
+        vi
+          .fn<(reloadPage?: boolean) => Promise<void>>()
+          .mockRejectedValue(failure),
+      visibility: visibility.visibility,
+      timers,
+      onStateChange: (state) => states.push(state),
+    })
+
+    await expect(controller.update()).rejects.toBe(failure)
+
+    expect(states).toEqual(['error'])
+  })
+
+  it('normalizes a synchronous activation throw into a reported rejection', async () => {
+    const states: PwaState[] = []
+    const visibility = createVisibility()
+    const timers = createTimers()
+    const failure = new Error('activation failed synchronously')
+    const controller = startPwaRegistration({
+      registerWorker: () => () => {
+        throw failure
+      },
+      visibility: visibility.visibility,
+      timers,
+      onStateChange: (state) => states.push(state),
+    })
+
+    await expect(controller.update()).rejects.toBe(failure)
+
+    expect(states).toEqual(['error'])
+  })
+
   it('reports registration errors without throwing', () => {
     const states: PwaState[] = []
     const visibility = createVisibility()

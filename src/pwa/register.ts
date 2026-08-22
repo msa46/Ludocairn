@@ -97,7 +97,16 @@ export function startPwaRegistration({
   return {
     update: () => {
       if (disposed || !updateServiceWorker) return Promise.resolve()
-      return updateServiceWorker(true)
+
+      try {
+        return Promise.resolve(updateServiceWorker(true)).catch((error) => {
+          reportState('error')
+          throw error
+        })
+      } catch (error) {
+        reportState('error')
+        return Promise.reject(error)
+      }
     },
     dispose: () => {
       if (disposed) return
