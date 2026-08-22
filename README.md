@@ -12,8 +12,9 @@ does not upload them. Clearing site data, using another browser or device, or
 losing the browser profile can remove access to those saved sessions.
 
 Use **Export session** from a tracker to download a versioned JSON backup. An
-export contains player names, every tracked field, and facilitator notes, so
-handle it as private table material. Importing reads a selected JSON file
+export contains player names, every tracked field, facilitator notes, and any
+private role assignments, so handle it as private table material. Importing
+reads a selected JSON file
 locally, validates its game and schema, and shows a session/game/player/date
 preview before **Import session** saves anything. A colliding session ID is
 replaced with a new local ID rather than overwriting the existing session.
@@ -27,7 +28,8 @@ the browser cannot enumerate existing sessions safely.
 The catalog contains three original Ludocairn games:
 
 - **[Veilquorum](games/veilquorum/game.md)** — a facilitator-led hidden-role
-  game for a standard 52-card deck, with a structured role guide plus phase,
+  game for a standard 52-card deck, with digital role dealing, private
+  pass-the-device reveals, an optional Game Master overview, and shared phase,
   round, boolean, number, and text tracking.
 - **[Rillward Gambit](games/rillward-gambit/game.md)** — a standard-card
   comparison game about choosing risk, building streaks, and banking score.
@@ -52,7 +54,9 @@ facilitator notes, session rename, confirmed deletion, and automatic local
 saving. Refreshing a tracker URL restores the valid saved session.
 
 - Structured role guides show role purposes, teams, physical card markers, and
-  table-size quantities without automating private assignment.
+  table-size quantities. Games may optionally deal those roles digitally with
+  per-game player and Game Master visibility. The Game Master remains separate
+  from the named player roster and receives no role.
 
 **Print rules** and **Print tracker** open the browser's print dialog. Dedicated
 print styles hide navigation and editing controls, expose current tracker

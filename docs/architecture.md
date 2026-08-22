@@ -64,25 +64,30 @@ boundary. Raw HTML in Markdown is disabled. Game definitions cannot execute
 JavaScript.
 
 Structured role data follows one explicit path. The role domain defines role,
-physical card-marker, distribution, and semantic role-field values. The game
-parser validates and normalizes that YAML, including deck-valid selectors and
-complete player-count coverage. Rules, setup, tracker, and print views then
-pass the same normalized definition to the shared read-only role guide. When a
-session contains a `type: role` player field, its native select displays role
-labels but session operations, local storage, and exports retain the stable
-role ID string.
+physical card-marker, distribution, semantic role-field values, and the
+optional assignment visibility policy. The game parser validates and
+normalizes that YAML, including deck-valid selectors and complete player-count
+coverage. Rules, setup, tracker, and print views pass the same normalized
+definition to the shared read-only role guide.
 
-This flow supplies public setup information, not secret game state. The role
-guide and selector model never choose exact cards, shuffle or deal a deck,
-assign roles to players, reveal private roles, or execute role behavior. Those
-actions remain with the facilitator and the physical rules.
+The guide remains public setup information. When a game opts into digital
+assignments, a pure assignment-domain shuffle expands the active distribution
+and deals one role ID to each named player. Player visibility can expose only
+the current player's role, all roles, or no player screen; Game Master
+visibility can independently expose all assignments behind a spoiler gate.
+The Game Master is a separate unnamed facilitator, does not consume a player
+slot, and never receives a role. The assignment system does not choose exact
+physical cards or execute role behavior.
 
 ### Session domain
 
 Session state contains a session ID, game identity and schema version, players,
-field values, current phase, current round, shared session notes, and creation
-and update timestamps. Pure transformations implement adding and removing
-players, editing fields, changing phases, and changing the round.
+optional immutable player assignments, field values, current phase, current
+round, shared session notes, and creation and update timestamps. Pure
+transformations implement creation and dealing, adding and removing players,
+editing fields, changing phases, and changing the round. Once assignments
+exist, roster mutations and direct role-field edits are rejected; role fields
+mirror their assigned stable role IDs.
 
 The session domain knows the normalized game definition but does not access
 the DOM or `localStorage`. It validates field updates against their definitions
@@ -127,13 +132,18 @@ claiming the fragment namespace intended for future share data.
 2. The game loader parses and validates them into a catalog.
 3. A user selects a public game and reads its shared role guide, when defined,
    alongside the rendered Markdown rules.
-4. Session creation applies defaults from the selected game definition.
-5. Role controls display role labels while UI events pass stable role IDs to
-   pure session transformations.
-6. The storage adapter serializes each validated state change locally.
-7. Reloading validates and restores the stored session.
-8. An explicit export downloads the validated state; an explicit import
-   validates and previews a local file before saving it.
+4. Session creation applies defaults and, for an assignment-enabled game,
+   shuffles the active role distribution across the named players.
+5. The visibility policy chooses a pass-the-device reveal, a public assignment
+   table, or no player screen. A separately gated Game Master view may expose
+   all assignments without creating or naming a Game Master player.
+6. The ordinary tracker suppresses editable role controls and locks the roster
+   after assignments exist.
+7. The storage adapter serializes and validates each state change locally;
+   reloading restores assignments without reshuffling them.
+8. An explicit export downloads the validated state, including private
+   assignments. Import validates and previews a local file without revealing
+   assignment values before saving it.
 
 No application step sends session state across the network.
 
@@ -194,8 +204,9 @@ GitHub Pages artifact; end-to-end tests are not the primary domain test layer.
 Ludocairn does not enable raw HTML in Markdown, evaluate game-authored code,
 or trust deserialized data. Session data remains in this browser's local
 storage unless a user performs an explicit export. Exported JSON contains
-player names, field values, and facilitator notes and must be treated as
-private table material. Import reads locally and does not transmit the file.
+player names, field values, facilitator notes, and any private assignments and
+must be treated as private table material. Import reads locally, keeps
+assignment values out of its preview, and does not transmit the file.
 Future fragment sharing
 must document that fragments avoid server transmission but can still appear in
 browser history, screenshots, copied URLs, extensions, and client-side code.

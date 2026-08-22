@@ -23,7 +23,8 @@ to application code.
 
 - Prefer clear rules over encoding every rule as tracker configuration.
 - Use a boolean field for a two-state fact such as alive/dead.
-- Use a choice field for roles or mutually exclusive statuses.
+- Use a role field for declared roles and a choice field for other mutually
+  exclusive statuses.
 - Use a number field for scores, resources, votes, and counters.
 - Use a text field for freeform notes.
 - Do not embed HTML, JavaScript, remote widgets, or secrets.
@@ -35,8 +36,10 @@ to application code.
 
 ## Scope of version 1
 
-Version 1 configures a reference document and local tracker. It does not deal,
-shuffle, assign roles, enforce turns, hide information per player, or decide a
-winner. If a proposed game needs new behavior, describe the user interaction
-and demonstrate why the existing four field types cannot represent it before
-proposing a schema extension.
+Version 1 configures a reference document and local tracker. Games with
+structured roles and complete distributions may opt into shuffled digital
+assignments, pass-the-device private reveals, and a separate Game Master
+overview. It does not enforce turns, execute role behavior, or decide a winner.
+If a proposed game needs new behavior, describe the user interaction and
+demonstrate why the existing schema cannot represent it before proposing an
+extension.

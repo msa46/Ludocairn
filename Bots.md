@@ -129,7 +129,8 @@ Use the smallest set of fields that makes facilitation easier:
 Use `session.phases` only for a small, repeated phase cycle. Enable
 `session.round` only when a shared round number matters. The tracker records
 values; it does not validate moves, calculate scores, enforce turn order,
-shuffle, deal, assign roles, hide information, or determine a winner.
+execute role behavior, or determine a winner. Digital role dealing is an
+explicit top-level policy described below, not tracker scripting.
 
 Tracker values are shared facilitator-facing state. Do not model secrets there
 unless the game's procedure intentionally makes them visible to the person
@@ -139,8 +140,7 @@ running the tracker.
 
 Top-level `roles` create a shared role guide. Each role has a stable ID, label,
 purpose summary, optional team, and optional physical card marker. A role card
-selector identifies matching cards; it does not choose, reserve, deal, or
-privately assign them.
+selector identifies matching cards; it does not choose or reserve exact cards.
 
 Use `role_distributions` only when every supported table size has a defined
 composition. Its ordered, adjacent bands must cover `players.min` through
@@ -150,6 +150,13 @@ may be `remaining`.
 If players need their roles recorded in the tracker, add a `type: role` player
 field whose default is a declared role ID. Otherwise the guide can exist
 without a role field.
+
+To let Ludocairn deal the distribution, add `assignments` with
+`method: shuffle`. Set `visibility.players` to `own`, `all`, or `none`, and
+`visibility.game_master` to `all` or `none`. Private `own` reveals use a
+pass-the-device sequence. The Game Master is a separate unnamed facilitator,
+never a player record, and receives no role. See `docs/game-format.md` for the
+complete schema, roster-locking behavior, and export privacy requirements.
 
 ### 5. Write a self-contained rulebook
 
@@ -287,13 +294,16 @@ For the new game, confirm all of the following in the browser:
    intended order.
 3. The role guide appears only when configured and shows correct teams, card
    markers, purposes, and table-size quantities.
-4. Session setup accepts a valid player list and warns appropriately outside
+4. When assignments are configured, the dealt roles match the active
+   distribution, each visibility mode exposes only its intended information,
+   and the Game Master has no player name or role.
+5. Session setup accepts a valid player list and warns appropriately outside
    the recommended range.
-5. The tracker contains exactly the configured phases, round control, fields,
+6. The tracker contains exactly the configured phases, round control, fields,
    labels, defaults, bounds, and choices.
-6. Add/remove player, facilitator notes, local save/restore, export, and import
+7. Add/remove player, facilitator notes, local save/restore, export, and import
    still behave as expected for the configured state.
-7. Narrow-screen, keyboard-only, and grayscale output remain usable.
+8. Narrow-screen, keyboard-only, and grayscale output remain usable.
 
 ### Produce the rulebook PDF
 

@@ -48,6 +48,11 @@ role_distributions:
       echo: 1
       drifter: 3
       wayfinder: remaining
+assignments:
+  method: shuffle
+  visibility:
+    players: own
+    game_master: all
 session:
   phases:
     - id: night
@@ -87,22 +92,36 @@ allegiances. The Wayfinders are trying to keep a working quorum. The Drifters
 quietly thin that quorum from within. One Echo can test a suspicion each night,
 but must decide how much to reveal during the day.
 
-The application tracks shared facilitator state. Players still receive their
-roles privately from physical cards.
+The application can shuffle and reveal roles privately on one shared device,
+so physical cards are optional. It also tracks shared facilitator state.
 
 ## What you need
 
 - Five to twelve players.
-- One facilitator who does not hold a role card.
-- A standard deck with matching card backs.
+- One Game Master who is not entered as a player and receives no role.
+- One shared device, or a standard deck with matching card backs if the group
+  prefers physical role markers.
 - A way for everyone to sit where the facilitator can identify them.
 
-## Prepare the role cards
+## Choose digital or physical roles
 
-The structured role guide shown with these rules summarizes each role, its
-team, its purpose, its physical card marker, and the correct counts for the
-group size. To prepare those markers without the application, choose cards by
-suit using the complete table below. Rank does not matter.
+For digital roles, start a session, enter only the five to twelve players, and
+leave the Game Master outside the named roster. Ludocairn creates the correct
+role mix, shuffles it, and begins a pass-the-device reveal. Each player must
+reveal, memorize, and hide their own role before passing the neutral screen to
+the next player. After all reveals, the Game Master can open the separately
+gated **Game Master assignments** view when the rules require a complete
+overview.
+
+The ordinary tracker does not show assigned role controls, and its roster is
+locked after dealing. Exported session files contain the private assignments;
+handle them as secret table material.
+
+For physical roles, use the structured role guide shown with these rules. It
+summarizes each role, its team, its purpose, its physical card marker, and the
+correct counts for the group size. Choose cards by suit using the table below.
+
+Rank does not matter.
 
 | Players | Drifters | Echoes | Wayfinders |
 | --- | ---: | ---: | ---: |
@@ -116,9 +135,11 @@ the Echo role to the player holding the heart, and the Wayfinder role to every
 player holding a club or diamond. The cards are physical role markers; players
 keep them hidden until the game ends.
 
-In the tracker, add every player and record the corresponding role. Leave all
-players active, set every Signals value to zero, begin at Night, and begin with
-round one.
+With physical cards, create the tracker before dealing or open an older saved
+session and record the corresponding role. With a digital deal, those role
+values are recorded automatically and kept out of ordinary player cards.
+Leave all players active, set every Signals value to zero, begin at Night, and
+begin with round one.
 
 ## Objectives
 
@@ -171,7 +192,8 @@ After resolving the count:
 
 ## Table rules
 
-- A player may not show a role card before the game ends.
+- A player may not show a physical role card or private digital reveal before
+  the game ends.
 - Inactive players do not reveal roles and cannot communicate game information.
 - The facilitator resolves unclear gestures neutrally and records private
   details in the clue field or shared notes.
@@ -183,6 +205,7 @@ After resolving the count:
 ## Closing the game
 
 When an objective is met, announce the winning side and let everyone reveal
-their cards. Review the tracker together only if the group wants to discuss
-how its reads changed. Start a new session for a rematch so the previous
-facilitator notes remain intact.
+their physical cards or announce their digital assignments. Review the Game
+Master view together only if the group wants to discuss how its reads changed.
+Start a new session for a rematch so the previous facilitator notes and private
+assignments remain intact.

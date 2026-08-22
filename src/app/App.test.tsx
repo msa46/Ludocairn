@@ -11,13 +11,17 @@ const catalog = loadBundledGames()
 if (!catalog.ok) throw new Error('Bundled catalog fixture failed to load')
 const veilquorum = catalog.games.find((game) => game.id === 'veilquorum')
 if (!veilquorum) throw new Error('Veilquorum fixture was not found')
+const trackerVeilquorum: GameDefinition = {
+  ...veilquorum,
+  assignments: undefined,
+}
 const rillwardGambit = catalog.games.find(
   (game) => game.id === 'rillward-gambit',
 )
 if (!rillwardGambit) throw new Error('Rillward Gambit fixture was not found')
 
 const structuredVeilquorum = {
-  ...veilquorum,
+  ...trackerVeilquorum,
   roles: [
     {
       id: 'echo',
@@ -53,7 +57,7 @@ const structuredVeilquorum = {
       counts: { echo: 1, drifter: 3, wayfinder: 'remaining' },
     },
   ],
-  fields: veilquorum.fields.map((field) =>
+  fields: trackerVeilquorum.fields.map((field) =>
     field.id === 'role'
       ? {
           id: 'role',
@@ -63,7 +67,7 @@ const structuredVeilquorum = {
         }
       : field,
   ),
-} satisfies typeof veilquorum
+} satisfies GameDefinition
 
 const privateAssignmentVeilquorum = {
   ...structuredVeilquorum,
@@ -108,6 +112,10 @@ const gameJourneys = [
     ],
   },
 ] as const
+
+const journeyGames = catalog.games.map((game) =>
+  game.id === trackerVeilquorum.id ? trackerVeilquorum : game,
+)
 
 function ids(...values: string[]): IdProvider {
   let index = 0
@@ -454,10 +462,10 @@ describe('App', () => {
   })
 
   it('completes and resumes a persisted Veilquorum session', async () => {
-    const repository = new MemorySessionRepository(() => veilquorum)
+    const repository = new MemorySessionRepository(() => trackerVeilquorum)
     render(
       <App
-        games={[veilquorum]}
+        games={[trackerVeilquorum]}
         repository={repository}
         clock={() => '2026-08-21T18:00:00.000Z'}
         ids={ids('session-1', 'player-1', 'player-2')}
@@ -522,10 +530,10 @@ describe('App', () => {
   })
 
   it('renames a player and restores that name from the saved session', async () => {
-    const repository = new MemorySessionRepository(() => veilquorum)
+    const repository = new MemorySessionRepository(() => trackerVeilquorum)
     render(
       <App
-        games={[veilquorum]}
+        games={[trackerVeilquorum]}
         repository={repository}
         clock={() => '2026-08-21T20:00:00.000Z'}
         ids={ids('session-rename', 'player-rename')}
@@ -570,16 +578,16 @@ describe('App', () => {
   it.each(gameJourneys)(
     'starts a $name session with its configured tracker controls',
     ({ id, name, controls }) => {
-      const game = catalog.games.find((candidate) => candidate.id === id)
+      const game = journeyGames.find((candidate) => candidate.id === id)
       expect(game, `${name} fixture`).toBeDefined()
       if (!game) return
 
       const repository = new MemorySessionRepository((candidateId) =>
-        catalog.games.find((candidate) => candidate.id === candidateId),
+        journeyGames.find((candidate) => candidate.id === candidateId),
       )
       render(
         <App
-          games={catalog.games}
+          games={journeyGames}
           repository={repository}
           clock={() => '2026-08-21T19:00:00.000Z'}
           ids={ids(`${id}-session`, `${id}-player`)}

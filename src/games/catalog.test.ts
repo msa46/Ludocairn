@@ -110,6 +110,10 @@ describe('loadBundledGames', () => {
         counts: { echo: 1, drifter: 3, wayfinder: 'remaining' },
       },
     ])
+    expect(veilquorum.assignments).toEqual({
+      method: 'shuffle',
+      visibility: { players: 'own', gameMaster: 'all' },
+    })
     expect(veilquorum.fields.find(({ id }) => id === 'role')).toMatchObject({
       type: 'role',
       default: 'wayfinder',

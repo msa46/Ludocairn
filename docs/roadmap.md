@@ -51,8 +51,24 @@ contents and metadata.
 - [x] Publish Veilquorum as the first structured-role game while keeping
   Rillward Gambit and Sereinfolio roleless.
 
-Automated role assignment, private reveals, and scripted role behavior remain
-future work and are outside the structured guide's scope.
+Scripted role behavior remains future work and is outside the structured
+guide's scope.
+
+## Digital role assignments
+
+- [x] Add opt-in shuffled role assignments backed by existing structured roles
+  and complete player-count distributions.
+- [x] Add configurable player visibility for private pass-the-device reveals,
+  public assignments, or no player assignment screen.
+- [x] Add an independently configurable, spoiler-gated Game Master overview.
+  The Game Master is separate, unnamed, and never receives a role.
+- [x] Persist and validate immutable assignments, lock dealt rosters, suppress
+  editable role fields, and keep assignment values out of import previews.
+- [x] Enable digital assignments for Veilquorum while retaining its physical
+  role procedure as a fallback.
+
+This increment is implemented and covered by automated tests. It has not yet
+been deployed or manually verified on the live site.
 
 The structured role increment was locally release-verified on 2026-08-21 from
 the production artifact at 320- and 1440-pixel viewport widths. Veilquorum's

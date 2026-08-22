@@ -8,8 +8,8 @@ game in a normal text editor and contribute it through a pull request without
 writing application code.
 
 The first format is intentionally small. It describes tracker state and deck
-references; it does not automate rules, assign cards, run scripts, or model
-private player knowledge.
+references and can optionally shuffle configured roles into private player
+assignments. It does not automate rules, choose physical cards, or run scripts.
 
 ## File location
 
@@ -97,6 +97,12 @@ role_distributions:
       drifter: 3
       wayfinder: remaining
 
+assignments:
+  method: shuffle
+  visibility:
+    players: own
+    game_master: all
+
 session:
   phases:
     - id: night
@@ -159,6 +165,7 @@ Place the rules after the closing frontmatter delimiter.
 | `players` | yes | Supported player-count constraints. |
 | `roles` | no | Non-empty ordered role definitions for the shared role guide. |
 | `role_distributions` | no | Ordered role counts covering every supported player count. |
+| `assignments` | no | Digital role-dealing method and per-game visibility policy. |
 | `session` | yes | Tracker configuration. |
 
 Unknown fields are rejected in version 1. This catches misspellings and keeps
@@ -202,9 +209,49 @@ distributions cannot be defined without roles.
 Games that omit these optional properties normalize to empty role and
 distribution arrays and render no role guide.
 
-The guide is public, shared reference material. Ludocairn does not deal cards,
-make private role assignments, or reveal private roles; the facilitator and
-the game's physical procedure remain responsible for those actions.
+The guide itself is always public, shared reference material. A game that
+omits `assignments` remains guide-only and leaves dealing to its physical
+procedure.
+
+### Digital assignments and visibility
+
+Games may opt into digital role dealing with:
+
+```yaml
+assignments:
+  method: shuffle
+  visibility:
+    players: own
+    game_master: all
+```
+
+Version 1 supports only `method: shuffle`. Assignments require `roles`, a
+finite `players.max`, and complete `role_distributions`, so the application
+uses the existing authored composition rather than a second role model.
+
+`visibility.players` controls the player-facing result:
+
+- `own` provides a pass-the-device sequence. The next player's name appears
+  before a deliberate reveal, only that player's assignment mounts while it is
+  revealed, and hiding it removes the secret before the device is passed on.
+- `all` shows every player and assignment together as public information.
+- `none` provides no player assignment screen.
+
+`visibility.game_master` is either `all` or `none`. With `all`, a deliberate
+spoiler confirmation opens an overview of every assignment; closing it removes
+the overview and resets the gate. The Game Master is a separate facilitator,
+not a named player: they do not consume a roster place and never receive a
+role or assignment.
+
+Dealing creates one immutable assignment per named player, exactly matching
+the active distribution. The roster cannot be added to or reduced afterward,
+and configured role fields are mirrored from the assignment instead of being
+editable in the ordinary tracker. Older assignment-enabled sessions that do
+not yet contain assignments remain valid and offer an explicit deal action.
+
+Saved and exported sessions retain assignments so they can be restored.
+Exported files are therefore private table material. Import previews report
+that private assignments are present without displaying their values.
 
 ### Phases and rounds
 
