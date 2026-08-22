@@ -3,8 +3,10 @@
 Ludocairn is an open-source, static web application for reading, running,
 tracking, exporting, and printing tabletop card games. It runs entirely in the
 browser: there is no account, backend, database, analytics service, cloud
-sync, or background data transfer. After its offline shell has been installed,
-it has no runtime network dependency for bundled games and local sessions.
+sync, background sync, or background transfer of session/private data. While
+the page is open, it may check for updates by fetching only application-version
+metadata and assets. After its offline shell has been installed, it has no
+runtime network dependency for bundled games and local sessions.
 
 ## Privacy and session files
 

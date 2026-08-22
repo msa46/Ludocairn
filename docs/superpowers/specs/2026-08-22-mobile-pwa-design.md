@@ -12,8 +12,9 @@ verification pending
 Ludocairn is already a browser-only, local-first tabletop toolkit. This
 milestone makes the same static application installable and reliably usable
 offline after one successful online load. It does not introduce accounts,
-cloud storage, analytics, background data transfer, or a second persistence
-system.
+cloud storage, analytics, background sync, background transfer of
+session/private data, or a second persistence system. While the page is open,
+foreground update checks fetch only application-version metadata and assets.
 
 The PWA must remain a normal website when it is not installed. Installation is
 optional, the GitHub Pages repository-subpath deployment remains supported,
@@ -98,7 +99,7 @@ Navigation requests within the worker's scope fall back to the precached
 `index.html`. Workbox's precache matching ignores the application query string
 for this shell route, allowing offline reloads of catalog, game, session, and
 assignment URLs. Paths outside the deployment scope and HTTP(S) requests to
-other origins are never intercepted or cached.
+other origins are not handled or cached by these routes.
 
 `localStorage` operations do not pass through a service worker. The worker
 therefore cannot read, cache, transmit, or delete session records. Cache
@@ -111,13 +112,14 @@ it does today.
 A focused PWA registration module owns the browser/plugin boundary. It reports
 these states to React:
 
-- `unsupported`: service workers are unavailable; the normal website remains
-  fully usable;
-- `registering` or `current`: no user-facing interruption is required;
+- `current`: no user-facing interruption is required;
 - `offline-ready`: the current version finished precaching and can be used
   offline;
 - `update-available`: a newer worker is installed and waiting; or
 - `error`: registration or activation failed without breaking the application.
+
+Browsers without service-worker support silently retain the normal website and
+the `current` state; there is no `unsupported` or `registering` UI state.
 
 React shows a compact, accessible status notice for `offline-ready`,
 `update-available`, and `error`. The offline-ready confirmation may be
@@ -248,7 +250,8 @@ These boundaries are listed only to prevent the PWA milestone from silently
 expanding; no additional product work is proposed for them:
 
 - Accounts, authentication, or cloud synchronization
-- Analytics, telemetry, advertising, or background data transfer
+- Analytics, telemetry, advertising, or background transfer of session/private
+  data
 - Push notifications, background sync, or periodic background sync
 - Runtime caching of third-party resources or APIs
 - Custom install prompts or forced installation

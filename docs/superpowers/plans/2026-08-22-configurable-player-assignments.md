@@ -2,6 +2,10 @@
 
 **Status:** Implemented; live release verification pending.
 
+**Evidence note:** Preserved commits, tests, and documentation prove delivered
+behavior and passing gates, but do not retain historical RED runs or a manual
+mutation review. Those process-only verification steps remain unchecked.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add per-game digital role dealing, private pass-the-phone reveals, and an optional gated Game Master overview without changing games that do not opt in.
@@ -94,7 +98,7 @@ expect(result).toMatchObject({
 })
 ```
 
-- [x] **Step 2: Run the focused test and verify RED**
+- [ ] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- src/games/parse.test.ts`
 
@@ -189,7 +193,7 @@ expect(dealt).toEqual({
 
 The fixture distribution must be `{ echo: 1, drifter: 1, wayfinder: remaining }`. Derive the expected order by hand from an in-place Fisher-Yates shuffle whose random value is always zero.
 
-- [x] **Step 2: Run the new test and verify RED**
+- [ ] **Step 2: Run the new test and verify RED**
 
 Run: `npm test -- src/assignments/deal.test.ts`
 
@@ -310,7 +314,7 @@ expect(result).toMatchObject({
 
 Also assert each player's `type: role` field mirrors their assigned `roleId`.
 
-- [x] **Step 2: Run the focused session test and verify RED**
+- [ ] **Step 2: Run the focused session test and verify RED**
 
 Run: `npm test -- src/sessions/operations.test.ts`
 
@@ -421,7 +425,7 @@ expect(validateSession(validSession, assignmentGame)).toEqual({
 
 Add one mutation test per assignment-domain diagnostic and assert it is wrapped as `session.invalid-assignments` with the assignment path preserved.
 
-- [x] **Step 2: Run validation tests and verify RED**
+- [ ] **Step 2: Run validation tests and verify RED**
 
 Run: `npm test -- src/sessions/validate.test.ts`
 
@@ -522,7 +526,7 @@ expect(screen.getByRole('heading', { name: 'Pass the device to Bob' })).toBeInTh
 expect(screen.queryByText('Echo')).not.toBeInTheDocument()
 ```
 
-- [x] **Step 2: Run the new component test and verify RED**
+- [ ] **Step 2: Run the new component test and verify RED**
 
 Run: `npm test -- src/app/components/PlayerAssignmentView.test.tsx`
 
@@ -605,7 +609,7 @@ expect(screen.queryByText('Drifter')).not.toBeInTheDocument()
 
 Reopen and assert the warning appears again. Render a `game_master: none` fixture and assert the entry button is absent.
 
-- [x] **Step 2: Run the gate test and verify RED**
+- [ ] **Step 2: Run the gate test and verify RED**
 
 Run: `npm test -- src/app/components/GameMasterAssignments.test.tsx`
 
@@ -756,7 +760,7 @@ git commit -m "docs: publish digital role dealing guidance"
 - Consumes: all completed increments.
 - Produces: release-gate evidence for the final handoff.
 
-- [x] **Step 1: Run the assignment mutation checklist mentally against tests**
+- [ ] **Step 1: Run the assignment mutation checklist mentally against tests**
 
 Confirm a test fails for each mutation:
 

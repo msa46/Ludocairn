@@ -181,7 +181,7 @@ Acceptance criteria:
 
 ## Later milestones
 
-### Planned mobile PWA milestone
+### Mobile PWA implementation
 
 **Status:** Implemented; local browser, deployment, and physical-device
 verification pending.
@@ -206,8 +206,9 @@ what has actually been observed:
 
 The implementation keeps installation optional, requires one successful online
 load before offline use, and preserves browser-local sessions without caching
-or transmitting them. Accounts, analytics, cloud sync, and background data
-transfer remain out of scope.
+or transmitting them. Accounts, analytics, cloud sync, background sync, and
+background transfer of session/private data remain out of scope. While the page
+is open, update checks fetch only application-version metadata and assets.
 
 Later work may add file sharing, compact fragment sharing for suitably small
 state, custom deck definitions, printable role/reference sheets, scripted role

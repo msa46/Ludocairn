@@ -178,15 +178,16 @@ the application query string for that shell match, so an installed application
 can reload catalog, game, session, and assignment URLs carrying `?game=`,
 `?session=`, or `?view=` after one successful online production load. An
 offline first visit cannot work. Requests outside the deployment scope and
-other origins are not intercepted.
+other origins are not handled or cached by these routes.
 
-The application has no runtime data cache, API cache, background sync,
-periodic background work, or background data transfer. Service workers do not
-intercept `localStorage` operations: they cannot read, cache, transmit, or
-delete session records. Workbox cleanup removes only obsolete
-Workbox-owned application caches. Browser site-data clearing can still remove
-both those caches and browser-local sessions, so the export flow remains the
-user's backup boundary.
+The application has no runtime data cache, API cache, background sync, or
+background transfer of session/private data. While the page is open, the
+registration boundary performs periodic foreground update checks that fetch
+only application-version metadata and assets. Service workers do not intercept
+`localStorage` operations: they cannot read, cache, transmit, or delete session
+records. Workbox cleanup removes only obsolete Workbox-owned application
+caches. Browser site-data clearing can still remove both those caches and
+browser-local sessions, so the export flow remains the user's backup boundary.
 
 PWA registration is isolated in `src/pwa`. A waiting worker never replaces the
 running application automatically. The registration boundary checks for
