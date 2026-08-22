@@ -13,17 +13,91 @@ import { verifyStaticBuild } from './verify-static-build.mjs'
 
 const temporaryDirectories: string[] = []
 
+const validManifest = {
+  name: 'Ludocairn',
+  short_name: 'Ludocairn',
+  description:
+    'Define, run, track, and print tabletop card games with Ludocairn.',
+  id: './',
+  start_url: './',
+  scope: './',
+  display: 'standalone',
+  theme_color: '#25211f',
+  background_color: '#f7f1e7',
+  icons: [
+    {
+      src: './icons/ludocairn-192.png',
+      sizes: '192x192',
+      type: 'image/png',
+      purpose: 'any',
+    },
+    {
+      src: './icons/ludocairn-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'any',
+    },
+    {
+      src: './icons/ludocairn-maskable-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'maskable',
+    },
+  ],
+}
+
+const validPwaHead =
+  '<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/ludocairn-192.png">'
+
+const validWorker =
+  'define(["./workbox-hash"],function(e){e.precacheAndRoute([{url:"index.html",revision:"index-revision"}],{})})'
+
+const validEntryAssets =
+  '<script type="module" src="./assets/app.js"></script><link rel="stylesheet" href="./assets/app.css">'
+
+const validEntryFiles = {
+  'assets/app.js': 'console.log("Ludocairn")',
+  'assets/app.css': 'body {}',
+}
+
+function manifestJson(overrides: Record<string, unknown> = {}) {
+  return JSON.stringify({ ...validManifest, ...overrides })
+}
+
+function expectedVerification(entryAssets: readonly string[]) {
+  return {
+    entryAssets,
+    manifest: './manifest.webmanifest',
+    serviceWorker: 'sw.js',
+    precachedShell: true,
+  }
+}
+
 function createDist(
   indexHtml: string,
-  assets: Record<string, string> = {},
-  options: { branded?: boolean } = {},
+  assets: Record<string, string | null> = {},
+  options: { branded?: boolean; pwaHead?: string } = {},
 ) {
   const directory = mkdtempSync(join(tmpdir(), 'deckwright-static-'))
   temporaryDirectories.push(directory)
   const identity = options.branded === false ? '' : '<title>Ludocairn</title>'
-  writeFileSync(join(directory, 'index.html'), `${identity}${indexHtml}`)
+  const pwaHead = options.pwaHead ?? validPwaHead
+  writeFileSync(
+    join(directory, 'index.html'),
+    `${identity}${pwaHead}${indexHtml}`,
+  )
 
-  for (const [relativePath, contents] of Object.entries(assets)) {
+  const fixtureAssets: Record<string, string | null> = {
+    'manifest.webmanifest': JSON.stringify(validManifest),
+    'sw.js': validWorker,
+    'icons/ludocairn-192.png': '192 icon',
+    'icons/ludocairn-512.png': '512 icon',
+    'icons/ludocairn-maskable-512.png': 'maskable icon',
+    ...assets,
+  }
+
+  for (const [relativePath, contents] of Object.entries(fixtureAssets)) {
+    if (contents === null) continue
     const outputPath = join(directory, relativePath)
     mkdirSync(join(outputPath, '..'), { recursive: true })
     writeFileSync(outputPath, contents)
@@ -57,10 +131,9 @@ describe('verifyStaticBuild', () => {
       },
     )
 
-    expect(verifyStaticBuild(directory)).toEqual([
-      './assets/app.js',
-      './assets/app.css',
-    ])
+    expect(verifyStaticBuild(directory)).toEqual(
+      expectedVerification(['./assets/app.js', './assets/app.css']),
+    )
   })
 
   it('recognizes asset attributes across case, spacing, and quote forms', () => {
@@ -72,10 +145,9 @@ describe('verifyStaticBuild', () => {
       },
     )
 
-    expect(verifyStaticBuild(directory)).toEqual([
-      './assets/app.js',
-      './assets/app.css',
-    ])
+    expect(verifyStaticBuild(directory)).toEqual(
+      expectedVerification(['./assets/app.js', './assets/app.css']),
+    )
   })
 
   it('ignores navigational anchor hrefs', () => {
@@ -87,10 +159,9 @@ describe('verifyStaticBuild', () => {
       },
     )
 
-    expect(verifyStaticBuild(directory)).toEqual([
-      './assets/app.js',
-      './assets/app.css',
-    ])
+    expect(verifyStaticBuild(directory)).toEqual(
+      expectedVerification(['./assets/app.js', './assets/app.css']),
+    )
   })
 
   it('ignores asset-like text inside another tag attribute', () => {
@@ -102,10 +173,383 @@ describe('verifyStaticBuild', () => {
       },
     )
 
-    expect(verifyStaticBuild(directory)).toEqual([
-      './assets/app.js',
-      './assets/app.css',
-    ])
+    expect(verifyStaticBuild(directory)).toEqual(
+      expectedVerification(['./assets/app.js', './assets/app.css']),
+    )
+  })
+
+  it('matches manifest and Apple touch icon rel values as case-insensitive tokens', () => {
+    const directory = createDist(validEntryAssets, validEntryFiles, {
+      pwaHead:
+        '<link href="./manifest.webmanifest" rel="alternate MANIFEST"><link href="./icons/ludocairn-192.png" rel="APPLE-TOUCH-ICON precomposed">',
+    })
+
+    expect(verifyStaticBuild(directory)).toEqual(
+      expectedVerification(['./assets/app.js', './assets/app.css']),
+    )
+  })
+
+  it('rejects an entry document without a manifest rel token', () => {
+    const directory = createDist(validEntryAssets, validEntryFiles, {
+      pwaHead:
+        '<link rel="manifestly" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/ludocairn-192.png">',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document must contain exactly one manifest link.',
+    )
+  })
+
+  it('rejects multiple manifest links', () => {
+    const directory = createDist(validEntryAssets, validEntryFiles, {
+      pwaHead: `${validPwaHead}<link rel="manifest" href="./manifest.webmanifest">`,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document must contain exactly one manifest link.',
+    )
+  })
+
+  it('rejects a root-absolute manifest link', () => {
+    const directory = createDist(validEntryAssets, validEntryFiles, {
+      pwaHead:
+        '<link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/ludocairn-192.png">',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Root-absolute manifest URL is not GitHub Pages safe: /manifest.webmanifest',
+    )
+  })
+
+  it('rejects malformed manifest JSON', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': '{"name":',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Manifest is not valid JSON: ./manifest.webmanifest',
+    )
+  })
+
+  it.each([
+    { label: 'array', manifest: [] },
+    { label: 'null', manifest: null },
+    { label: 'string', manifest: 'Ludocairn' },
+  ])('rejects a manifest whose JSON root is $label', ({ manifest }) => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': JSON.stringify(manifest),
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Manifest must be a JSON object.',
+    )
+  })
+
+  it.each([
+    { member: 'name', value: 42 },
+    { member: 'short_name', value: null },
+    { member: 'description', value: [] },
+    { member: 'id', value: false },
+    { member: 'start_url', value: {} },
+    { member: 'scope', value: 1 },
+    { member: 'display', value: 'browser' },
+    { member: 'theme_color', value: '#ffffff' },
+    { member: 'background_color', value: undefined },
+  ])(
+    'rejects an invalid required manifest member $member',
+    ({ member, value }) => {
+      const directory = createDist(validEntryAssets, {
+        ...validEntryFiles,
+        'manifest.webmanifest': manifestJson({ [member]: value }),
+      })
+
+      expect(() => verifyStaticBuild(directory)).toThrow(
+        `Manifest member "${member}"`,
+      )
+    },
+  )
+
+  it('rejects a non-array manifest icons member', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons: {} }),
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Manifest member "icons" must be an array.',
+    )
+  })
+
+  it.each([
+    { label: '192x192', removedIndex: 0, purpose: 'any' },
+    { label: '512x512', removedIndex: 1, purpose: 'any' },
+    { label: 'maskable', removedIndex: 2, purpose: 'maskable' },
+  ])(
+    'rejects a manifest without its required $label icon',
+    ({ removedIndex, label }) => {
+      const icons = validManifest.icons.filter(
+        (_icon, index) => index !== removedIndex,
+      )
+      const directory = createDist(validEntryAssets, {
+        ...validEntryFiles,
+        'manifest.webmanifest': manifestJson({ icons }),
+      })
+
+      expect(() => verifyStaticBuild(directory)).toThrow(
+        `Manifest must include a ${label}`,
+      )
+    },
+  )
+
+  it('treats icon purpose as a space-separated token list', () => {
+    const icons = validManifest.icons.map((icon, index) =>
+      index === 2 ? { ...icon, purpose: 'any maskable' } : icon,
+    )
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons }),
+    })
+
+    expect(verifyStaticBuild(directory)).toEqual(
+      expectedVerification(['./assets/app.js', './assets/app.css']),
+    )
+  })
+
+  it('ignores unknown icon purpose tokens when a recognized token remains', () => {
+    const icons = validManifest.icons.map((icon, index) =>
+      index === 2 ? { ...icon, purpose: 'maskable vendor-purpose' } : icon,
+    )
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons }),
+    })
+
+    expect(verifyStaticBuild(directory)).toEqual(
+      expectedVerification(['./assets/app.js', './assets/app.css']),
+    )
+  })
+
+  it('does not accept a substring as the maskable purpose token', () => {
+    const icons = validManifest.icons.map((icon, index) =>
+      index === 2 ? { ...icon, purpose: 'not-maskable' } : icon,
+    )
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons }),
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Manifest must include a maskable 512x512 PNG icon.',
+    )
+  })
+
+  it('matches manifest purpose tokens case-sensitively', () => {
+    const icons = validManifest.icons.map((icon, index) =>
+      index === 2 ? { ...icon, purpose: 'MASKABLE' } : icon,
+    )
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons }),
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Manifest must include a maskable 512x512 PNG icon.',
+    )
+  })
+
+  it.each(['src', 'sizes', 'type', 'purpose'])(
+    'rejects a non-string manifest icon %s member',
+    (member) => {
+      const icons = validManifest.icons.map((icon, index) =>
+        index === 0 ? { ...icon, [member]: 192 } : icon,
+      )
+      const directory = createDist(validEntryAssets, {
+        ...validEntryFiles,
+        'manifest.webmanifest': manifestJson({ icons }),
+      })
+
+      expect(() => verifyStaticBuild(directory)).toThrow(
+        `Manifest icon 1 member "${member}" must be a non-empty string.`,
+      )
+    },
+  )
+
+  it.each([
+    {
+      label: 'root-absolute',
+      src: '/icons/ludocairn-192.png',
+      error:
+        'Root-absolute manifest icon URL is not GitHub Pages safe: /icons/ludocairn-192.png',
+    },
+    {
+      label: 'HTTP remote',
+      src: 'https://example.com/icon.png',
+      error:
+        'Remote manifest icon URL is not allowed: https://example.com/icon.png',
+    },
+    {
+      label: 'protocol-relative remote',
+      src: '//example.com/icon.png',
+      error: 'Remote manifest icon URL is not allowed: //example.com/icon.png',
+    },
+    {
+      label: 'traversal',
+      src: '%2e%2e/icon.png',
+      error:
+        'Referenced manifest icon resolves outside the static artifact: %2e%2e/icon.png',
+    },
+    {
+      label: 'missing',
+      src: './icons/missing.png',
+      error: 'Referenced manifest icon is missing: ./icons/missing.png',
+    },
+  ])('rejects a $label manifest icon URL', ({ src, error }) => {
+    const icons = validManifest.icons.map((icon, index) =>
+      index === 0 ? { ...icon, src } : icon,
+    )
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons }),
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(error)
+  })
+
+  it('rejects a directory referenced as a manifest icon', () => {
+    const icons = validManifest.icons.map((icon, index) =>
+      index === 0 ? { ...icon, src: './icons/directory/' } : icon,
+    )
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons }),
+    })
+    mkdirSync(join(directory, 'icons', 'directory'))
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced manifest icon is not a file: ./icons/directory/',
+    )
+  })
+
+  it('rejects a manifest icon symlinked outside the artifact', () => {
+    const externalAsset = createExternalAsset()
+    const icons = validManifest.icons.map((icon, index) =>
+      index === 0 ? { ...icon, src: './icons/external.png' } : icon,
+    )
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons }),
+    })
+    symlinkSync(externalAsset, join(directory, 'icons', 'external.png'))
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced manifest icon resolves outside the static artifact: ./icons/external.png',
+    )
+  })
+
+  it('rejects an artifact without a root service worker', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': null,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced service worker is missing: sw.js',
+    )
+  })
+
+  it('rejects a worker without index.html in its Workbox precache', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js':
+        '// precacheAndRoute([{url:"index.html"}])\nconst message = "index.html must be cached"; workbox.precacheAndRoute([{url:"assets/app.js",revision:null}], {})',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Service worker does not precache index.html.',
+    )
+  })
+
+  it('does not treat an index.html URL in Workbox options as a precache entry', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': 'workbox.precacheAndRoute([], {url:"index.html"})',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Service worker does not precache index.html.',
+    )
+  })
+
+  it.each([
+    'https://example.com/runtime.js',
+    '//example.com/runtime.js',
+    'https%3A%2F%2Fexample.com%2Fruntime.js',
+  ])('rejects a remote runtime URL in the service worker: %s', (url) => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': `${validWorker}; fetch("${url}")`,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Remote runtime asset URL is not allowed in service worker: ${url}`,
+    )
+  })
+
+  it('rejects a JavaScript-escaped remote runtime URL in the service worker', () => {
+    const encodedUrl = String.raw`\x68ttps:\x2f\x2fexample.com/runtime.js`
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': `${validWorker}; fetch("${encodedUrl}")`,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Remote runtime asset URL is not allowed in service worker: ${encodedUrl}`,
+    )
+  })
+
+  it('ignores remote-looking Workbox comments and diagnostic strings', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': `${validWorker}; /* https://developer.chrome.com/docs/workbox/ */ const warning = "Learn more at https://bit.ly/wb-precache"`,
+    })
+
+    expect(verifyStaticBuild(directory)).toEqual(
+      expectedVerification(['./assets/app.js', './assets/app.css']),
+    )
+  })
+
+  it('rejects an entry document without an Apple touch icon rel token', () => {
+    const directory = createDist(validEntryAssets, validEntryFiles, {
+      pwaHead:
+        '<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-iconish" href="./icons/ludocairn-192.png">',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document must contain exactly one Apple touch icon link.',
+    )
+  })
+
+  it('rejects multiple Apple touch icon links', () => {
+    const directory = createDist(validEntryAssets, validEntryFiles, {
+      pwaHead: `${validPwaHead}<link rel="apple-touch-icon" href="./icons/ludocairn-512.png">`,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document must contain exactly one Apple touch icon link.',
+    )
+  })
+
+  it('rejects a root-absolute Apple touch icon', () => {
+    const directory = createDist(validEntryAssets, validEntryFiles, {
+      pwaHead:
+        '<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/ludocairn-192.png">',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Root-absolute Apple touch icon URL is not GitHub Pages safe: /icons/ludocairn-192.png',
+    )
   })
 
   it('rejects an entry document without the Ludocairn identity', () => {
