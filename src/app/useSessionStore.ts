@@ -12,22 +12,29 @@ export function useSessionStore(repository: SessionRepository) {
 
   const save = useCallback(
     (nextSession: Session) => {
-      pendingSession.current = undefined
       const saved = repository.save(nextSession)
       setSaveStatus(
         saved.ok ? 'Saved' : 'Not saved — ' + saved.diagnostic.message,
       )
+      if (saved.ok) pendingSession.current = undefined
       return saved.ok
     },
     [repository],
   )
 
+  const flushPendingSave = useCallback(() => {
+    window.clearTimeout(saveTimer.current)
+    saveTimer.current = undefined
+    const pending = pendingSession.current
+    if (!pending) return true
+    return save(pending)
+  }, [save])
+
   useEffect(
     () => () => {
-      window.clearTimeout(saveTimer.current)
-      if (pendingSession.current) repository.save(pendingSession.current)
+      flushPendingSave()
     },
-    [repository],
+    [flushPendingSave],
   )
 
   const open = useCallback(
@@ -72,5 +79,13 @@ export function useSessionStore(repository: SessionRepository) {
     pendingSession.current = undefined
   }, [])
 
-  return { session, saveStatus, error, open, accept, cancelPendingSave }
+  return {
+    session,
+    saveStatus,
+    error,
+    open,
+    accept,
+    cancelPendingSave,
+    flushPendingSave,
+  }
 }
