@@ -252,6 +252,13 @@ export function App({
       <footer className="site-footer print-hidden">
         <p>Static by design. No account or backend required.</p>
         <p>Your saved sessions remain on this device.</p>
+        <p>
+          For AI assistants:{' '}
+          <a href="https://github.com/msa46/Deckwright/blob/main/Bots.md">
+            AI game translation guide
+          </a>
+          .
+        </p>
       </footer>
     </div>
   )

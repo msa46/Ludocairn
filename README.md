@@ -103,6 +103,13 @@ with [the author guide](games/README.md), follow the exact
 `RIGHTS.md`, and run `npm run ci`. New content must be independently authored
 or have documented compatible rights and attribution.
 
+### AI assistants and coding agents
+
+Start with the [AI game-translation guide](Bots.md). It gives ChatGPT and other
+tools an end-to-end workflow for mapping game mechanics to Ludocairn's schema,
+writing the rulebook and rights record, validating the generated experience,
+and producing a rulebook PDF through the browser print flow.
+
 ## GitHub Pages deployment
 
 Vite produces one static `dist/index.html` with relative, bundled assets. The

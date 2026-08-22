@@ -123,6 +123,18 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
+  it('links AI tools to the repository game-translation guide', () => {
+    const repository = new MemorySessionRepository(() => veilquorum)
+    render(<App games={[veilquorum]} repository={repository} />)
+
+    expect(
+      screen.getByRole('link', { name: 'AI game translation guide' }),
+    ).toHaveAttribute(
+      'href',
+      'https://github.com/msa46/Deckwright/blob/main/Bots.md',
+    )
+  })
+
   it('shows the shared role guide through setup and live tracker quantities', () => {
     const repository = new MemorySessionRepository(() => structuredVeilquorum)
     render(
