@@ -4,6 +4,7 @@ import { createStandardDeck, createTarotDeck } from '../cards/decks'
 import type { DeckType } from '../cards/model'
 import { selectCards, type CardSelector } from '../cards/select'
 import type {
+  AssignmentDefinition,
   Diagnostic,
   GameDefinition,
   ParseGameResult,
@@ -583,6 +584,91 @@ function parseRoleDistributions(
   return distributions
 }
 
+function parseAssignments(
+  value: unknown,
+  roles: readonly RoleDefinition[],
+  roleDistributions: readonly RoleDistribution[],
+  source: string,
+): AssignmentDefinition | undefined | ParseGameResult {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'assignments must be an object.',
+      'assignments',
+    )
+  }
+  const extra = unknownProperty(value, ['method', 'visibility'])
+  if (extra) {
+    return failure(
+      source,
+      'schema.unknown-property',
+      `Unknown property "assignments.${extra}".`,
+      `assignments.${extra}`,
+    )
+  }
+  if (roles.length === 0 || roleDistributions.length === 0) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'assignments requires roles and complete role_distributions.',
+      'assignments',
+    )
+  }
+  if (value.method !== 'shuffle') {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'assignments.method must be shuffle.',
+      'assignments.method',
+    )
+  }
+  if (!isRecord(value.visibility)) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'assignments.visibility must be an object.',
+      'assignments.visibility',
+    )
+  }
+  const visibilityExtra = unknownProperty(value.visibility, [
+    'players',
+    'game_master',
+  ])
+  if (visibilityExtra) {
+    return failure(
+      source,
+      'schema.unknown-property',
+      `Unknown property "assignments.visibility.${visibilityExtra}".`,
+      `assignments.visibility.${visibilityExtra}`,
+    )
+  }
+  if (!['own', 'all', 'none'].includes(value.visibility.players as string)) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'assignments.visibility.players must be own, all, or none.',
+      'assignments.visibility.players',
+    )
+  }
+  if (!['all', 'none'].includes(value.visibility.game_master as string)) {
+    return failure(
+      source,
+      'schema.invalid-value',
+      'assignments.visibility.game_master must be all or none.',
+      'assignments.visibility.game_master',
+    )
+  }
+  return {
+    method: 'shuffle',
+    visibility: {
+      players: value.visibility.players as 'own' | 'all' | 'none',
+      gameMaster: value.visibility.game_master as 'all' | 'none',
+    },
+  }
+}
+
 function parseField(
   value: unknown,
   index: number,
@@ -848,6 +934,7 @@ function parseMetadata(
     'players',
     'roles',
     'role_distributions',
+    'assignments',
     'session',
   ])
   if (extra) {
@@ -902,6 +989,13 @@ function parseMetadata(
     source,
   )
   if ('ok' in roleDistributions) return roleDistributions
+  const assignments = parseAssignments(
+    metadata.assignments,
+    roles,
+    roleDistributions,
+    source,
+  )
+  if (assignments && 'ok' in assignments) return assignments
   if (!isRecord(metadata.session)) {
     return failure(
       source,
@@ -961,6 +1055,7 @@ function parseMetadata(
     players,
     roles,
     roleDistributions,
+    ...(assignments === undefined ? {} : { assignments }),
     phases,
     ...(phases.length === 0
       ? {}

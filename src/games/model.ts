@@ -31,6 +31,17 @@ export interface RoleDistribution {
   readonly counts: Readonly<Record<string, RoleCount>>
 }
 
+export type PlayerAssignmentVisibility = 'own' | 'all' | 'none'
+export type GameMasterAssignmentVisibility = 'all' | 'none'
+
+export interface AssignmentDefinition {
+  readonly method: 'shuffle'
+  readonly visibility: {
+    readonly players: PlayerAssignmentVisibility
+    readonly gameMaster: GameMasterAssignmentVisibility
+  }
+}
+
 export type RoundDefinition =
   | { readonly enabled: true; readonly initial: number }
   | { readonly enabled: false }
@@ -86,6 +97,7 @@ export interface GameDefinition {
   readonly players: PlayersDefinition
   readonly roles: readonly RoleDefinition[]
   readonly roleDistributions: readonly RoleDistribution[]
+  readonly assignments?: AssignmentDefinition
   readonly phases: readonly PhaseDefinition[]
   readonly initialPhase?: string
   readonly round: RoundDefinition

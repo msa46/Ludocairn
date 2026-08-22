@@ -40,6 +40,11 @@ role_distributions:
     counts: { echo: 1, drifter: 2, wayfinder: remaining }
   - players: { min: 10, max: 12 }
     counts: { echo: 1, drifter: 3, wayfinder: remaining }
+assignments:
+  method: shuffle
+  visibility:
+    players: own
+    game_master: all
 session:
   phases:
     - id: night
@@ -135,6 +140,10 @@ describe('parseGameSource', () => {
             counts: { echo: 1, drifter: 3, wayfinder: 'remaining' },
           },
         ],
+        assignments: {
+          method: 'shuffle',
+          visibility: { players: 'own', gameMaster: 'all' },
+        },
         phases: [
           { id: 'night', label: 'Night' },
           { id: 'day', label: 'Day' },
@@ -203,6 +212,11 @@ role_distributions:
     counts: { echo: 1, drifter: 2, wayfinder: remaining }
   - players: { min: 10, max: 12 }
     counts: { echo: 1, drifter: 3, wayfinder: remaining }
+assignments:
+  method: shuffle
+  visibility:
+    players: own
+    game_master: all
 `,
       '',
     ).replace(
@@ -294,6 +308,11 @@ role_distributions:
     ['an unknown role property', 'id: echo', 'id: echo\n    extra: true', 'schema.unknown-property', 'roles.0.extra'],
     ['an unknown card property', 'label: Heart', 'label: Heart\n      extra: true', 'schema.unknown-property', 'roles.0.card.extra'],
     ['an unknown distribution property', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }', 'counts: { echo: 1, drifter: 1, wayfinder: remaining }\n    extra: true', 'schema.unknown-property', 'role_distributions.0.extra'],
+    ['an unknown assignment method', 'method: shuffle', 'method: ordered', 'schema.invalid-value', 'assignments.method'],
+    ['an unknown player visibility', 'players: own', 'players: team', 'schema.invalid-value', 'assignments.visibility.players'],
+    ['an unknown game master visibility', 'game_master: all', 'game_master: own', 'schema.invalid-value', 'assignments.visibility.game_master'],
+    ['an unknown assignment property', 'method: shuffle', 'method: shuffle\n  extra: true', 'schema.unknown-property', 'assignments.extra'],
+    ['an unknown visibility property', 'players: own', 'players: own\n    extra: true', 'schema.unknown-property', 'assignments.visibility.extra'],
   ])('%s is rejected with a stable path', (_name, search, replacement, code, path) => {
     const result = parseGameSource(replaceOnce(search, replacement), 'broken/game.md')
 
@@ -335,6 +354,63 @@ role_distributions:
     })
   })
 
+  it('rejects assignments without roles or distributions', () => {
+    const withoutRoles = replaceOnce(
+      `roles:
+  - id: echo
+    label: Echo
+    team: Quorum
+    summary: Privately tests one active player.
+    card:
+      label: Heart
+      selector: { suits: [hearts] }
+  - id: drifter
+    label: Drifter
+    team: Drifters
+    summary: Quietly reduces the quorum.
+    card:
+      label: Spade
+      selector: { suits: [spades] }
+  - id: wayfinder
+    label: Wayfinder
+    team: Quorum
+    summary: Identifies the Drifters.
+    card:
+      label: Club or diamond
+      selector: { suits: [clubs, diamonds] }
+role_distributions:
+  - players: { min: 4, max: 6 }
+    counts: { echo: 1, drifter: 1, wayfinder: remaining }
+  - players: { min: 7, max: 9 }
+    counts: { echo: 1, drifter: 2, wayfinder: remaining }
+  - players: { min: 10, max: 12 }
+    counts: { echo: 1, drifter: 3, wayfinder: remaining }
+`,
+      '',
+    ).replace(
+      `      type: role
+      default: wayfinder`,
+      `      type: choice
+      choices: [wayfinder, drifter, echo]
+      default: wayfinder`,
+    )
+    const withoutDistributions = validSource.replace(
+      /role_distributions:\n(?:  .+\n|    .+\n)+(?=assignments:)/,
+      '',
+    )
+
+    expect(parseGameSource(withoutRoles, 'broken/game.md')).toMatchObject({
+      ok: false,
+      diagnostics: [{ code: 'schema.invalid-value', path: 'assignments' }],
+    })
+    expect(
+      parseGameSource(withoutDistributions, 'broken/game.md'),
+    ).toMatchObject({
+      ok: false,
+      diagnostics: [{ code: 'schema.invalid-value', path: 'assignments' }],
+    })
+  })
+
   it('rejects a role field without roles', () => {
     const source = replaceOnce(
       `roles:
@@ -369,7 +445,18 @@ role_distributions:
 `,
       '',
     )
-    const result = parseGameSource(source, 'broken/game.md')
+    const result = parseGameSource(
+      source.replace(
+        `assignments:
+  method: shuffle
+  visibility:
+    players: own
+    game_master: all
+`,
+        '',
+      ),
+      'broken/game.md',
+    )
 
     expect(result).toMatchObject({
       ok: false,
