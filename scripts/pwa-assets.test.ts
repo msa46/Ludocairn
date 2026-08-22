@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -13,6 +13,11 @@ function readPngDimensions(path: string) {
 }
 
 describe('PWA install assets', () => {
+  it('generates the web manifest and service worker in the production build', () => {
+    expect(existsSync(resolve('dist/manifest.webmanifest'))).toBe(true)
+    expect(existsSync(resolve('dist/sw.js'))).toBe(true)
+  })
+
   it.each([
     ['public/icons/ludocairn-192.png', 192, 192],
     ['public/icons/ludocairn-512.png', 512, 512],
