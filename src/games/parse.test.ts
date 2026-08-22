@@ -395,7 +395,7 @@ role_distributions:
       default: wayfinder`,
     )
     const withoutDistributions = validSource.replace(
-      /role_distributions:\n(?:  .+\n|    .+\n)+(?=assignments:)/,
+      /role_distributions:\n(?: {2}.+\n| {4}.+\n)+(?=assignments:)/,
       '',
     )
 
