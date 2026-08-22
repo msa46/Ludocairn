@@ -86,7 +86,8 @@ describe('useSessionStore reload preparation', () => {
 
   it('retries the latest session after an immediate save failure', () => {
     const repository = makeRepository()
-    const save = vi.spyOn(repository, 'save')
+    const save = vi
+      .spyOn(repository, 'save')
       .mockReturnValueOnce({
         ok: false,
         diagnostic: {

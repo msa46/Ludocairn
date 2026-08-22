@@ -1,7 +1,8 @@
 export const pwaManifest = {
   name: 'Ludocairn',
   short_name: 'Ludocairn',
-  description: 'Define, run, track, and print tabletop card games with Ludocairn.',
+  description:
+    'Define, run, track, and print tabletop card games with Ludocairn.',
   id: './',
   start_url: './',
   scope: './',
