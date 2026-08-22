@@ -183,8 +183,8 @@ Acceptance criteria:
 
 ### Mobile PWA implementation
 
-**Status:** Implemented; local browser, deployment, and physical-device
-verification pending.
+**Status:** Implemented; local browser verification partial; deployment and
+physical-device verification pending.
 
 Ludocairn remains a normal static website while gaining an optional,
 mobile-first Progressive Web App mode. Evidence is intentionally separated by
@@ -194,10 +194,23 @@ what has actually been observed:
   standalone metadata, safe-area styles, generated shell/bundled-game precache,
   query-safe navigation fallback, explicit save-first updates, and static
   artifact/automated test coverage.
-- [ ] **Local real browser:** service-worker registration, installability,
-  offline root/query/session reload, update prompting, cache/localStorage
-  separation, keyboard/print behavior, and narrow/wide layouts have not yet
-  been exercised in a production preview.
+- [ ] **Local real browser (partial, 2026-08-22):** the production artifact ran
+  in the Codex in-app Chromium browser on isolated loopback origins. With the
+  preview online, the five-player private cycle completed Arden's reveal/hide,
+  then Ready, reveal, and hide for Bela, Ciro, Dara, and Evan, followed by
+  **Finish reveals** and a `Saved` tracker. With the server stopped, root,
+  game-query, saved-session, and assignment URLs reloaded; the same saved
+  tracker fields, notes, and assignment fingerprint restored. A temporary
+  same-origin B build produced an explicit
+  update prompt while A remained visible. The 320- and 1440-pixel layouts were
+  exercised; a discovered 320-pixel classic-scrollbar overflow was fixed and
+  rechecked without document overflow or clipped controls. Console warning and
+  error logs were empty. This item remains open because the browser backend did
+  not expose native install/manifest acceptance, worker/cache/localStorage or
+  network inspectors, standalone chrome, physical safe-area insets, print
+  preview, or working keyboard activation for the dismissal/update buttons;
+  update activation, pending-save recovery, and one-reload transition to B
+  therefore remain unverified.
 - [ ] **Deployed/live:** this PWA commit has not been pushed through CI/Pages
   or manually exercised at the repository-subpath URL.
 - [ ] **Physical iOS and Android:** native install, launch, offline recovery,

@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-22
 
-**Status:** Implemented; local browser, deployment, and physical-device
-verification pending
+**Status:** Implemented; local browser verification partial; deployment and
+physical-device verification pending
 
 **Project:** Ludocairn / Deckwright
 
@@ -243,6 +243,39 @@ Release closure requires:
    and the explicit update boundary where practical; and
 5. representative physical iOS and Android checks before marking those
    platform-specific roadmap items complete.
+
+### Local production-browser evidence — 2026-08-22
+
+The generated production artifact was exercised in the Codex in-app Chromium
+browser on isolated `127.0.0.1` origins. The browser runtime did not expose an
+exact Chromium version.
+
+- The five-player private cycle completed Arden's reveal/hide, then Ready,
+  reveal, and hide for Bela, Ciro, Dara, and Evan, followed by **Finish
+  reveals** and a `Saved` tracker. After that online load, stopping the preview
+  server still allowed reloads of the root, `?game=veilquorum`, a saved
+  `?session=...`, and its `?session=...&view=assignments` URL. The saved session
+  restored its phase, round, signal count, clue, notes, and exact assignment
+  fingerprint.
+- A temporary same-origin version-B build caused A to show **Update and
+  reload** while A remained visible and B remained waiting. The marker was
+  removed from source and the final production artifact. The backend's
+  keyboard commands could focus but not activate **Not now** or the update
+  action, so dismissal, pending-save flush, activation, one-reload behavior,
+  and B visibility remain unverified.
+- The 1440-pixel layout had no document overflow or clipped controls. The
+  initial 320-pixel run exposed document overflow from the root 20rem minimum
+  width plus a classic scrollbar; the root minimums were removed under a
+  focused regression contract, and the rebuilt artifact rechecked with no
+  document overflow or clipped controls while preserving gutters and safe-area
+  declarations.
+- The browser console warning/error log was empty. Native install/manifest
+  acceptance, direct worker/cache/localStorage contents, the network request
+  inspector, standalone browser chrome, physical safe-area insets, and native
+  print preview were not exposed by this backend and remain unverified.
+
+This is partial local-browser evidence only. It is not deployment, live-site,
+physical iOS/Android, or assistive-technology evidence.
 
 ## Out of scope
 

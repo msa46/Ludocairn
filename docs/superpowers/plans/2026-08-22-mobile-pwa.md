@@ -1,7 +1,7 @@
 # Ludocairn Mobile PWA Implementation Plan
 
-**Status:** Implemented; local browser, deployment, and physical-device
-verification pending.
+**Status:** Implemented; local browser verification partial; deployment and
+physical-device verification pending.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -579,7 +579,7 @@ git commit -m "docs: publish offline PWA guidance"
 **Interfaces:**
 - Produces automated and local-browser evidence, not physical-device or production evidence.
 
-- [ ] **Step 1: Run focused suite**
+- [x] **Step 1: Run focused suite**
 
 ```bash
 npm test -- src/app/useSessionStore.test.tsx src/pwa/manifest.test.ts scripts/pwa-assets.test.ts src/pwa/register.test.ts src/pwa/PwaStatus.test.tsx src/app/App.test.tsx src/styles/print-contract.test.ts scripts/verify-static-build.test.ts
@@ -587,13 +587,13 @@ npm test -- src/app/useSessionStore.test.tsx src/pwa/manifest.test.ts scripts/pw
 
 Expected: PASS without warnings.
 
-- [ ] **Step 2: Run complete gate**
+- [x] **Step 2: Run complete gate**
 
 Run: `npm run ci`
 
 Expected: lint, format, strict TypeScript, all tests, build, and PWA verification PASS.
 
-- [ ] **Step 3: Serve production on loopback**
+- [x] **Step 3: Serve production on loopback**
 
 Run: `npm run preview -- --host 127.0.0.1`; open the reported URL in real Chromium. Loopback is a secure service-worker context.
 
@@ -601,7 +601,7 @@ Run: `npm run preview -- --host 127.0.0.1`; open the reported URL in real Chromi
 
 Confirm accepted manifest/icons/standalone/colors; active controlling worker after reload; cache storage contains only app assets; local storage contains sessions but caches contain no names, notes, assignments, or JSON; no off-origin request or application console error.
 
-- [ ] **Step 5: Verify offline routes and restoration**
+- [x] **Step 5: Verify offline routes and restoration**
 
 Create a five-player Veilquorum session, complete private reveals, edit tracker and notes, reach `Saved`, go offline, and reload root, `?game=veilquorum`, saved `?session=<id>`, and `?session=<id>&view=assignments`. Confirm all games and the same unreshuffled local assignment/session state restore.
 
@@ -613,11 +613,39 @@ Serve version A under worker control, then serve a temporary visible version-B b
 
 At 320 and 1440 CSS pixels, verify safe areas, wrapping actions, and standalone navigation. Use keyboard only for dismissal/update. Confirm print preview omits PWA status.
 
-- [ ] **Step 8: Record only observed evidence**
+- [x] **Step 8: Record only observed evidence**
 
 Record browser/date/viewports/offline routes/update/storage/console/network/keyboard/print results. Mark local-browser complete only; leave deployment and physical devices open.
 
-- [ ] **Step 9: Final clean-tree verification**
+Observed 2026-08-22 in the Codex in-app Chromium browser; the runtime did not
+expose an exact Chromium version:
+
+- Focused suite: 8 files and 139 tests passed without warnings after the
+  narrow-layout regression was added. Full CI passed lint, formatting, strict
+  TypeScript, 26 files and 294 tests, build, and static PWA verification.
+- The five-player private cycle completed Arden's reveal/hide, then Ready,
+  reveal, and hide for Bela, Ciro, Dara, and Evan, followed by **Finish
+  reveals** and a `Saved` tracker. With the isolated loopback preview server
+  then stopped, the root, Veilquorum game query, saved session, and assignment
+  URLs all reloaded. The session restored Day, round 2, a signal, a private
+  clue, facilitator notes, and an exact five-row assignment fingerprint.
+- Version A remained visible while a reversible same-origin version-B build
+  produced **Update and reload**. Keyboard commands focused but did not
+  activate **Not now** or the update action, so the remaining Step 6 behavior
+  stays open. The temporary marker was absent from source and the final build.
+- At 1440 pixels there was no document overflow or clipped control. The first
+  320-pixel run exposed classic-scrollbar overflow from the root 20rem minimum;
+  commit `3b9af60` added a regression contract and removed the root minimums.
+  The rebuilt artifact then had equal document/body widths, no horizontal
+  overflow, no clipped controls, intact 1rem gutters, and fitting action
+  buttons at 320 pixels.
+- Console warning/error logs were empty. This backend did not expose native
+  install/manifest acceptance, direct worker/cache/localStorage contents,
+  network inspection, standalone chrome, physical safe-area insets, or print
+  preview. Steps 4, 6, and 7 and the overall local-browser checkpoint remain
+  open.
+
+- [x] **Step 9: Final clean-tree verification**
 
 ```bash
 npm run ci
