@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-labelledby="title description">
+  <title id="title">Ludocairn app mark</title>
+  <desc id="description">Three cairn stones on a dark rounded card, centered on a warm-paper field.</desc>
+  <rect width="1000" height="1000" fill="#f7f1e7" />
+  <rect x="250" y="250" width="500" height="500" rx="88" fill="#25211f" />
+  <path d="M372 637c0-39 57-70 128-70s128 31 128 70v16H372z" fill="#c8593c" />
+  <path d="M399 554c0-34 45-61 101-61s101 27 101 61v15H399z" fill="#d88c4c" />
+  <path d="M427 477c0-29 33-53 73-53s73 24 73 53v15H427z" fill="#81916d" />
+  <circle cx="500" cy="339" r="24" fill="#f7f1e7" opacity=".88" />
+</svg>
