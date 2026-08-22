@@ -40,6 +40,7 @@ function createVisibility(
 function createTimers() {
   let nextId = 1
   const callbacks = new Map<number, IntervalCallback>()
+  const timeoutCallbacks = new Map<number, IntervalCallback>()
 
   return {
     callbacks,
@@ -51,6 +52,41 @@ function createTimers() {
     clearInterval: vi.fn((id: number) => {
       callbacks.delete(id)
     }),
+    setTimeout: vi.fn((callback: IntervalCallback) => {
+      const id = nextId++
+      timeoutCallbacks.set(id, callback)
+      return id
+    }),
+    clearTimeout: vi.fn((id: number) => {
+      timeoutCallbacks.delete(id)
+    }),
+    timeoutCallbacks,
+  }
+}
+
+function createServiceWorkers() {
+  let controller = {} as ServiceWorker
+  let listener: (() => void) | undefined
+
+  return {
+    boundary: {
+      get controller() {
+        return controller
+      },
+      addEventListener: vi.fn((type: 'controllerchange', next: () => void) => {
+        if (type === 'controllerchange') listener = next
+      }),
+      removeEventListener: vi.fn(
+        (type: 'controllerchange', next: () => void) => {
+          if (type === 'controllerchange' && listener === next)
+            listener = undefined
+        },
+      ),
+    },
+    changeController() {
+      controller = {} as ServiceWorker
+      listener?.()
+    },
   }
 }
 
@@ -91,6 +127,7 @@ describe('startPwaRegistration', () => {
     const states: PwaState[] = []
     const visibility = createVisibility()
     const timers = createTimers()
+    const serviceWorkers = createServiceWorkers()
     let callbacks: RegisterWorkerCallbacks | undefined
     const updateSW = vi
       .fn<(reloadPage?: boolean) => Promise<void>>()
@@ -102,6 +139,7 @@ describe('startPwaRegistration', () => {
       },
       visibility: visibility.visibility,
       timers,
+      serviceWorkers: serviceWorkers.boundary,
       onStateChange: (state) => states.push(state),
     })
 
@@ -110,10 +148,80 @@ describe('startPwaRegistration', () => {
     expect(states).toEqual(['update-available'])
     expect(updateSW).not.toHaveBeenCalled()
 
-    await controller.update()
+    const activation = controller.update()
+    await Promise.resolve()
 
     expect(updateSW).toHaveBeenCalledTimes(1)
     expect(updateSW).toHaveBeenCalledWith(true)
+    let completed = false
+    void activation.then(() => {
+      completed = true
+    })
+    await Promise.resolve()
+    expect(completed).toBe(false)
+
+    serviceWorkers.changeController()
+    await activation
+    expect(completed).toBe(true)
+  })
+
+  it('rejects when the waiting worker becomes redundant before control changes', async () => {
+    const visibility = createVisibility()
+    const timers = createTimers()
+    const serviceWorkers = createServiceWorkers()
+    let stateListener: (() => void) | undefined
+    const waiting = {
+      state: 'installed',
+      addEventListener: vi.fn((_type: 'statechange', listener: () => void) => {
+        stateListener = listener
+      }),
+      removeEventListener: vi.fn(),
+    }
+    const registration = {
+      waiting,
+      update: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ServiceWorkerRegistration
+    let callbacks: RegisterWorkerCallbacks | undefined
+    const controller = startPwaRegistration({
+      registerWorker: (next) => {
+        callbacks = next
+        return vi.fn().mockResolvedValue(undefined)
+      },
+      visibility: visibility.visibility,
+      timers,
+      serviceWorkers: serviceWorkers.boundary,
+      onStateChange: vi.fn(),
+    })
+    callbacks?.onRegistered(registration)
+
+    const activation = controller.update()
+    ;(waiting as { state: string }).state = 'redundant'
+    stateListener?.()
+
+    await expect(activation).rejects.toThrow(
+      'The waiting service worker became redundant.',
+    )
+  })
+
+  it('rejects activation after the lifecycle timeout', async () => {
+    const visibility = createVisibility()
+    const timers = createTimers()
+    const serviceWorkers = createServiceWorkers()
+    const controller = startPwaRegistration({
+      registerWorker: () => vi.fn().mockResolvedValue(undefined),
+      visibility: visibility.visibility,
+      timers,
+      serviceWorkers: serviceWorkers.boundary,
+      onStateChange: vi.fn(),
+    })
+
+    const activation = controller.update()
+    await Promise.resolve()
+    timers.timeoutCallbacks.forEach((callback) => callback())
+
+    await expect(activation).rejects.toThrow(
+      'Timed out while activating the service worker.',
+    )
   })
 
   it('reports a rejected activation while preserving the rejection for the caller', async () => {
@@ -176,7 +284,7 @@ describe('startPwaRegistration', () => {
     expect(states).toEqual(['error'])
   })
 
-  it('reports rejected registration update checks as errors', async () => {
+  it('ignores rejected routine update checks', async () => {
     const states: PwaState[] = []
     const visibility = createVisibility()
     const timers = createTimers()
@@ -199,7 +307,7 @@ describe('startPwaRegistration', () => {
     callbacks?.onRegistered(registration)
     await Promise.resolve()
 
-    expect(states).toEqual(['error'])
+    expect(states).toEqual([])
   })
 
   it('checks immediately, hourly while visible, and on foreground return', () => {

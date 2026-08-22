@@ -108,11 +108,12 @@ describe('PwaStatus', () => {
     expect(events).toEqual(['flush', 'update:true'])
   })
 
-  it('refuses activation when reload preparation fails', () => {
+  it('keeps the update action available so reload preparation can be retried', async () => {
+    let canReload = false
     const registration = captureRegistration()
     render(
       <PwaStatus
-        prepareForReload={() => false}
+        prepareForReload={() => canReload}
         registerWorker={registration.registerWorker}
       />,
     )
@@ -124,6 +125,10 @@ describe('PwaStatus', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Save the session or export it before updating.',
     )
+    canReload = true
+    fireEvent.click(screen.getByRole('button', { name: 'Update and reload' }))
+
+    await waitFor(() => expect(registration.updateSW).toHaveBeenCalledOnce())
   })
 
   it('keeps registration errors non-destructive and dismissible', () => {
@@ -189,5 +194,60 @@ describe('PwaStatus', () => {
       expect.any(Function),
     )
     expect(clearInterval).toHaveBeenCalledOnce()
+  })
+
+  it('ignores activation failures from a replaced registration adapter', async () => {
+    let rejectOldUpdate: ((error: Error) => void) | undefined
+    const oldRegistration = captureRegistration(
+      vi.fn(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectOldUpdate = reject
+          }),
+      ),
+    )
+    const nextRegistration = captureRegistration()
+    const { rerender } = render(
+      <PwaStatus
+        prepareForReload={() => true}
+        registerWorker={oldRegistration.registerWorker}
+      />,
+    )
+    act(() => oldRegistration.callbacks().onNeedRefresh())
+    fireEvent.click(screen.getByRole('button', { name: 'Update and reload' }))
+
+    rerender(
+      <PwaStatus
+        prepareForReload={() => true}
+        registerWorker={nextRegistration.registerWorker}
+      />,
+    )
+    await act(async () => rejectOldUpdate?.(new Error('stale failure')))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does not retain a notice from a replaced registration adapter', () => {
+    const oldRegistration = captureRegistration()
+    const nextRegistration = captureRegistration()
+    const { rerender } = render(
+      <PwaStatus
+        prepareForReload={() => true}
+        registerWorker={oldRegistration.registerWorker}
+      />,
+    )
+    act(() => oldRegistration.callbacks().onNeedRefresh())
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'A new version of Ludocairn is available.',
+    )
+
+    rerender(
+      <PwaStatus
+        prepareForReload={() => true}
+        registerWorker={nextRegistration.registerWorker}
+      />,
+    )
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

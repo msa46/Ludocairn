@@ -139,6 +139,13 @@ Selecting **Update and reload** performs this sequence:
 4. If activation fails, keep the page usable and show a non-destructive update
    error.
 
+The activation request is not considered complete when the skip-waiting message
+is merely posted. It completes when the browser reports a changed controller,
+and fails if the waiting worker becomes redundant or no controller change
+arrives within 30 seconds. A transient rejection from a routine foreground
+update check does not replace the current/offline-ready UI with a registration
+error because the installed worker remains usable.
+
 The registration module triggers `registration.update()` after initial
 registration, every 60 minutes while visible, and when `visibilitychange`
 returns the document to `visible`. Timers and listeners are removed on React

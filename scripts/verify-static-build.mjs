@@ -181,6 +181,11 @@ const localFileContexts = {
     remoteLabel: 'runtime asset',
     referenceLabel: 'asset',
   },
+  precacheAsset: {
+    urlLabel: 'precache asset',
+    remoteLabel: 'precache asset',
+    referenceLabel: 'precache asset',
+  },
   manifest: {
     urlLabel: 'manifest',
     remoteLabel: 'manifest',
@@ -195,6 +200,11 @@ const localFileContexts = {
     urlLabel: 'service worker',
     remoteLabel: 'service worker',
     referenceLabel: 'service worker',
+  },
+  serviceWorkerDependency: {
+    urlLabel: 'service worker dependency',
+    remoteLabel: 'service worker dependency',
+    referenceLabel: 'service worker dependency',
   },
 }
 
@@ -723,7 +733,8 @@ function findClosingToken(tokens, start, openingToken, closingToken) {
   return undefined
 }
 
-function hasIndexPrecacheEntry(tokens) {
+function extractPrecacheUrls(tokens) {
+  const urls = []
   for (let index = 0; index < tokens.length - 1; index += 1) {
     if (
       tokens[index].type !== 'identifier' ||
@@ -780,15 +791,51 @@ function hasIndexPrecacheEntry(tokens) {
         (property.type === 'identifier' || property.type === 'string') &&
         property.value === 'url' &&
         tokens[cursor + 1]?.value === ':' &&
-        tokens[cursor + 2]?.type === 'string' &&
-        isIndexPrecacheUrl(tokens[cursor + 2].value)
+        tokens[cursor + 2]?.type === 'string'
       ) {
-        return true
+        urls.push(tokens[cursor + 2].value)
       }
     }
   }
 
-  return false
+  return urls
+}
+
+function extractWorkerDependencies(tokens) {
+  const dependencies = []
+
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (
+      tokens[index]?.type === 'identifier' &&
+      tokens[index].value === 'importScripts' &&
+      tokens[index + 1]?.value === '('
+    ) {
+      const callEnd = findClosingToken(tokens, index + 1, '(', ')')
+      if (callEnd === undefined) continue
+      for (let cursor = index + 2; cursor < callEnd; cursor += 1) {
+        if (tokens[cursor]?.type === 'string') {
+          dependencies.push({ url: tokens[cursor].value, appendJs: false })
+        }
+      }
+    }
+
+    if (
+      tokens[index]?.type === 'identifier' &&
+      tokens[index].value === 'define' &&
+      tokens[index + 1]?.value === '(' &&
+      tokens[index + 2]?.value === '['
+    ) {
+      const arrayEnd = findClosingToken(tokens, index + 2, '[', ']')
+      if (arrayEnd === undefined) continue
+      for (let cursor = index + 3; cursor < arrayEnd; cursor += 1) {
+        if (tokens[cursor]?.type === 'string') {
+          dependencies.push({ url: tokens[cursor].value, appendJs: true })
+        }
+      }
+    }
+  }
+
+  return dependencies
 }
 
 export function verifyStaticBuild(distDirectory) {
@@ -800,6 +847,14 @@ export function verifyStaticBuild(distDirectory) {
   }
 
   const realArtifactDirectory = realpathSync(artifactDirectory)
+  if (!statSync(indexPath).isFile()) {
+    throw new Error('Static entry document is not a file.')
+  }
+  if (!isWithinDirectory(realArtifactDirectory, realpathSync(indexPath))) {
+    throw new Error(
+      'Static entry document resolves outside the static artifact.',
+    )
+  }
   const html = readFileSync(indexPath, 'utf8')
   if (!html.includes('Ludocairn')) {
     throw new Error(
@@ -912,7 +967,48 @@ export function verifyStaticBuild(distDirectory) {
     )
   }
 
-  const precachedShell = hasIndexPrecacheEntry(workerTokens)
+  for (const dependency of extractWorkerDependencies(workerTokens)) {
+    const dependencyUrl =
+      dependency.appendJs && !/\.[^/]+$/u.test(dependency.url)
+        ? `${dependency.url}.js`
+        : dependency.url
+    try {
+      resolveLocalFile(
+        artifactDirectory,
+        realArtifactDirectory,
+        dependencyUrl,
+        localFileContexts.serviceWorkerDependency,
+        { baseUrl: serviceWorkerFile.resolvedUrl },
+      )
+    } catch (error) {
+      if (
+        dependencyUrl !== dependency.url &&
+        error instanceof Error &&
+        error.message.includes(`: ${dependencyUrl}`)
+      ) {
+        throw new Error(error.message.replace(dependencyUrl, dependency.url))
+      }
+      throw error
+    }
+  }
+
+  const precacheUrls = extractPrecacheUrls(workerTokens)
+  for (const precacheUrl of precacheUrls) {
+    const normalizedPrecacheUrl = precacheUrl.replaceAll('\\', '/')
+    if (normalizedPrecacheUrl.startsWith('//')) {
+      throw new Error(
+        `Remote precache asset URL is not allowed: ${precacheUrl}`,
+      )
+    }
+    resolveLocalFile(
+      artifactDirectory,
+      realArtifactDirectory,
+      normalizedPrecacheUrl,
+      localFileContexts.precacheAsset,
+    )
+  }
+
+  const precachedShell = precacheUrls.some(isIndexPrecacheUrl)
   if (!precachedShell) {
     throw new Error('Service worker does not precache index.html.')
   }

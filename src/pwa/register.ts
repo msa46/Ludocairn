@@ -22,6 +22,14 @@ export interface PwaVisibilityBoundary {
 export interface PwaTimerBoundary {
   setInterval(callback: () => void, delay: number): number
   clearInterval(intervalId: number): void
+  setTimeout(callback: () => void, delay: number): number
+  clearTimeout(timeoutId: number): void
+}
+
+export interface PwaServiceWorkerBoundary {
+  readonly controller: ServiceWorker | null
+  addEventListener(type: 'controllerchange', listener: () => void): void
+  removeEventListener(type: 'controllerchange', listener: () => void): void
 }
 
 export type UpdateServiceWorker = (reloadPage?: boolean) => Promise<void>
@@ -35,15 +43,20 @@ export interface StartPwaRegistrationOptions {
   readonly onStateChange: (state: PwaState) => void
   readonly visibility?: PwaVisibilityBoundary
   readonly timers?: PwaTimerBoundary
+  readonly serviceWorkers?: PwaServiceWorkerBoundary
 }
 
 const updateIntervalMs = 60 * 60 * 1000
+const activationTimeoutMs = 30 * 1000
 
 export function startPwaRegistration({
   registerWorker,
   onStateChange,
   visibility = document,
   timers = window,
+  serviceWorkers = typeof navigator === 'undefined'
+    ? undefined
+    : navigator.serviceWorker,
 }: StartPwaRegistrationOptions): PwaController {
   let disposed = false
   let registration: ServiceWorkerRegistration | undefined
@@ -57,11 +70,9 @@ export function startPwaRegistration({
     if (disposed || !registration) return
 
     try {
-      void Promise.resolve(registration.update()).catch(() => {
-        reportState('error')
-      })
+      void Promise.resolve(registration.update()).catch(() => undefined)
     } catch {
-      reportState('error')
+      // A foreground version check is opportunistic; the installed app remains usable.
     }
   }
 
@@ -95,17 +106,60 @@ export function startPwaRegistration({
   }
 
   return {
-    update: () => {
+    update: async () => {
       if (disposed || !updateServiceWorker) return Promise.resolve()
 
+      const initialController = serviceWorkers?.controller
+      const waitingWorker = registration?.waiting
+      let rejectActivation: ((error: Error) => void) | undefined
+      let timeoutId: number | undefined
+
+      const cleanupActivationListeners = () => {
+        if (timeoutId !== undefined) timers.clearTimeout(timeoutId)
+        serviceWorkers?.removeEventListener(
+          'controllerchange',
+          onControllerChange,
+        )
+        waitingWorker?.removeEventListener('statechange', onWorkerStateChange)
+      }
+      const onControllerChange = () => {
+        if (serviceWorkers?.controller === initialController) return
+        cleanupActivationListeners()
+        resolveActivation?.()
+      }
+      const onWorkerStateChange = () => {
+        if (waitingWorker?.state !== 'redundant') return
+        cleanupActivationListeners()
+        rejectActivation?.(
+          new Error('The waiting service worker became redundant.'),
+        )
+      }
+      let resolveActivation: (() => void) | undefined
+      const activation = serviceWorkers
+        ? new Promise<void>((resolve, reject) => {
+            resolveActivation = resolve
+            rejectActivation = reject
+            serviceWorkers.addEventListener(
+              'controllerchange',
+              onControllerChange,
+            )
+            waitingWorker?.addEventListener('statechange', onWorkerStateChange)
+            timeoutId = timers.setTimeout(() => {
+              cleanupActivationListeners()
+              reject(
+                new Error('Timed out while activating the service worker.'),
+              )
+            }, activationTimeoutMs)
+          })
+        : Promise.resolve()
+
       try {
-        return Promise.resolve(updateServiceWorker(true)).catch((error) => {
-          reportState('error')
-          throw error
-        })
+        await Promise.resolve(updateServiceWorker(true))
+        await activation
       } catch (error) {
+        cleanupActivationListeners()
         reportState('error')
-        return Promise.reject(error)
+        throw error
       }
     },
     dispose: () => {

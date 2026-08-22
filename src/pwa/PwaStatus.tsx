@@ -18,17 +18,32 @@ export function PwaStatus({
   prepareForReload,
   registerWorker,
 }: PwaStatusProps) {
-  const [notice, setNotice] = useState<Notice>('current')
+  const [noticeState, setNoticeState] = useState<{
+    readonly owner: RegisterWorker
+    readonly notice: Notice
+  }>({ owner: registerWorker, notice: 'current' })
+  const notice =
+    noticeState.owner === registerWorker ? noticeState.notice : 'current'
   const controller = useRef<PwaController | undefined>(undefined)
+  const registrationGeneration = useRef(0)
 
   useEffect(() => {
+    const generation = registrationGeneration.current + 1
+    registrationGeneration.current = generation
     const nextController = startPwaRegistration({
       registerWorker,
-      onStateChange: setNotice,
+      onStateChange: (state) => {
+        if (registrationGeneration.current === generation) {
+          setNoticeState({ owner: registerWorker, notice: state })
+        }
+      },
     })
     controller.current = nextController
 
     return () => {
+      if (registrationGeneration.current === generation) {
+        registrationGeneration.current += 1
+      }
       if (controller.current === nextController) controller.current = undefined
       nextController.dispose()
     }
@@ -37,17 +52,24 @@ export function PwaStatus({
   if (notice === 'current') return null
 
   function dismiss() {
-    setNotice('current')
+    setNoticeState({ owner: registerWorker, notice: 'current' })
   }
 
   function applyUpdate() {
     if (!prepareForReload()) {
-      setNotice('save-required')
+      setNoticeState({ owner: registerWorker, notice: 'save-required' })
       return
     }
 
-    void controller.current?.update().catch(() => {
-      setNotice('activation-error')
+    const activeController = controller.current
+    const generation = registrationGeneration.current
+    void activeController?.update().catch(() => {
+      if (
+        controller.current === activeController &&
+        registrationGeneration.current === generation
+      ) {
+        setNoticeState({ owner: registerWorker, notice: 'activation-error' })
+      }
     })
   }
 
@@ -91,6 +113,11 @@ export function PwaStatus({
     <section className="pwa-status print-hidden" role="alert">
       <p>{message}</p>
       <div className="pwa-status-actions">
+        {notice === 'save-required' ? (
+          <button type="button" onClick={applyUpdate}>
+            Update and reload
+          </button>
+        ) : null}
         <button type="button" onClick={dismiss}>
           Dismiss PWA status
         </button>

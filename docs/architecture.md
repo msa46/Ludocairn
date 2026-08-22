@@ -196,7 +196,11 @@ document returns to the foreground. Selecting **Update and reload** first asks
 the session store to synchronously flush pending debounced data. Only a
 successful flush activates the waiting worker and reloads; a failed save or
 activation leaves the current application usable and exposes recovery guidance.
-Unsupported registration and registration errors are likewise non-fatal.
+Activation completes only when the browser reports a changed service-worker
+controller; a redundant waiting worker or a 30-second activation timeout is an
+activation failure. Transient foreground update-check failures are ignored
+because the installed version remains usable. Unsupported registration and
+registration errors are likewise non-fatal.
 
 ## Accessibility, responsive design, and printing
 

@@ -179,9 +179,11 @@ succeeded. Production rendered the reviewed role definitions and labeled
 Team/Card/Purpose structure from same-origin assets without application console
 warnings or errors.
 
-The later mobile PWA implementation is automated-tested but has not yet had a
-local real-browser PWA exercise, a live Pages deployment, or physical iOS or
-Android verification. See the roadmap for that evidence ledger.
+The later mobile PWA implementation is automated-tested and has partial local
+Chromium evidence for offline routes, restored session state, and update-prompt
+visibility. Update activation, native install signals, a live Pages deployment,
+and physical iOS or Android verification remain open. See the roadmap for the
+full evidence ledger.
 
 ## Documentation
 

@@ -90,6 +90,7 @@ function createDist(
   const fixtureAssets: Record<string, string | null> = {
     'manifest.webmanifest': JSON.stringify(validManifest),
     'sw.js': validWorker,
+    'workbox-hash.js': 'self.workbox = self.workbox || {}',
     'icons/ludocairn-192.png': '192 icon',
     'icons/ludocairn-512.png': '512 icon',
     'icons/ludocairn-maskable-512.png': 'maskable icon',
@@ -498,6 +499,87 @@ describe('verifyStaticBuild', () => {
 
     expect(() => verifyStaticBuild(directory)).toThrow(
       'Referenced service worker is missing: sw.js',
+    )
+  })
+
+  it('rejects an entry document symlinked outside the artifact', () => {
+    const externalAsset = createExternalAsset()
+    const directory = createDist(validEntryAssets, validEntryFiles)
+    rmSync(join(directory, 'index.html'))
+    symlinkSync(externalAsset, join(directory, 'index.html'))
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document resolves outside the static artifact.',
+    )
+  })
+
+  it('rejects a directory used as the entry document', () => {
+    const directory = createDist(validEntryAssets, validEntryFiles)
+    rmSync(join(directory, 'index.html'))
+    mkdirSync(join(directory, 'index.html'))
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Static entry document is not a file.',
+    )
+  })
+
+  it('rejects a missing executable worker dependency', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'workbox-hash.js': null,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced service worker dependency is missing: ./workbox-hash',
+    )
+  })
+
+  it('rejects a missing importScripts worker dependency', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': `${validWorker};importScripts("./missing-worker.js")`,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced service worker dependency is missing: ./missing-worker.js',
+    )
+  })
+
+  it('rejects a missing file named by the precache manifest', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js':
+        'define(["./workbox-hash"],function(e){e.precacheAndRoute([{url:"index.html"},{url:"assets/missing.js"}],{})})',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced precache asset is missing: assets/missing.js',
+    )
+  })
+
+  it('rejects a precache asset symlinked outside the artifact', () => {
+    const externalAsset = createExternalAsset()
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js':
+        'define(["./workbox-hash"],function(e){e.precacheAndRoute([{url:"index.html"},{url:"assets/external.js"}],{})})',
+    })
+    symlinkSync(externalAsset, join(directory, 'assets', 'external.js'))
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Referenced precache asset resolves outside the static artifact: assets/external.js',
+    )
+  })
+
+  it('rejects a backslash-normalized remote precache URL', () => {
+    const url = String.raw`\\example.com\evil.js`
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': `define(["./workbox-hash"],function(e){e.precacheAndRoute([{url:${JSON.stringify(url)}}],{})})`,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Remote precache asset URL is not allowed: ${url}`,
     )
   })
 

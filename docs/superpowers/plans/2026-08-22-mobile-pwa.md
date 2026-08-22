@@ -337,7 +337,12 @@ export interface PwaController {
 }
 ```
 
-`startPwaRegistration` stores the activation function and registration; calls `registration.update()` initially, hourly when visible, and on `visibilitychange` to visible; converts rejections to error state; and makes disposal idempotent.
+`startPwaRegistration` stores the activation function and registration; calls
+`registration.update()` initially, hourly when visible, and on
+`visibilitychange` to visible; ignores transient routine-check rejections;
+resolves activation only after `controllerchange`; rejects redundant workers,
+activation-command failures, and a 30-second activation timeout; and makes
+disposal idempotent.
 
 - [x] **Step 4: Run tests and commit**
 
