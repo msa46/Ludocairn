@@ -756,6 +756,99 @@ h3 {
   font-size: 0.8rem;
 }
 
+.assignment-stage {
+  display: grid;
+  width: min(100%, 48rem);
+  min-height: min(36rem, calc(100vh - 12rem));
+  align-content: center;
+  gap: 1.25rem;
+  padding: clamp(1.5rem, 7vw, 5rem);
+  border: 1px solid var(--line);
+  border-top: 0.45rem solid var(--accent);
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.assignment-stage > p {
+  max-width: 36rem;
+  margin-block: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.assignment-stage > .eyebrow {
+  color: var(--accent);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.assignment-stage > button {
+  width: fit-content;
+  min-width: min(100%, 14rem);
+  margin-top: 0.5rem;
+}
+
+.assignment-handoff {
+  border-top-color: var(--moss);
+}
+
+.assignment-reveal {
+  border-color: var(--moss);
+  background: var(--moss);
+  color: var(--paper);
+}
+
+.assignment-reveal > .eyebrow,
+.assignment-reveal > p,
+.assignment-reveal .assignment-team {
+  color: #e6ddc8;
+}
+
+.assignment-reveal > .primary-button {
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--moss);
+}
+
+.assignment-team {
+  font-size: 0.78rem !important;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.assignment-table-region {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+}
+
+.assignment-table-region table {
+  width: 100%;
+  min-width: 24rem;
+  border-collapse: collapse;
+}
+
+.assignment-table-region th,
+.assignment-table-region td {
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid var(--soft-line);
+  text-align: left;
+}
+
+.assignment-table-region thead th {
+  background: var(--wash);
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.assignment-table-region tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
 .print-only {
   display: none;
 }

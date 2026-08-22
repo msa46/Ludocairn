@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import type { RandomSource } from '../assignments/model'
 import { loadBundledGames } from '../games/catalog'
 import type { GameDefinition } from '../games/model'
 import type { Clock, IdProvider, SessionFieldValue } from '../sessions/model'
@@ -18,6 +19,7 @@ import { LocalStorageSessionRepository } from '../storage/local-storage'
 import type { SessionRepository } from '../storage/repository'
 import { CatalogView } from './components/CatalogView'
 import { ImportSession } from './components/ImportSession'
+import { PlayerAssignmentView } from './components/PlayerAssignmentView'
 import { RulesView } from './components/RulesView'
 import { SessionSetup } from './components/SessionSetup'
 import { TrackerView } from './components/TrackerView'
@@ -28,6 +30,7 @@ interface AppProps {
   readonly repository?: SessionRepository
   readonly clock?: Clock
   readonly ids?: IdProvider
+  readonly random?: RandomSource
 }
 
 const bundledCatalog = loadBundledGames()
@@ -43,6 +46,7 @@ export function App({
   repository,
   clock = systemClock,
   ids = systemIds,
+  random = Math.random,
 }: AppProps) {
   const resolveGame = useMemo(
     () => (id: string) => games.find((game) => game.id === id),
@@ -64,6 +68,7 @@ export function App({
   const parameters = new URLSearchParams(search)
   const gameId = parameters.get('game')
   const sessionId = parameters.get('session')
+  const requestedView = parameters.get('view')
   const game = gameId ? resolveGame(gameId) : undefined
   const sessionGame = session ? resolveGame(session.gameId) : undefined
 
@@ -92,58 +97,85 @@ export function App({
     accept(result, debounce)
   }
 
+  function sessionSearch(
+    id: string,
+    sessionGame: GameDefinition,
+    includePlayerAssignments: boolean,
+  ) {
+    const base = 'session=' + encodeURIComponent(id)
+    const playerVisibility = sessionGame.assignments?.visibility.players
+    return includePlayerAssignments &&
+      (playerVisibility === 'own' || playerVisibility === 'all')
+      ? base + '&view=assignments'
+      : base
+  }
+
   let content
   if (sessionId) {
     if (session?.id === sessionId && sessionGame) {
-      content = (
-        <TrackerView
-          game={sessionGame}
-          session={session}
-          saveStatus={saveStatus}
-          error={error ?? actionError}
-          navigateHome={() => navigate('')}
-          onPhase={(phase) =>
-            mutate(setPhase(session, sessionGame, phase, clock))
-          }
-          onRound={(round) =>
-            mutate(setRound(session, sessionGame, round, clock))
-          }
-          onField={(playerId, fieldId, value: SessionFieldValue) => {
-            const field = sessionGame.fields.find(
-              (candidate) => candidate.id === fieldId,
-            )
-            mutate(
-              updatePlayerField(
-                session,
-                sessionGame,
-                playerId,
-                fieldId,
-                value,
-                clock,
-              ),
-              field?.type === 'text',
-            )
-          }}
-          onNotes={(notes) => mutate(updateNotes(session, notes, clock), true)}
-          onAddPlayer={(name) =>
-            mutate(addPlayer(session, sessionGame, name, clock, ids))
-          }
-          onRemovePlayer={(id) => mutate(removePlayer(session, id, clock))}
-          onRenamePlayer={(id, name) =>
-            mutate(renamePlayer(session, id, name, clock))
-          }
-          onRename={(name) => mutate(renameSession(session, name, clock))}
-          onDeleteSession={() => {
-            const removed = sessionRepository.remove(session.id)
-            if (removed.ok) {
-              cancelPendingSave()
-              navigate('')
-            } else {
-              setActionError(removed.diagnostic.message)
+      content =
+        requestedView === 'assignments' &&
+        session.assignments &&
+        (sessionGame.assignments?.visibility.players === 'own' ||
+          sessionGame.assignments?.visibility.players === 'all') ? (
+          <PlayerAssignmentView
+            game={sessionGame}
+            session={session}
+            onComplete={() =>
+              navigate(sessionSearch(session.id, sessionGame, false))
             }
-          }}
-        />
-      )
+          />
+        ) : (
+          <TrackerView
+            game={sessionGame}
+            session={session}
+            saveStatus={saveStatus}
+            error={error ?? actionError}
+            navigateHome={() => navigate('')}
+            onPhase={(phase) =>
+              mutate(setPhase(session, sessionGame, phase, clock))
+            }
+            onRound={(round) =>
+              mutate(setRound(session, sessionGame, round, clock))
+            }
+            onField={(playerId, fieldId, value: SessionFieldValue) => {
+              const field = sessionGame.fields.find(
+                (candidate) => candidate.id === fieldId,
+              )
+              mutate(
+                updatePlayerField(
+                  session,
+                  sessionGame,
+                  playerId,
+                  fieldId,
+                  value,
+                  clock,
+                ),
+                field?.type === 'text',
+              )
+            }}
+            onNotes={(notes) =>
+              mutate(updateNotes(session, notes, clock), true)
+            }
+            onAddPlayer={(name) =>
+              mutate(addPlayer(session, sessionGame, name, clock, ids))
+            }
+            onRemovePlayer={(id) => mutate(removePlayer(session, id, clock))}
+            onRenamePlayer={(id, name) =>
+              mutate(renamePlayer(session, id, name, clock))
+            }
+            onRename={(name) => mutate(renameSession(session, name, clock))}
+            onDeleteSession={() => {
+              const removed = sessionRepository.remove(session.id)
+              if (removed.ok) {
+                cancelPendingSave()
+                navigate('')
+              } else {
+                setActionError(removed.diagnostic.message)
+              }
+            }}
+          />
+        )
     } else {
       content = (
         <section className="message-card">
@@ -190,9 +222,10 @@ export function App({
               { name, playerNames },
               clock,
               ids,
+              random,
             )
             if (accept(created) && created.ok) {
-              navigate('session=' + encodeURIComponent(created.session.id))
+              navigate(sessionSearch(created.session.id, game, true))
             }
           }}
         />

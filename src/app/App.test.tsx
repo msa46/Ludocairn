@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { loadBundledGames } from '../games/catalog'
+import type { GameDefinition } from '../games/model'
 import type { IdProvider } from '../sessions/model'
 import { MemorySessionRepository } from '../storage/memory'
 import { App } from './App'
@@ -63,6 +64,14 @@ const structuredVeilquorum = {
       : field,
   ),
 } satisfies typeof veilquorum
+
+const privateAssignmentVeilquorum = {
+  ...structuredVeilquorum,
+  assignments: {
+    method: 'shuffle' as const,
+    visibility: { players: 'own' as const, gameMaster: 'all' as const },
+  },
+} satisfies GameDefinition
 
 const gameJourneys = [
   {
@@ -200,6 +209,107 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm remove Fox' }))
     expect(screen.getByText('Quantities for 5 players')).toBeInTheDocument()
     expect(screen.getByText('3 Wayfinders')).toBeInTheDocument()
+  })
+
+  it('routes a digital deal through private pass-device reveals', () => {
+    const repository = new MemorySessionRepository(
+      () => privateAssignmentVeilquorum,
+    )
+    render(
+      <App
+        games={[privateAssignmentVeilquorum]}
+        repository={repository}
+        clock={() => '2026-08-22T12:00:00.000Z'}
+        ids={ids(
+          'assigned-session',
+          'player-1',
+          'player-2',
+          'player-3',
+          'player-4',
+          'player-5',
+        )}
+        random={() => 0}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('link', { name: /Open Veilquorum/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }))
+    fireEvent.change(screen.getByLabelText('Session name'), {
+      target: { value: 'Secret table' },
+    })
+    for (const [index, name] of ['Ari', 'Bea', 'Cy', 'Dee', 'Eli'].entries()) {
+      if (index >= 2) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Add another player' }),
+        )
+      }
+      fireEvent.change(screen.getByLabelText(`Player ${index + 1} name`), {
+        target: { value: name },
+      })
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Create session' }))
+
+    expect(window.location.search).toBe(
+      '?session=assigned-session&view=assignments',
+    )
+    expect(
+      screen.getByRole('heading', { name: 'Pass the device to Ari' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Echo')).not.toBeInTheDocument()
+    expect(repository.load('assigned-session')).toMatchObject({
+      ok: true,
+      session: { assignments: expect.any(Array) },
+    })
+  })
+
+  it('skips player-facing assignment views when player visibility is none', () => {
+    const game: GameDefinition = {
+      ...privateAssignmentVeilquorum,
+      assignments: {
+        method: 'shuffle',
+        visibility: { players: 'none', gameMaster: 'all' },
+      },
+    }
+    const repository = new MemorySessionRepository(() => game)
+    render(
+      <App
+        games={[game]}
+        repository={repository}
+        clock={() => '2026-08-22T12:00:00.000Z'}
+        ids={ids(
+          'assigned-session',
+          'player-1',
+          'player-2',
+          'player-3',
+          'player-4',
+          'player-5',
+        )}
+        random={() => 0}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('link', { name: /Open Veilquorum/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }))
+    fireEvent.change(screen.getByLabelText('Session name'), {
+      target: { value: 'GM table' },
+    })
+    for (const [index, name] of ['Ari', 'Bea', 'Cy', 'Dee', 'Eli'].entries()) {
+      if (index >= 2) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Add another player' }),
+        )
+      }
+      fireEvent.change(screen.getByLabelText(`Player ${index + 1} name`), {
+        target: { value: name },
+      })
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Create session' }))
+
+    expect(window.location.search).toBe('?session=assigned-session')
+    expect(
+      screen.getByRole('heading', { name: 'GM table' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Pass the device to/)).not.toBeInTheDocument()
   })
 
   it('does not show an empty role guide for games without roles', () => {
