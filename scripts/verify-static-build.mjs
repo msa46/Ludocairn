@@ -14,9 +14,11 @@ const namedHtmlEntities = {
   colon: ':',
   gt: '>',
   lt: '<',
+  newline: '\n',
   period: '.',
   quot: '"',
   sol: '/',
+  tab: '\t',
 }
 
 function isWithinDirectory(directory, targetPath) {
@@ -33,7 +35,7 @@ function isWithinDirectory(directory, targetPath) {
 function extractAssetUrls(html) {
   const assets = []
   const assetTags = html.matchAll(
-    /<(script|link)\b(?:(?:"[^"]*"|'[^']*'|[^'"<>])*)>/giu,
+    /<(script|link)(?=[\t\n\f\r />])(?:(?:"[^"]*"|'[^']*'|[^'"<>])*)>/giu,
   )
 
   for (const tag of assetTags) {
@@ -62,7 +64,9 @@ function extractAssetUrls(html) {
 
 function extractLinks(html) {
   const links = []
-  const linkTags = html.matchAll(/<link\b(?:(?:"[^"]*"|'[^']*'|[^'"<>])*)>/giu)
+  const linkTags = html.matchAll(
+    /<link(?=[\t\n\f\r />])(?:(?:"[^"]*"|'[^']*'|[^'"<>])*)>/giu,
+  )
 
   for (const linkTag of linkTags) {
     links.push({
@@ -143,7 +147,7 @@ function extractTagAttribute(tag, start, wantedName) {
 
 function decodeHtmlEntities(value) {
   return value.replace(
-    /&#(?:(\d+)|x([\da-f]+));?|&(amp|apos|bsol|colon|gt|lt|period|quot|sol);/giu,
+    /&#(?:(\d+)|x([\da-f]+));?|&(amp|apos|bsol|colon|gt|lt|newline|period|quot|sol|tab);/giu,
     (entity, decimal, hexadecimal, named) => {
       if (named) {
         return namedHtmlEntities[named.toLowerCase()]
@@ -211,6 +215,17 @@ function displayUrl(url) {
   return url || '(empty)'
 }
 
+function decodeHtmlUrlAttribute(value, context) {
+  const decodedValue = decodeHtmlEntities(value)
+  if (/&[a-z][\da-z]+;/iu.test(decodedValue)) {
+    throw new Error(
+      `Invalid local ${context.urlLabel} URL: ${displayUrl(value)}`,
+    )
+  }
+
+  return decodedValue
+}
+
 function hasRelToken(value, wantedToken) {
   if (value === undefined) return false
 
@@ -230,7 +245,7 @@ function resolveLocalFile(
 ) {
   const sourceUrl = rawUrl ?? ''
   const browserUrl = (
-    htmlEncoded ? decodeHtmlEntities(sourceUrl) : sourceUrl
+    htmlEncoded ? decodeHtmlUrlAttribute(sourceUrl, context) : sourceUrl
   ).trim()
 
   if (browserUrl === '' || /^[?#]/u.test(browserUrl)) {
@@ -366,6 +381,17 @@ function parseTokenList(value) {
     .filter(Boolean)
 }
 
+function isValidIconSizeToken(size) {
+  if (size === 'any') return true
+
+  const dimensions = size.match(/^(\d+)x(\d+)$/u)
+  return (
+    dimensions !== null &&
+    BigInt(dimensions[1]) > 0n &&
+    BigInt(dimensions[2]) > 0n
+  )
+}
+
 function validateManifestIcons(
   manifest,
   artifactDirectory,
@@ -398,7 +424,7 @@ function validateManifestIcons(
     const sizes = parseTokenList(icon.sizes)
     if (
       sizes.length === 0 ||
-      sizes.some((size) => size !== 'any' && !/^\d+x\d+$/u.test(size))
+      sizes.some((size) => !isValidIconSizeToken(size))
     ) {
       throw new Error(
         `Manifest icon ${index + 1} member "sizes" is not a valid size token list.`,
@@ -483,6 +509,16 @@ function decodeJavaScriptString(source, start, quote) {
       continue
     }
 
+    if (/^[0-7]$/u.test(escaped)) {
+      const maximumLength = /^[0-3]$/u.test(escaped) ? 3 : 2
+      const octal = source
+        .slice(cursor, cursor + maximumLength)
+        .match(/^[0-7]+/u)[0]
+      value += String.fromCodePoint(Number.parseInt(octal, 8))
+      cursor += octal.length
+      continue
+    }
+
     if (
       escaped === 'x' &&
       /^[\da-f]{2}$/iu.test(source.slice(cursor + 1, cursor + 3))
@@ -511,11 +547,51 @@ function decodeJavaScriptString(source, start, quote) {
       }
     }
 
-    value += escaped === '0' ? '\0' : escaped
+    value += escaped
     cursor += 1
   }
 
   return { cursor, raw: source.slice(start + 1, cursor), value }
+}
+
+function isEscapedCharacter(source, index) {
+  let backslashCount = 0
+  for (
+    let cursor = index - 1;
+    cursor >= 0 && source[cursor] === '\\';
+    cursor -= 1
+  ) {
+    backslashCount += 1
+  }
+
+  return backslashCount % 2 === 1
+}
+
+function tokenizeTemplateExpressions(templateSource) {
+  const tokens = []
+  let cursor = 0
+
+  while (cursor < templateSource.length) {
+    const expressionMarker = templateSource.indexOf('${', cursor)
+    if (expressionMarker === -1) break
+    if (isEscapedCharacter(templateSource, expressionMarker)) {
+      cursor = expressionMarker + 2
+      continue
+    }
+
+    const expressionStart = expressionMarker + 2
+    const expressionEnd = templateSource.indexOf('}', expressionStart)
+    if (expressionEnd === -1) break
+
+    tokens.push(
+      ...tokenizeJavaScript(
+        templateSource.slice(expressionStart, expressionEnd),
+      ),
+    )
+    cursor = expressionEnd + 1
+  }
+
+  return tokens
 }
 
 function tokenizeJavaScript(source) {
@@ -548,6 +624,9 @@ function tokenizeJavaScript(source) {
         value: stringToken.value,
         raw: stringToken.raw,
       })
+      if (character === '`') {
+        tokens.push(...tokenizeTemplateExpressions(stringToken.raw))
+      }
       cursor = stringToken.cursor
       continue
     }
@@ -576,7 +655,10 @@ function tokenizeJavaScript(source) {
 }
 
 function normalizedRuntimeUrl(value) {
-  return value.replace(/[\t\n\r]/gu, '').trim()
+  return value
+    .replace(/[\t\n\r]/gu, '')
+    .replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/gu, '')
+    .trim()
 }
 
 function findRemoteWorkerString(tokens) {
@@ -667,13 +749,34 @@ function hasIndexPrecacheEntry(tokens) {
       continue
     }
 
+    let nestedArrayDepth = 0
+    let objectDepth = 0
     for (
       let cursor = precacheArrayStart + 1;
       cursor < precacheArrayEnd;
       cursor += 1
     ) {
       const property = tokens[cursor]
+      if (property.value === '[') {
+        nestedArrayDepth += 1
+        continue
+      }
+      if (property.value === ']') {
+        nestedArrayDepth -= 1
+        continue
+      }
+      if (property.value === '{') {
+        objectDepth += 1
+        continue
+      }
+      if (property.value === '}') {
+        objectDepth -= 1
+        continue
+      }
+
       if (
+        nestedArrayDepth === 0 &&
+        objectDepth === 1 &&
         (property.type === 'identifier' || property.type === 'string') &&
         property.value === 'url' &&
         tokens[cursor + 1]?.value === ':' &&

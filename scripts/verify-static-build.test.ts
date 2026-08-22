@@ -189,6 +189,28 @@ describe('verifyStaticBuild', () => {
     )
   })
 
+  it.each([
+    {
+      label: 'manifest',
+      pwaHead:
+        '<link-foo rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icons/ludocairn-192.png">',
+      error: 'Static entry document must contain exactly one manifest link.',
+    },
+    {
+      label: 'Apple touch icon',
+      pwaHead:
+        '<link rel="manifest" href="./manifest.webmanifest"><link-foo rel="apple-touch-icon" href="./icons/ludocairn-192.png">',
+      error:
+        'Static entry document must contain exactly one Apple touch icon link.',
+    },
+  ])('does not treat link-foo as a $label link', ({ pwaHead, error }) => {
+    const directory = createDist(validEntryAssets, validEntryFiles, {
+      pwaHead,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(error)
+  })
+
   it('rejects an entry document without a manifest rel token', () => {
     const directory = createDist(validEntryAssets, validEntryFiles, {
       pwaHead:
@@ -359,6 +381,26 @@ describe('verifyStaticBuild', () => {
     )
   })
 
+  it('rejects non-positive manifest icon dimensions', () => {
+    const icons = [
+      ...validManifest.icons,
+      {
+        src: './icons/ludocairn-192.png',
+        sizes: '0x0',
+        type: 'image/png',
+        purpose: 'monochrome',
+      },
+    ]
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'manifest.webmanifest': manifestJson({ icons }),
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Manifest icon 4 member "sizes" is not a valid size token list.',
+    )
+  })
+
   it.each(['src', 'sizes', 'type', 'purpose'])(
     'rejects a non-string manifest icon %s member',
     (member) => {
@@ -482,6 +524,17 @@ describe('verifyStaticBuild', () => {
     )
   })
 
+  it('does not treat a nested metadata URL as a precache record URL', () => {
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': 'workbox.precacheAndRoute([{metadata:{url:"index.html"}}], {})',
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      'Service worker does not precache index.html.',
+    )
+  })
+
   it.each([
     'https://example.com/runtime.js',
     '//example.com/runtime.js',
@@ -506,6 +559,35 @@ describe('verifyStaticBuild', () => {
 
     expect(() => verifyStaticBuild(directory)).toThrow(
       `Remote runtime asset URL is not allowed in service worker: ${encodedUrl}`,
+    )
+  })
+
+  it.each([
+    String.raw`\x01https://example.com/runtime.js`,
+    String.raw`\150ttps://example.com/runtime.js`,
+  ])(
+    'rejects a control-normalized or legacy-octal remote worker URL: %s',
+    (encodedUrl) => {
+      const directory = createDist(validEntryAssets, {
+        ...validEntryFiles,
+        'sw.js': `${validWorker}; fetch("${encodedUrl}")`,
+      })
+
+      expect(() => verifyStaticBuild(directory)).toThrow(
+        `Remote runtime asset URL is not allowed in service worker: ${encodedUrl}`,
+      )
+    },
+  )
+
+  it('rejects a remote literal inside template interpolation', () => {
+    const url = 'https://example.com/runtime.js'
+    const directory = createDist(validEntryAssets, {
+      ...validEntryFiles,
+      'sw.js': `${validWorker}; fetch(\`\${"${url}"}\`)`,
+    })
+
+    expect(() => verifyStaticBuild(directory)).toThrow(
+      `Remote runtime asset URL is not allowed in service worker: ${url}`,
     )
   })
 
@@ -620,6 +702,25 @@ describe('verifyStaticBuild', () => {
       `Remote runtime asset URL is not allowed: ${url}`,
     )
   })
+
+  it.each(['Tab', 'NewLine'])(
+    'rejects a browser-remote runtime asset hidden with &%s;',
+    (entity) => {
+      const url = `h&${entity};ttps://example.com/evil.js`
+      const directory = createDist(
+        `${validEntryAssets}<script src="${url}"></script>`,
+        {
+          ...validEntryFiles,
+          [`h&${entity};ttps:/example.com/evil.js`]:
+            'console.log("browser-remote")',
+        },
+      )
+
+      expect(() => verifyStaticBuild(directory)).toThrow(
+        `Remote runtime asset URL is not allowed: ${url}`,
+      )
+    },
+  )
 
   it('rejects a remote document base that relocates relative assets', () => {
     const baseUrl = 'https://example.com/'
