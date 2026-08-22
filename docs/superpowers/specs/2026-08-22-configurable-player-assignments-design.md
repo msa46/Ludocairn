@@ -1,7 +1,7 @@
 # Configurable Player Assignments Design
 
 **Date:** 2026-08-22  
-**Status:** Approved for implementation planning  
+**Status:** Implemented; live release verification pending
 **Project:** Ludocairn / Deckwright
 
 ## Purpose

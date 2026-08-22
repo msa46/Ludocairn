@@ -183,27 +183,36 @@ Acceptance criteria:
 
 ### Planned mobile PWA milestone
 
-Ludocairn should remain a normal static website while gaining an installable,
-mobile-first Progressive Web App mode:
+**Status:** Implemented; local browser, deployment, and physical-device
+verification pending.
 
-- [ ] Provide a repository-subpath-safe web app manifest, mobile icons, theme
-  colors, standalone display metadata, and safe-area-aware layouts.
-- [ ] Cache the app shell and bundled games so they remain usable offline after
-  one successful load, without caching or transmitting private session data.
-- [ ] Preserve the current browser-local session model and make installation
-  optional; accounts, analytics, cloud sync, and background data transfer stay
-  out of scope.
-- [ ] Use an explicit, recoverable service-worker update flow so a stale app
-  cannot silently misread newer game definitions or session files.
-- [ ] Verify installation, launch, offline reload, update recovery, keyboard and
-  screen-reader behavior, and narrow layouts on representative iOS and Android
-  browsers while retaining the full non-installed web journey.
+Ludocairn remains a normal static website while gaining an optional,
+mobile-first Progressive Web App mode. Evidence is intentionally separated by
+what has actually been observed:
+
+- [x] **Implemented and automated:** repository-subpath-safe manifest, icons,
+  standalone metadata, safe-area styles, generated shell/bundled-game precache,
+  query-safe navigation fallback, explicit save-first updates, and static
+  artifact/automated test coverage.
+- [ ] **Local real browser:** service-worker registration, installability,
+  offline root/query/session reload, update prompting, cache/localStorage
+  separation, keyboard/print behavior, and narrow/wide layouts have not yet
+  been exercised in a production preview.
+- [ ] **Deployed/live:** this PWA commit has not been pushed through CI/Pages
+  or manually exercised at the repository-subpath URL.
+- [ ] **Physical iOS and Android:** native install, launch, offline recovery,
+  update handling, keyboard/screen-reader behavior, and narrow layouts remain
+  unverified on representative devices.
+
+The implementation keeps installation optional, requires one successful online
+load before offline use, and preserves browser-local sessions without caching
+or transmitting them. Accounts, analytics, cloud sync, and background data
+transfer remain out of scope.
 
 Later work may add file sharing, compact fragment sharing for suitably small
-state, custom deck definitions, printable role/reference sheets, automated
-role assignment, private reveals, scripted role behavior, richer card group
-capabilities, and a carefully designed distinction between objective state and
-subjective player knowledge.
+state, custom deck definitions, printable role/reference sheets, scripted role
+behavior, richer card group capabilities, and a carefully designed distinction
+between objective state and subjective player knowledge.
 
 Accounts, cloud synchronization, multiplayer networking, real-time
 collaboration, arbitrary scripts, AI game generation, and a plugin marketplace

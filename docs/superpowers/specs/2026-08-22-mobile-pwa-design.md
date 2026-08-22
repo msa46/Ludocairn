@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-22
 
-**Status:** Approved for implementation planning
+**Status:** Implemented; local browser, deployment, and physical-device
+verification pending
 
 **Project:** Ludocairn / Deckwright
 

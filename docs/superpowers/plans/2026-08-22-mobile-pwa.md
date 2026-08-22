@@ -1,5 +1,8 @@
 # Ludocairn Mobile PWA Implementation Plan
 
+**Status:** Implemented; local browser, deployment, and physical-device
+verification pending.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make Ludocairn optionally installable and usable offline after one successful load, with explicit save-safe updates and repository-subpath-safe static deployment.
@@ -52,7 +55,7 @@
 - Consumes: `SessionRepository.save(session)` and existing `accept(result, true)`.
 - Produces: `flushPendingSave(): boolean`; true means no pending data remains or the write succeeded.
 
-- [ ] **Step 1: Write failing tests for no-op, success, and failure**
+- [x] **Step 1: Write failing tests for no-op, success, and failure**
 
 Create a valid minimal `Session`, use `MemorySessionRepository`, and test with `renderHook`:
 
@@ -89,13 +92,13 @@ describe('useSessionStore reload preparation', () => {
 })
 ```
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `npm test -- src/app/useSessionStore.test.tsx`
 
 Expected: FAIL because `flushPendingSave` is absent.
 
-- [ ] **Step 3: Implement one synchronous flush path**
+- [x] **Step 3: Implement one synchronous flush path**
 
 Keep failed data retryable and reuse `save`:
 
@@ -111,13 +114,13 @@ const flushPendingSave = useCallback(() => {
 
 Clear `pendingSession.current` only after a successful write. Return the new function and use it during unmount cleanup.
 
-- [ ] **Step 4: Run focused regressions**
+- [x] **Step 4: Run focused regressions**
 
 Run: `npm test -- src/app/useSessionStore.test.tsx src/app/ImportSession.test.tsx src/app/App.test.tsx`
 
 Expected: PASS without act warnings.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/app/useSessionStore.ts src/app/useSessionStore.test.tsx
@@ -141,7 +144,7 @@ git commit -m "feat: flush pending sessions before reload"
 **Interfaces:**
 - Produces: `pwaManifest`, relative install URLs, and exact-size PNG icons.
 
-- [ ] **Step 1: Write failing manifest and asset tests**
+- [x] **Step 1: Write failing manifest and asset tests**
 
 Create `src/pwa/manifest.test.ts`:
 
@@ -165,13 +168,13 @@ expect(pwaManifest.icons).toEqual(expect.arrayContaining([
 
 In `scripts/pwa-assets.test.ts`, read each PNG and parse bytes 16–23 with `Buffer.readUInt32BE` to assert 192x192, 512x512, and 512x512. Assert source `index.html` contains `viewport-fit=cover`, relative Apple touch icon, and theme-color metadata.
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `npm test -- src/pwa/manifest.test.ts scripts/pwa-assets.test.ts`
 
 Expected: FAIL for the missing module/assets/metadata.
 
-- [ ] **Step 3: Add the manifest literal**
+- [x] **Step 3: Add the manifest literal**
 
 ```ts
 export const pwaManifest = {
@@ -192,11 +195,11 @@ export const pwaManifest = {
 } as const
 ```
 
-- [ ] **Step 4: Create and inspect the original mark**
+- [x] **Step 4: Create and inspect the original mark**
 
 Use `apply_patch` for a square SVG with warm-paper background, dark rounded card, and three accent cairn stones. Keep the important mark in the central 60% safe zone. Generate committed PNGs with the available image renderer; generate maskable from padded source, not a crop. Inspect SVG and all PNGs before acceptance.
 
-- [ ] **Step 5: Add entry metadata**
+- [x] **Step 5: Add entry metadata**
 
 Use `width=device-width, initial-scale=1.0, viewport-fit=cover`, then add:
 
@@ -207,7 +210,7 @@ Use `width=device-width, initial-scale=1.0, viewport-fit=cover`, then add:
 
 The plugin adds the manifest link in Task 3.
 
-- [ ] **Step 6: Run tests and commit**
+- [x] **Step 6: Run tests and commit**
 
 Run: `npm test -- src/pwa/manifest.test.ts scripts/pwa-assets.test.ts`
 
@@ -231,17 +234,17 @@ git commit -m "feat: add Ludocairn install metadata"
 - Consumes: `pwaManifest`, Vite `base: './'`.
 - Produces: `manifest.webmanifest`, `sw.js`, Workbox support, and precached local build assets.
 
-- [ ] **Step 1: Add a failing build-output contract**
+- [x] **Step 1: Add a failing build-output contract**
 
 Extend `pwa-assets.test.ts` to assert an existing `dist/` includes `manifest.webmanifest` and `sw.js`. Run `npm run build` before the test.
 
 Expected RED: both files are missing.
 
-- [ ] **Step 2: Install exact dependency**
+- [x] **Step 2: Install exact dependency**
 
 Run: `npm install --save-dev --save-exact vite-plugin-pwa@1.3.0`
 
-- [ ] **Step 3: Configure prompt-mode generation**
+- [x] **Step 3: Configure prompt-mode generation**
 
 Keep `react()` first, import `pwaManifest`, and add:
 
@@ -268,13 +271,13 @@ VitePWA({
 
 Add `/// <reference types="vite-plugin-pwa/client" />` to `src/pwa/vite-env.d.ts`.
 
-- [ ] **Step 4: Build and verify GREEN**
+- [x] **Step 4: Build and verify GREEN**
 
 Run: `npm run build && npm test -- scripts/pwa-assets.test.ts && npm run typecheck`
 
 Expected: PASS; inspect `dist/sw.js` and confirm `index.html` plus hashed app assets occur in the precache.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json package-lock.json vite.config.ts src/pwa/vite-env.d.ts scripts/pwa-assets.test.ts
@@ -293,7 +296,7 @@ git commit -m "feat: generate offline application shell"
 - Produces `PwaState`, `PwaController`, and `startPwaRegistration(options)`.
 - Consumes an injected worker-registration function, document visibility boundary, and timers.
 
-- [ ] **Step 1: Write failing lifecycle tests**
+- [x] **Step 1: Write failing lifecycle tests**
 
 Cover separately:
 
@@ -308,13 +311,13 @@ it('removes interval and visibility listener on dispose')
 
 The activation test must prove `updateSW(true)` is never called at startup and is called exactly once through `controller.update()`.
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `npm test -- src/pwa/register.test.ts`
 
 Expected: FAIL for missing module.
 
-- [ ] **Step 3: Implement the injected controller**
+- [x] **Step 3: Implement the injected controller**
 
 Use these public contracts:
 
@@ -336,7 +339,7 @@ export interface PwaController {
 
 `startPwaRegistration` stores the activation function and registration; calls `registration.update()` initially, hourly when visible, and on `visibilitychange` to visible; converts rejections to error state; and makes disposal idempotent.
 
-- [ ] **Step 4: Run tests and commit**
+- [x] **Step 4: Run tests and commit**
 
 Run: `npm test -- src/pwa/register.test.ts && npm run typecheck`
 
@@ -360,7 +363,7 @@ git commit -m "feat: manage explicit PWA updates"
 - `PwaStatus` consumes `prepareForReload: () => boolean` and an injected `registerWorker` adapter.
 - `App` accepts an optional registration adapter; production passes `virtual:pwa-register` without delaying initial render.
 
-- [ ] **Step 1: Write failing component tests**
+- [x] **Step 1: Write failing component tests**
 
 Capture registration callbacks and cover:
 
@@ -376,13 +379,13 @@ it('disposes registration listeners on unmount')
 
 For the failure gate, use `prepareForReload={() => false}`, click **Update and reload**, assert `updateSW` was not called, and assert an alert says `Save the session or export it before updating.`
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `npm test -- src/pwa/PwaStatus.test.tsx`
 
 Expected: FAIL because the component is missing.
 
-- [ ] **Step 3: Implement `PwaStatus`**
+- [x] **Step 3: Implement `PwaStatus`**
 
 Register in `useEffect`, dispose on unmount, and render `null` for current state. Render `<section className="pwa-status print-hidden">`; use `role="status"` for offline-ready and `role="alert"` for update/error. Use native buttons named:
 
@@ -392,7 +395,7 @@ Register in `useEffect`, dispose on unmount, and render `null` for current state
 
 Call `prepareForReload()` before `controller.update()`. Catch activation rejection and show `The update could not be applied. You can keep using this version.`
 
-- [ ] **Step 4: Integrate without importing sessions into PWA code**
+- [x] **Step 4: Integrate without importing sessions into PWA code**
 
 Destructure `flushPendingSave` from `useSessionStore`. Place the status after the header and before main:
 
@@ -405,17 +408,17 @@ Destructure `flushPendingSave` from `useSessionStore`. Place the status after th
 
 Default the optional App adapter to a no-op current-version implementation for tests/development. In `main.tsx`, adapt `registerSW` from `virtual:pwa-register` to `RegisterWorkerCallbacks` and pass it to `App`; do not await registration.
 
-- [ ] **Step 5: Add application-level non-fatal coverage**
+- [x] **Step 5: Add application-level non-fatal coverage**
 
 In `App.test.tsx`, inject an adapter that invokes `onRegisterError`. Assert the error notice and **Choose a game** both remain present. Assert the default adapter does not create an update notice.
 
-- [ ] **Step 6: Run focused gates**
+- [x] **Step 6: Run focused gates**
 
 Run: `npm test -- src/pwa/PwaStatus.test.tsx src/app/App.test.tsx src/app/useSessionStore.test.tsx && npm run typecheck`
 
 Expected: PASS without console errors, act warnings, or jsdom service-worker access.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/pwa/PwaStatus.tsx src/pwa/PwaStatus.test.tsx src/app/App.tsx src/app/App.test.tsx src/main.tsx
@@ -435,7 +438,7 @@ git commit -m "feat: prompt for save-safe app updates"
 - `verifyStaticBuild()` returns `{ entryAssets, manifest, serviceWorker, precachedShell }`.
 - CLI output names the PWA boundaries it verified.
 
-- [ ] **Step 1: Upgrade the synthetic fixture and write failing cases**
+- [x] **Step 1: Upgrade the synthetic fixture and write failing cases**
 
 Make its valid form create `index.html`, JS, CSS, `manifest.webmanifest`, `sw.js`, and all three icons. Use a manifest matching `pwaManifest` and worker text with an `index.html` precache record. Add separate rejection tests for:
 
@@ -447,17 +450,17 @@ Make its valid form create `index.html`, JS, CSS, `manifest.webmanifest`, `sw.js
 - worker containing HTTP(S) or protocol-relative runtime asset URLs; and
 - missing/absolute Apple touch icon.
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `npm test -- scripts/verify-static-build.test.ts`
 
 Expected: FAIL because the verifier only handles JS/CSS entry assets.
 
-- [ ] **Step 3: Implement safe PWA validation**
+- [x] **Step 3: Implement safe PWA validation**
 
 Extract existing URL decoding, normalization, containment, existence, file-kind, and symlink checks into one helper used for entry and manifest assets. Parse exactly one manifest link and one touch icon. Validate exact manifest members, icon MIME/sizes/purpose, and paths. Resolve root `sw.js`; require an `index.html` precache entry; reject decoded remote runtime strings. Preserve every existing hostile asset test.
 
-- [ ] **Step 4: Update types and CLI**
+- [x] **Step 4: Update types and CLI**
 
 ```ts
 export interface StaticBuildVerification {
@@ -470,13 +473,13 @@ export interface StaticBuildVerification {
 
 Print `Verified PWA entry, manifest, service worker, and N local entry assets.`
 
-- [ ] **Step 5: Run synthetic and real gates**
+- [x] **Step 5: Run synthetic and real gates**
 
 Run: `npm test -- scripts/verify-static-build.test.ts && npm run build && npm run verify:dist`
 
 Expected: all hostile cases PASS and the real artifact prints the PWA summary.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scripts/verify-static-build.mjs scripts/verify-static-build.test.ts scripts/verify-static-build.d.mts
@@ -495,7 +498,7 @@ git commit -m "test: verify installable offline artifact"
 - Consumes `.pwa-status`, `.pwa-status-actions`, `.app-shell`, and existing variables.
 - Produces safe-area spacing, standalone refinement, narrow actions, and print exclusion.
 
-- [ ] **Step 1: Write failing CSS contracts**
+- [x] **Step 1: Write failing CSS contracts**
 
 ```ts
 expect(printCss).toMatch(/\.pwa-status[^}]*display:\s*none\s*!important/s)
@@ -506,17 +509,17 @@ expect(css).toContain('env(safe-area-inset-left, 0px)')
 expect(css).toContain('@media (display-mode: standalone)')
 ```
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `npm test -- src/styles/print-contract.test.ts`
 
 Expected: FAIL for missing selectors.
 
-- [ ] **Step 3: Implement mobile-first presentation**
+- [x] **Step 3: Implement mobile-first presentation**
 
 Use `calc(existing-padding + env(safe-area-inset-*, 0px))` so safe areas add to, rather than replace, current spacing. Style the notice as a high-contrast inset with readable max width and wrapping native-button actions. Stack only when labels would overflow. In standalone mode retain all navigation and add only shell continuity. Add `.pwa-status` to print-hidden selectors. Do not add entry animation.
 
-- [ ] **Step 4: Run tests and commit**
+- [x] **Step 4: Run tests and commit**
 
 Run: `npm test -- src/styles/print-contract.test.ts src/pwa/PwaStatus.test.tsx src/app/App.test.tsx`
 
@@ -538,23 +541,23 @@ git commit -m "feat: add safe-area PWA presentation"
 **Interfaces:**
 - Produces an honest ledger separating implementation, automation, local browser, deployment, and physical-device evidence.
 
-- [ ] **Step 1: Add user guidance**
+- [x] **Step 1: Add user guidance**
 
 Document native optional installation, one-online-load requirement, offline bundled games/shell, localStorage privacy, site-data deletion risk, export backup, and explicit save-first updates.
 
-- [ ] **Step 2: Record architecture**
+- [x] **Step 2: Record architecture**
 
 Document manifest/worker generation, precache contents, query fallback, update lifecycle, save gate, cleanup, and the fact service workers cannot intercept localStorage. State there is no runtime data cache or background transfer.
 
-- [ ] **Step 3: Reconcile roadmap and assignments**
+- [x] **Step 3: Reconcile roadmap and assignments**
 
 Split PWA status into implemented/automated, local-browser, deployed/live, and physical iOS/Android evidence. Check only observed items. Remove stale `automated role assignment` and `private reveals` from later work. Mark the assignment design `Implemented; live release verification pending`; check implementation-plan steps proven by commits/tests and leave live verification open.
 
-- [ ] **Step 4: Update PWA status honestly**
+- [x] **Step 4: Update PWA status honestly**
 
 After automated implementation, use `Implemented; local browser, deployment, and physical-device verification pending`. Check implementation boxes only. Do not check evidence not observed.
 
-- [ ] **Step 5: Run docs gate and commit**
+- [x] **Step 5: Run docs gate and commit**
 
 Run: `npm run format:check && rg -n "automated role assignment|private reveals" docs/roadmap.md`
 

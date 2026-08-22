@@ -1,5 +1,7 @@
 # Configurable Player Assignments Implementation Plan
 
+**Status:** Implemented; live release verification pending.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add per-game digital role dealing, private pass-the-phone reveals, and an optional gated Game Master overview without changing games that do not opt in.
@@ -68,7 +70,7 @@
 - Consumes: existing `RoleDefinition[]` and `RoleDistribution[]` normalized by `parseGameSource`.
 - Produces: `AssignmentDefinition` and optional `GameDefinition.assignments`.
 
-- [ ] **Step 1: Add a failing parser test for a valid assignment policy**
+- [x] **Step 1: Add a failing parser test for a valid assignment policy**
 
 Insert this block in the `validSource` fixture after `role_distributions` and assert the normalized camel-case result:
 
@@ -92,13 +94,13 @@ expect(result).toMatchObject({
 })
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- src/games/parse.test.ts`
 
 Expected: FAIL because `assignments` is currently an unknown top-level property.
 
-- [ ] **Step 3: Add failing table cases for every invalid branch**
+- [x] **Step 3: Add failing table cases for every invalid branch**
 
 Add literal cases that expect the shown paths:
 
@@ -119,7 +121,7 @@ it.each([
 
 Also add separate sources proving `assignments` is rejected when roles are absent or `role_distributions` is absent.
 
-- [ ] **Step 4: Implement the normalized model and parser**
+- [x] **Step 4: Implement the normalized model and parser**
 
 Add to `src/games/model.ts`:
 
@@ -138,13 +140,13 @@ export interface AssignmentDefinition {
 
 Add `readonly assignments?: AssignmentDefinition` to `GameDefinition`. In `parse.ts`, allow the top-level `assignments` key and add `parseAssignments(value, roles, roleDistributions, source)`. It must reject unknown keys, require `method === 'shuffle'`, validate both visibility enums, and reject opt-in unless roles and distributions are non-empty. Normalize `game_master` to `gameMaster`.
 
-- [ ] **Step 5: Run parser and catalog tests and verify GREEN**
+- [x] **Step 5: Run parser and catalog tests and verify GREEN**
 
 Run: `npm test -- src/games/parse.test.ts src/games/catalog.test.ts`
 
 Expected: PASS with old fixtures omitting `assignments` and the new fixture normalizing it.
 
-- [ ] **Step 6: Commit the parser increment**
+- [x] **Step 6: Commit the parser increment**
 
 ```bash
 git add src/games/model.ts src/games/parse.ts src/games/parse.test.ts
@@ -165,7 +167,7 @@ git commit -m "feat: parse assignment visibility policy"
 - Consumes: `resolveRoleCounts(game, playerCount)` and stable player IDs.
 - Produces: `dealPlayerAssignments(game, playerIds, random)` and `validatePlayerAssignments(game, playerIds, value)`.
 
-- [ ] **Step 1: Define the persisted and domain contracts in tests**
+- [x] **Step 1: Define the persisted and domain contracts in tests**
 
 Use these exact shapes in `deal.test.ts`:
 
@@ -187,13 +189,13 @@ expect(dealt).toEqual({
 
 The fixture distribution must be `{ echo: 1, drifter: 1, wayfinder: remaining }`. Derive the expected order by hand from an in-place Fisher-Yates shuffle whose random value is always zero.
 
-- [ ] **Step 2: Run the new test and verify RED**
+- [x] **Step 2: Run the new test and verify RED**
 
 Run: `npm test -- src/assignments/deal.test.ts`
 
 Expected: FAIL because the module does not exist.
 
-- [ ] **Step 3: Add failing tests for deal failures and validator mutations**
+- [x] **Step 3: Add failing tests for deal failures and validator mutations**
 
 Cover these observable cases with literal expectations:
 
@@ -211,7 +213,7 @@ expect(dealPlayerAssignments(game, playerIds, () => 1)).toMatchObject({
 
 For `validatePlayerAssignments`, mutate one valid literal fixture at a time to prove rejection of a non-array value, missing player, duplicate player, unknown player, unknown role, and wrong role multiset. Assert the exact diagnostic code and path for each.
 
-- [ ] **Step 4: Implement minimal assignment types and Fisher-Yates dealing**
+- [x] **Step 4: Implement minimal assignment types and Fisher-Yates dealing**
 
 Add to `src/sessions/model.ts`:
 
@@ -254,13 +256,13 @@ for (let index = pool.length - 1; index > 0; index -= 1) {
 
 Implement `validatePlayerAssignments` without calling the dealer. Validate the untrusted structure, then compare hand-counted actual role totals with literal totals produced by `resolveRoleCounts`.
 
-- [ ] **Step 5: Run the assignment tests and verify GREEN**
+- [x] **Step 5: Run the assignment tests and verify GREEN**
 
 Run: `npm test -- src/assignments/deal.test.ts src/games/roles.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the pure domain increment**
+- [x] **Step 6: Commit the pure domain increment**
 
 ```bash
 git add src/assignments src/sessions/model.ts
@@ -280,7 +282,7 @@ git commit -m "feat: deal and validate player assignments"
 - Consumes: `dealPlayerAssignments`, `RandomSource`, `GameDefinition.assignments`.
 - Produces: optional `Session.assignments`, assignment-aware `createSession`, and `dealSessionAssignments`.
 
-- [ ] **Step 1: Add a failing creation test for an exact digital deal**
+- [x] **Step 1: Add a failing creation test for an exact digital deal**
 
 Create an assignment-enabled fixture with four players and call:
 
@@ -308,13 +310,13 @@ expect(result).toMatchObject({
 
 Also assert each player's `type: role` field mirrors their assigned `roleId`.
 
-- [ ] **Step 2: Run the focused session test and verify RED**
+- [x] **Step 2: Run the focused session test and verify RED**
 
 Run: `npm test -- src/sessions/operations.test.ts`
 
 Expected: FAIL because `createSession` neither accepts randomness nor stores assignments.
 
-- [ ] **Step 3: Add failing session invariants**
+- [x] **Step 3: Add failing session invariants**
 
 Add tests proving:
 
@@ -342,7 +344,7 @@ expect(updatePlayerField(dealtSession, assignmentGame, 'player-1', 'role', 'echo
 
 Prove `renamePlayer` preserves assignment player IDs, and prove `dealSessionAssignments` adds assignments to an old assignment-enabled session only when explicitly invoked.
 
-- [ ] **Step 4: Implement assignment-aware session operations**
+- [x] **Step 4: Implement assignment-aware session operations**
 
 Extend `Session`:
 
@@ -374,13 +376,13 @@ export function dealSessionAssignments(
 
 Reject it when the game has no policy or assignments already exist. Lock add/remove and role-field edits whenever `session.assignments` is present.
 
-- [ ] **Step 5: Run session tests and verify GREEN**
+- [x] **Step 5: Run session tests and verify GREEN**
 
 Run: `npm test -- src/sessions/operations.test.ts`
 
 Expected: PASS, including all pre-existing session operations for games without a policy.
 
-- [ ] **Step 6: Commit the session lifecycle increment**
+- [x] **Step 6: Commit the session lifecycle increment**
 
 ```bash
 git add src/sessions/model.ts src/sessions/operations.ts src/sessions/operations.test.ts
@@ -401,7 +403,7 @@ git commit -m "feat: persist immutable session assignments"
 - Consumes: `validatePlayerAssignments` and optional untrusted `Session.assignments`.
 - Produces: validated version-1 sessions that preserve assignments through local storage and JSON files.
 
-- [ ] **Step 1: Add failing validation tests for valid, missing, and malformed assignment data**
+- [x] **Step 1: Add failing validation tests for valid, missing, and malformed assignment data**
 
 Assert a valid assignment list returns unchanged and a missing list stays valid for an assignment-enabled game:
 
@@ -419,13 +421,13 @@ expect(validateSession(validSession, assignmentGame)).toEqual({
 
 Add one mutation test per assignment-domain diagnostic and assert it is wrapped as `session.invalid-assignments` with the assignment path preserved.
 
-- [ ] **Step 2: Run validation tests and verify RED**
+- [x] **Step 2: Run validation tests and verify RED**
 
 Run: `npm test -- src/sessions/validate.test.ts`
 
 Expected: FAIL because assignment records are currently accepted by an unchecked cast.
 
-- [ ] **Step 3: Implement validation at the untrusted boundary**
+- [x] **Step 3: Implement validation at the untrusted boundary**
 
 In `validateSession`, after players and fields are validated:
 
@@ -451,7 +453,7 @@ if (value.assignments !== undefined) {
 
 Also verify every declared role field equals the assignment for the same player whenever assignments exist.
 
-- [ ] **Step 4: Add and run file round-trip and preview secrecy tests**
+- [x] **Step 4: Add and run file round-trip and preview secrecy tests**
 
 Add a session with assignments to `session-files.test.ts` and assert:
 
@@ -471,13 +473,13 @@ Run: `npm test -- src/files/session-files.test.ts src/app/ImportSession.test.tsx
 
 Expected: PASS after validation is connected; no production import-preview changes should be needed because the existing preview is already allow-listed.
 
-- [ ] **Step 5: Run repository persistence regressions and verify GREEN**
+- [x] **Step 5: Run repository persistence regressions and verify GREEN**
 
 Run: `npm test -- src/sessions/validate.test.ts src/storage/repository.test.ts src/files/session-files.test.ts src/app/ImportSession.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the persistence boundary increment**
+- [x] **Step 6: Commit the persistence boundary increment**
 
 ```bash
 git add src/sessions/validate.ts src/sessions/validate.test.ts src/files/session-files.test.ts src/app/ImportSession.test.tsx
@@ -500,7 +502,7 @@ git commit -m "feat: validate assignments across session files"
 - Consumes: complete `Session.assignments`, `GameDefinition.roles`, and `game.assignments.visibility.players`.
 - Produces: `PlayerAssignmentView({ game, session, onComplete })` and shared `AssignmentTable`.
 
-- [ ] **Step 1: Add a failing component test for DOM secrecy**
+- [x] **Step 1: Add a failing component test for DOM secrecy**
 
 Render `PlayerAssignmentView` in `own` mode with Alice assigned Echo and Bob assigned Drifter. Assert this exact sequence:
 
@@ -520,17 +522,17 @@ expect(screen.getByRole('heading', { name: 'Pass the device to Bob' })).toBeInTh
 expect(screen.queryByText('Echo')).not.toBeInTheDocument()
 ```
 
-- [ ] **Step 2: Run the new component test and verify RED**
+- [x] **Step 2: Run the new component test and verify RED**
 
 Run: `npm test -- src/app/components/PlayerAssignmentView.test.tsx`
 
 Expected: FAIL because the component does not exist.
 
-- [ ] **Step 3: Add failing tests for public and skipped modes**
+- [x] **Step 3: Add failing tests for public and skipped modes**
 
 For `players: all`, assert the semantic table contains both `Alice — Echo` and `Bob — Drifter`, and completion calls `onComplete` once. For `players: none`, test `App` directly and assert session creation opens the tracker without mounting `PlayerAssignmentView`.
 
-- [ ] **Step 4: Implement the assignment table and player-stage state machine**
+- [x] **Step 4: Implement the assignment table and player-stage state machine**
 
 `AssignmentTable` must resolve stable IDs through `game.roles` and render only when its caller has authorized all-role display:
 
@@ -545,13 +547,13 @@ For `players: all`, assert the semantic table contains both `Alice — Echo` and
 
 `PlayerAssignmentView` uses `useState<number>(0)` and `useState<'handoff' | 'revealed' | 'hidden'>('handoff')`. In handoff and hidden states, do not call the role resolver in rendered JSX and do not mount any role-bearing child. In revealed state, render only the current role label, optional team, and summary.
 
-- [ ] **Step 5: Route new sessions through the assignment stage**
+- [x] **Step 5: Route new sessions through the assignment stage**
 
 Add an optional `random?: RandomSource` App prop, default it to `Math.random`, and pass it to `createSession` and later deal actions. Use `view=assignments` in the query string for `own` and `all`; use the tracker URL directly for `none`.
 
 When `view=assignments`, load the saved session normally and render `PlayerAssignmentView`. Its completion action navigates to `session=<id>` without changing assignment data. A reload restarts component-local reveal progress at player zero.
 
-- [ ] **Step 6: Add focused responsive styles and run UI tests**
+- [x] **Step 6: Add focused responsive styles and run UI tests**
 
 Add `.assignment-stage`, `.assignment-handoff`, `.assignment-reveal`, and `.assignment-table-region` styles using the existing color variables, button treatment, and narrow-first spacing. Keep the table region independently scrollable and ensure role content has no `print-only` duplicate.
 
@@ -559,7 +561,7 @@ Run: `npm test -- src/app/components/PlayerAssignmentView.test.tsx src/app/App.t
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit the player reveal increment**
+- [x] **Step 7: Commit the player reveal increment**
 
 ```bash
 git add src/app/components/AssignmentTable.tsx src/app/components/PlayerAssignmentView.tsx src/app/components/PlayerAssignmentView.test.tsx src/app/App.tsx src/app/App.test.tsx src/styles/global.css
@@ -582,7 +584,7 @@ git commit -m "feat: add pass-device assignment reveals"
 - Consumes: `AssignmentTable`, complete assignments, `game.assignments.visibility.gameMaster`, and `dealSessionAssignments`.
 - Produces: an explicit spoiler gate, old-session deal action, and locked-roster tracker behavior.
 
-- [ ] **Step 1: Add a failing Game Master gate test**
+- [x] **Step 1: Add a failing Game Master gate test**
 
 ```ts
 render(<GameMasterAssignments game={game} session={assignedSession} />)
@@ -603,17 +605,17 @@ expect(screen.queryByText('Drifter')).not.toBeInTheDocument()
 
 Reopen and assert the warning appears again. Render a `game_master: none` fixture and assert the entry button is absent.
 
-- [ ] **Step 2: Run the gate test and verify RED**
+- [x] **Step 2: Run the gate test and verify RED**
 
 Run: `npm test -- src/app/components/GameMasterAssignments.test.tsx`
 
 Expected: FAIL because the gate does not exist.
 
-- [ ] **Step 3: Implement the three-state Game Master gate**
+- [x] **Step 3: Implement the three-state Game Master gate**
 
 Use local state `'closed' | 'warning' | 'open'`. Mount `AssignmentTable` only in `open`; closing resets to `closed`. Do not use CSS visibility to conceal role-bearing DOM.
 
-- [ ] **Step 4: Add failing tracker integration tests**
+- [x] **Step 4: Add failing tracker integration tests**
 
 Prove all of these behaviors through `App` with a real memory repository:
 
@@ -627,7 +629,7 @@ expect(screen.getByText(/exports include.*assignments/i)).toBeInTheDocument()
 
 For an older assignment-enabled session without `assignments`, assert its legacy role field and `Deal digital roles` action remain visible. Click deal, verify persistence, then verify the correct player-visibility route opens.
 
-- [ ] **Step 5: Wire tracker behavior and deal mutation**
+- [x] **Step 5: Wire tracker behavior and deal mutation**
 
 Add `onDealAssignments: () => void` to `TrackerView`. Render `GameMasterAssignments` only for complete assignments. Filter role fields from player controls when `session.assignments` exists. Replace add/remove controls with a non-print locked-roster explanation while preserving rename.
 
@@ -642,13 +644,13 @@ if (accept(dealt) && dealt.ok) {
 
 Update export copy to say that exported files include facilitator notes and private assignments.
 
-- [ ] **Step 6: Run tracker, gate, import, and print-contract tests**
+- [x] **Step 6: Run tracker, gate, import, and print-contract tests**
 
 Run: `npm test -- src/app/components/GameMasterAssignments.test.tsx src/app/App.test.tsx src/app/ImportSession.test.tsx src/styles/print-contract.test.ts`
 
 Expected: PASS, and print assertions must not find assignment tables or secret role labels.
 
-- [ ] **Step 7: Commit the facilitator increment**
+- [x] **Step 7: Commit the facilitator increment**
 
 ```bash
 git add src/app/components/GameMasterAssignments.tsx src/app/components/GameMasterAssignments.test.tsx src/app/components/TrackerView.tsx src/app/App.tsx src/app/App.test.tsx src/styles/global.css
@@ -671,7 +673,7 @@ git commit -m "feat: add gated game master assignments"
 - Consumes: the completed parser, session, reveal, and Game Master features.
 - Produces: one bundled opt-in game and complete author/user documentation.
 
-- [ ] **Step 1: Add a failing bundled-game assertion**
+- [x] **Step 1: Add a failing bundled-game assertion**
 
 In `catalog.test.ts`, assert:
 
@@ -686,7 +688,7 @@ Run: `npm test -- src/games/catalog.test.ts`
 
 Expected: FAIL because Veilquorum has not opted in.
 
-- [ ] **Step 2: Add the assignment block and update Veilquorum rules**
+- [x] **Step 2: Add the assignment block and update Veilquorum rules**
 
 Add after `role_distributions`:
 
@@ -700,7 +702,7 @@ assignments:
 
 Rewrite setup so the default procedure is digital pass-the-device dealing, the Game Master is explicitly outside the named roster, and physical suit markers remain an optional equivalent. Explain that the tracker hides digital assignments outside deliberate reveal/GM views and that session exports are private.
 
-- [ ] **Step 3: Update the complete game-format example and reference sections**
+- [x] **Step 3: Update the complete game-format example and reference sections**
 
 In `docs/game-format.md`, add `assignments` to the top-level table and document:
 
@@ -714,7 +716,7 @@ assignments:
 
 State the distribution prerequisite, each visibility behavior, legacy-session compatibility, immutable roster, role-field mirroring/suppression, and export confidentiality. Remove statements saying the application never assigns or reveals roles.
 
-- [ ] **Step 4: Update architecture, README, and roadmap**
+- [x] **Step 4: Update architecture, README, and roadmap**
 
 Document the exact flow:
 
@@ -728,7 +730,7 @@ validated roles + distribution + policy
 
 State that secrets are local but readable by anyone with device-storage or exported-file access. In the roadmap, record this as the next completed increment without claiming deployment or live verification.
 
-- [ ] **Step 5: Run bundled-game, parser, and formatting checks**
+- [x] **Step 5: Run bundled-game, parser, and formatting checks**
 
 Run: `npm test -- src/games/catalog.test.ts src/games/parse.test.ts`
 
@@ -736,7 +738,7 @@ Run: `npx prettier --check games/veilquorum/game.md docs/game-format.md docs/arc
 
 Expected: both commands PASS.
 
-- [ ] **Step 6: Commit the example and documentation increment**
+- [x] **Step 6: Commit the example and documentation increment**
 
 ```bash
 git add games/veilquorum/game.md src/games/catalog.test.ts docs/game-format.md docs/architecture.md README.md docs/roadmap.md
@@ -754,7 +756,7 @@ git commit -m "docs: publish digital role dealing guidance"
 - Consumes: all completed increments.
 - Produces: release-gate evidence for the final handoff.
 
-- [ ] **Step 1: Run the assignment mutation checklist mentally against tests**
+- [x] **Step 1: Run the assignment mutation checklist mentally against tests**
 
 Confirm a test fails for each mutation:
 
@@ -774,19 +776,19 @@ a no-policy game enters assignment UI
 
 Add one focused failing test first for any uncovered mutation, watch it fail, then make the minimal production change and watch it pass.
 
-- [ ] **Step 2: Run focused assignment and UI suites**
+- [x] **Step 2: Run focused assignment and UI suites**
 
 Run: `npm test -- src/assignments/deal.test.ts src/sessions/operations.test.ts src/sessions/validate.test.ts src/app/components/PlayerAssignmentView.test.tsx src/app/components/GameMasterAssignments.test.tsx src/app/App.test.tsx src/app/ImportSession.test.tsx`
 
 Expected: PASS with no warnings.
 
-- [ ] **Step 3: Run the complete release gate**
+- [x] **Step 3: Run the complete release gate**
 
 Run: `npm run ci`
 
 Expected: lint, format check, typecheck, all tests, production build, and static artifact verification PASS.
 
-- [ ] **Step 4: Inspect the final diff and repository state**
+- [x] **Step 4: Inspect the final diff and repository state**
 
 Run: `git diff --check`
 

@@ -164,6 +164,39 @@ grants Pages/id-token write permissions only to the deploy job. The production
 URL is not considered verified until that workflow succeeds and the published
 repository-subpath build is manually exercised.
 
+### Progressive Web App boundary
+
+`vite-plugin-pwa` generates the relative web app manifest and Workbox service
+worker from Vite's production asset graph. The generated worker precaches the
+HTML shell, built JavaScript and CSS, manifest, icons, and local presentation
+assets. Bundled game Markdown is compiled into the application JavaScript, so
+it is available through that same versioned precache; there is no separate
+game-data cache.
+
+The worker's navigation fallback is the precached `index.html`. Workbox ignores
+the application query string for that shell match, so an installed application
+can reload catalog, game, session, and assignment URLs carrying `?game=`,
+`?session=`, or `?view=` after one successful online production load. An
+offline first visit cannot work. Requests outside the deployment scope and
+other origins are not intercepted.
+
+The application has no runtime data cache, API cache, background sync,
+periodic background work, or background data transfer. Service workers do not
+intercept `localStorage` operations: they cannot read, cache, transmit, or
+delete session records. Workbox cleanup removes only obsolete
+Workbox-owned application caches. Browser site-data clearing can still remove
+both those caches and browser-local sessions, so the export flow remains the
+user's backup boundary.
+
+PWA registration is isolated in `src/pwa`. A waiting worker never replaces the
+running application automatically. The registration boundary checks for
+updates at registration, while visible on an hourly interval, and when the
+document returns to the foreground. Selecting **Update and reload** first asks
+the session store to synchronously flush pending debounced data. Only a
+successful flush activates the waiting worker and reloads; a failed save or
+activation leaves the current application usable and exposes recovery guidance.
+Unsupported registration and registration errors are likewise non-fatal.
+
 ## Accessibility, responsive design, and printing
 
 Semantic HTML and native controls are the default. All tracker operations must

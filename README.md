@@ -1,9 +1,10 @@
 # Ludocairn
 
 Ludocairn is an open-source, static web application for reading, running,
-tracking, exporting, and printing tabletop card games. The first usable
-release runs entirely in the browser: there is no account, backend, database,
-analytics service, cloud sync, or runtime network dependency.
+tracking, exporting, and printing tabletop card games. It runs entirely in the
+browser: there is no account, backend, database, analytics service, cloud
+sync, or background data transfer. After its offline shell has been installed,
+it has no runtime network dependency for bundled games and local sessions.
 
 ## Privacy and session files
 
@@ -22,6 +23,28 @@ Imported session and player IDs must use URL-safe characters. Malformed,
 unsupported, mismatched, and unavailable-game records remain recoverable and
 are never silently accepted. Import confirmation also stops without writing if
 the browser cannot enumerate existing sessions safely.
+
+## Optional installation and offline use
+
+Ludocairn remains a normal website. When a supported browser offers its native
+installation controls, you may install it; Ludocairn does not show a custom
+install prompt and installation is never required.
+
+Offline use starts only after one successful online production load has
+registered the service worker and cached the current application shell. After
+that, the shell and bundled games can open offline, including the catalog and
+game/session URLs that use `?game=`, `?session=`, or `?view=`. An offline first
+visit cannot work.
+
+The offline cache contains application files, not your session records.
+Sessions stay in this browser's `localStorage` and are not copied into the
+service-worker cache or sent anywhere. Clearing browser/site data can remove
+both the cached app and local sessions, so export a backup before deliberately
+clearing site data or moving to another browser/device.
+
+When an updated app version is ready, Ludocairn asks before reloading. Choose
+**Update and reload** only after it can save any pending session change; if the
+save fails, the current version remains open so you can retry or export first.
 
 ## Bundled games
 
@@ -153,6 +176,10 @@ published from `main` at `433b3c8` on 2026-08-21. The
 succeeded. Production rendered the reviewed role definitions and labeled
 Team/Card/Purpose structure from same-origin assets without application console
 warnings or errors.
+
+The later mobile PWA implementation is automated-tested but has not yet had a
+local real-browser PWA exercise, a live Pages deployment, or physical iOS or
+Android verification. See the roadmap for that evidence ledger.
 
 ## Documentation
 
