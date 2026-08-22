@@ -16,6 +16,7 @@ describe('print stylesheet contract', () => {
 
   it.each([
     '.print-hidden',
+    '.pwa-status',
     'nav',
     '.editing-controls',
     '.save-status',
@@ -41,6 +42,29 @@ describe('print stylesheet contract', () => {
     expect(hiddenSelectors).not.toContain('.role-guide')
     expect(printCss).toMatch(
       /\.role-guide-card,\s*\.role-guide tr\s*{[^}]*break-inside:\s*avoid/s,
+    )
+  })
+
+  it('removes PWA notices from printed documents', () => {
+    expect(printCss).toMatch(/\.pwa-status[^}]*display:\s*none\s*!important/s)
+  })
+})
+
+describe('PWA viewport stylesheet contract', () => {
+  it('adds device safe areas without replacing the existing layout spacing', () => {
+    expect(css).toContain('env(safe-area-inset-top, 0px)')
+    expect(css).toContain('env(safe-area-inset-right, 0px)')
+    expect(css).toContain('env(safe-area-inset-bottom, 0px)')
+    expect(css).toContain('env(safe-area-inset-left, 0px)')
+  })
+
+  it('keeps the application shell continuous in standalone mode', () => {
+    expect(css).toContain('@media (display-mode: standalone)')
+  })
+
+  it('reserves an auto-sized row for notices before the main content', () => {
+    expect(css).toMatch(
+      /\.app-shell\s*{[^}]*grid-template-rows:\s*auto auto 1fr auto/s,
     )
   })
 })

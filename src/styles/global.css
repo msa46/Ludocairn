@@ -150,7 +150,9 @@ h3 {
 .app-shell {
   display: grid;
   min-height: 100vh;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
+  padding-inline: calc(0px + env(safe-area-inset-left, 0px))
+    calc(0px + env(safe-area-inset-right, 0px));
 }
 
 .site-header,
@@ -164,7 +166,7 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  padding-block: 1.15rem;
+  padding-block: calc(1.15rem + env(safe-area-inset-top, 0px)) 1.15rem;
   border-bottom: 1px solid var(--line);
 }
 
@@ -188,14 +190,16 @@ h3 {
 }
 
 .site-main {
+  grid-row: 3;
   padding-block: clamp(2rem, 6vw, 5rem);
 }
 
 .site-footer {
+  grid-row: 4;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  padding-block: 1.25rem;
+  padding-block: 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
   font-size: 0.82rem;
 }
@@ -901,6 +905,35 @@ h3 {
   background: #f5dfd8;
 }
 
+.pwa-status {
+  grid-row: 2;
+  display: grid;
+  width: min(100% - 2rem, 76rem);
+  gap: 0.8rem;
+  margin-inline: auto;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 0.35rem solid var(--accent);
+  background: var(--warning);
+  box-shadow: 0 0.6rem 1.5rem rgb(50 43 29 / 6%);
+}
+
+.pwa-status p {
+  max-width: 60ch;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.pwa-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.pwa-status-actions > button {
+  max-width: 100%;
+}
+
 @media (min-width: 40rem) {
   .site-header,
   .site-footer {
@@ -949,6 +982,12 @@ h3 {
   }
 }
 
+@media (display-mode: standalone) {
+  .app-shell {
+    min-height: 100dvh;
+  }
+}
+
 @media print {
   :root,
   html,
@@ -958,6 +997,7 @@ h3 {
   }
 
   .print-hidden,
+  .pwa-status,
   .site-header,
   .site-footer,
   .status-note,
