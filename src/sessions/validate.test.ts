@@ -107,11 +107,126 @@ const validSession: Session = {
   updatedAt: '2026-08-21T18:05:00.000Z',
 }
 
+const assignmentGame: GameDefinition = {
+  ...game,
+  players: { min: 2, max: 2 },
+  roleDistributions: [
+    {
+      players: { min: 2, max: 2 },
+      counts: { wayfinder: 1, drifter: 1, echo: 0 },
+    },
+  ],
+  assignments: {
+    method: 'shuffle',
+    visibility: { players: 'own', gameMaster: 'all' },
+  },
+}
+
+const validAssignments = [
+  { playerId: 'player-1', roleId: 'wayfinder' },
+  { playerId: 'player-2', roleId: 'drifter' },
+]
+
 describe('validateSession', () => {
   it('accepts a complete compatible session', () => {
     expect(validateSession(validSession, game)).toEqual({
       ok: true,
       session: validSession,
+    })
+  })
+
+  it('accepts valid assignments and remains compatible with an older missing list', () => {
+    const assigned = { ...validSession, assignments: validAssignments }
+
+    expect(validateSession(assigned, assignmentGame)).toEqual({
+      ok: true,
+      session: assigned,
+    })
+    expect(validateSession(validSession, assignmentGame)).toEqual({
+      ok: true,
+      session: validSession,
+    })
+  })
+
+  it.each([
+    {
+      name: 'a non-array assignment record',
+      assignments: {},
+      path: 'assignments',
+    },
+    {
+      name: 'a missing player assignment',
+      assignments: validAssignments.slice(0, 1),
+      path: 'assignments',
+    },
+    {
+      name: 'a duplicate assigned player',
+      assignments: [validAssignments[0], validAssignments[0]],
+      path: 'assignments.1.playerId',
+    },
+    {
+      name: 'an unknown assigned player',
+      assignments: [
+        { playerId: 'stranger', roleId: 'wayfinder' },
+        validAssignments[1],
+      ],
+      path: 'assignments.0.playerId',
+    },
+    {
+      name: 'an unknown assigned role',
+      assignments: [
+        { playerId: 'player-1', roleId: 'stranger' },
+        validAssignments[1],
+      ],
+      path: 'assignments.0.roleId',
+    },
+    {
+      name: 'an incorrect role distribution',
+      assignments: [
+        { playerId: 'player-1', roleId: 'drifter' },
+        validAssignments[1],
+      ],
+      path: 'assignments',
+    },
+  ])('rejects $name', ({ assignments, path }) => {
+    expect(
+      validateSession({ ...validSession, assignments }, assignmentGame),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'session.invalid-assignments', path },
+    })
+  })
+
+  it('rejects assignments for a game without a policy', () => {
+    expect(
+      validateSession({ ...validSession, assignments: validAssignments }, game),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: {
+        code: 'session.invalid-assignments',
+        path: 'assignments',
+      },
+    })
+  })
+
+  it('rejects an assigned role that differs from its mirrored role field', () => {
+    const players = validSession.players.map((player, index) =>
+      index === 0
+        ? { ...player, fields: { ...player.fields, role: 'echo' } }
+        : player,
+    )
+
+    expect(
+      validateSession(
+        { ...validSession, players, assignments: validAssignments },
+        assignmentGame,
+      ),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: {
+        code: 'session.invalid-assignments',
+        path: 'players.0.fields.role',
+      },
     })
   })
 

@@ -20,6 +20,17 @@ if (!catalog.ok) throw new Error('Bundled catalog fixture failed to load')
 const veilquorum = catalog.games.find((game) => game.id === 'veilquorum')
 if (!veilquorum) throw new Error('Veilquorum fixture was not found')
 
+const assignmentVeilquorum = {
+  ...veilquorum,
+  assignments: {
+    method: 'shuffle' as const,
+    visibility: { players: 'own' as const, gameMaster: 'all' as const },
+  },
+}
+const assignmentGames = catalog.games.map((game) =>
+  game.id === veilquorum.id ? assignmentVeilquorum : game,
+)
+
 const resolveGame = (id: string) => catalog.games.find((game) => game.id === id)
 
 const importedSession: Session = {
@@ -40,6 +51,35 @@ const importedSession: Session = {
   notes: 'Keep this private.',
   createdAt: '2026-08-21T18:00:00.000Z',
   updatedAt: '2026-08-21T18:05:00.000Z',
+}
+
+const assignedImportedSession: Session = {
+  ...importedSession,
+  id: 'assigned-import',
+  players: [
+    {
+      id: 'player-1',
+      name: 'Ari',
+      fields: { active: true, role: 'echo', signals: 0, clue: '' },
+    },
+    {
+      id: 'player-2',
+      name: 'Bea',
+      fields: { active: true, role: 'drifter', signals: 0, clue: '' },
+    },
+    ...['Cy', 'Dee', 'Eli'].map((name, index) => ({
+      id: `player-${index + 3}`,
+      name,
+      fields: { active: true, role: 'wayfinder', signals: 0, clue: '' },
+    })),
+  ],
+  assignments: [
+    { playerId: 'player-1', roleId: 'echo' },
+    { playerId: 'player-2', roleId: 'drifter' },
+    { playerId: 'player-3', roleId: 'wayfinder' },
+    { playerId: 'player-4', roleId: 'wayfinder' },
+    { playerId: 'player-5', roleId: 'wayfinder' },
+  ],
 }
 
 function ids(...values: string[]): IdProvider {
@@ -95,6 +135,30 @@ describe('session file UI', () => {
       await screen.findByRole('heading', { level: 1, name: 'Imported Friday' }),
     ).toBeInTheDocument()
     expect(repository.load('imported-session')).toMatchObject({ ok: true })
+  })
+
+  it('does not expose imported assignments in the review preview', async () => {
+    const resolver = (id: string) =>
+      assignmentGames.find((game) => game.id === id)
+    const repository = new MemorySessionRepository(resolver)
+    render(
+      <App
+        games={assignmentGames}
+        repository={repository}
+        ids={ids('unused')}
+      />,
+    )
+
+    uploadJson(serializeSession(assignedImportedSession))
+
+    const preview = await screen.findByRole('region', {
+      name: 'Review import',
+    })
+    expect(within(preview).getByText('5 players')).toBeInTheDocument()
+    expect(within(preview).queryByText('Echo')).not.toBeInTheDocument()
+    expect(within(preview).queryByText('Drifter')).not.toBeInTheDocument()
+    expect(within(preview).queryByText('echo')).not.toBeInTheDocument()
+    expect(within(preview).queryByText('drifter')).not.toBeInTheDocument()
   })
 
   it('cancels a preview without mutating the repository', async () => {

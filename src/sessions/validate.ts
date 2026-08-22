@@ -1,3 +1,4 @@
+import { validatePlayerAssignments } from '../assignments/deal'
 import type { GameDefinition } from '../games/model'
 import type { Session, SessionDiagnostic, SessionResult } from './model'
 import { fieldValueIsValid } from './operations'
@@ -170,6 +171,50 @@ export function validateSession(
           `Value does not conform to field "${field.id}".`,
           fieldPath,
         )
+      }
+    }
+  }
+
+  if (value.assignments !== undefined) {
+    if (!game.assignments) {
+      return failure(
+        'session.invalid-assignments',
+        'This game does not define digital assignments.',
+        'assignments',
+      )
+    }
+    const validatedAssignments = validatePlayerAssignments(
+      game,
+      [...playerIds],
+      value.assignments,
+    )
+    if (!validatedAssignments.ok) {
+      return failure(
+        'session.invalid-assignments',
+        validatedAssignments.diagnostic.message,
+        validatedAssignments.diagnostic.path ?? 'assignments',
+      )
+    }
+    const assignedRoles = new Map(
+      validatedAssignments.assignments.map((assignment) => [
+        assignment.playerId,
+        assignment.roleId,
+      ]),
+    )
+    const roleFields = game.fields.filter((field) => field.type === 'role')
+    for (const [playerIndex, player] of value.players.entries()) {
+      const record = player as Record<string, unknown>
+      const playerId = record.id as string
+      const fields = record.fields as Record<string, unknown>
+      const assignedRole = assignedRoles.get(playerId)
+      for (const field of roleFields) {
+        if (fields[field.id] !== assignedRole) {
+          return failure(
+            'session.invalid-assignments',
+            `Role field "${field.id}" does not match the digital assignment.`,
+            `players.${playerIndex}.fields.${field.id}`,
+          )
+        }
       }
     }
   }

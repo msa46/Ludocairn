@@ -44,7 +44,43 @@ const session: Session = {
   updatedAt: '2026-08-21T18:05:00.000Z',
 }
 
-const resolveGame = (id: string) => (id === game.id ? game : undefined)
+const assignedGame: GameDefinition = {
+  ...game,
+  id: 'assigned-game',
+  players: { min: 2, max: 2 },
+  roles: [
+    { id: 'echo', label: 'Echo', summary: 'Tests one player.' },
+    { id: 'drifter', label: 'Drifter', summary: 'Opposes the group.' },
+  ],
+  roleDistributions: [
+    {
+      players: { min: 2, max: 2 },
+      counts: { echo: 1, drifter: 1 },
+    },
+  ],
+  assignments: {
+    method: 'shuffle',
+    visibility: { players: 'own', gameMaster: 'all' },
+  },
+  fields: [{ id: 'role', label: 'Role', type: 'role', default: 'echo' }],
+}
+
+const assignedSession: Session = {
+  ...session,
+  id: 'assigned-session',
+  gameId: assignedGame.id,
+  players: [
+    { id: 'player-1', name: 'Ari', fields: { role: 'echo' } },
+    { id: 'player-2', name: 'Bea', fields: { role: 'drifter' } },
+  ],
+  assignments: [
+    { playerId: 'player-1', roleId: 'echo' },
+    { playerId: 'player-2', roleId: 'drifter' },
+  ],
+}
+
+const resolveGame = (id: string) =>
+  id === game.id ? game : id === assignedGame.id ? assignedGame : undefined
 
 describe('session files', () => {
   it('serializes stable, pretty, UTF-8-safe JSON with a trailing newline', () => {
@@ -76,6 +112,28 @@ describe('session files', () => {
         'updatedAt',
       ])
     }
+  })
+
+  it('round-trips assignments without including them in the import preview', () => {
+    const result = parseSessionFile(
+      serializeSession(assignedSession),
+      resolveGame,
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      session: { assignments: assignedSession.assignments },
+      preview: {
+        sessionName: assignedSession.name,
+        gameName: assignedGame.name,
+        playerCount: 2,
+      },
+    })
+    if (!result.ok) return
+    expect(Object.values(result.preview)).not.toContain('Echo')
+    expect(Object.values(result.preview)).not.toContain('echo')
+    expect(Object.values(result.preview)).not.toContain('Drifter')
+    expect(Object.values(result.preview)).not.toContain('drifter')
   })
 
   it('diagnoses malformed JSON and unavailable games', () => {
