@@ -5,6 +5,7 @@ import {
   addPlayer,
   adjustRound,
   createSession,
+  dealSessionAssignments,
   getPlayerCountWarning,
   removePlayer,
   renamePlayer,
@@ -76,6 +77,26 @@ const game: GameDefinition = {
   ],
   rulesMarkdown: '# Test Game\n',
   source: 'test/game.md',
+}
+
+const assignmentGame: GameDefinition = {
+  ...game,
+  players: { min: 4, max: 4 },
+  roles: [
+    { id: 'echo', label: 'Echo', summary: 'Tests one player.' },
+    { id: 'drifter', label: 'Drifter', summary: 'Opposes the group.' },
+    { id: 'wayfinder', label: 'Wayfinder', summary: 'Supports the group.' },
+  ],
+  roleDistributions: [
+    {
+      players: { min: 4, max: 4 },
+      counts: { echo: 1, drifter: 1, wayfinder: 'remaining' },
+    },
+  ],
+  assignments: {
+    method: 'shuffle',
+    visibility: { players: 'own', gameMaster: 'all' },
+  },
 }
 
 function clock(...times: string[]) {
@@ -173,6 +194,154 @@ describe('session creation', () => {
     ).toMatchObject({
       ok: false,
       diagnostic: { code: 'session.invalid-name', path: 'players.0.name' },
+    })
+  })
+
+  it('deals an exact role distribution and mirrors role fields', () => {
+    const result = createSession(
+      assignmentGame,
+      {
+        name: 'Friday table',
+        playerNames: ['Ari', 'Bea', 'Cy', 'Dee'],
+      },
+      clock('2026-08-22T12:00:00.000Z'),
+      ids('session-1', 'player-1', 'player-2', 'player-3', 'player-4'),
+      () => 0,
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      session: {
+        assignments: [
+          { playerId: 'player-1', roleId: 'drifter' },
+          { playerId: 'player-2', roleId: 'wayfinder' },
+          { playerId: 'player-3', roleId: 'wayfinder' },
+          { playerId: 'player-4', roleId: 'echo' },
+        ],
+        players: [
+          { id: 'player-1', fields: { role: 'drifter' } },
+          { id: 'player-2', fields: { role: 'wayfinder' } },
+          { id: 'player-3', fields: { role: 'wayfinder' } },
+          { id: 'player-4', fields: { role: 'echo' } },
+        ],
+      },
+    })
+  })
+
+  it('rejects an unsupported digital-deal player count', () => {
+    expect(
+      createSession(
+        assignmentGame,
+        { name: 'Practice', playerNames: ['Ari'] },
+        clock('2026-08-22T12:00:00.000Z'),
+        ids('session-1', 'player-1'),
+        () => 0,
+      ),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'session.unsupported-player-count' },
+    })
+  })
+})
+
+describe('digital assignment lifecycle', () => {
+  function assignedSession() {
+    const result = createSession(
+      assignmentGame,
+      {
+        name: 'Assigned table',
+        playerNames: ['Ari', 'Bea', 'Cy', 'Dee'],
+      },
+      clock('2026-08-22T12:00:00.000Z'),
+      ids('session-1', 'player-1', 'player-2', 'player-3', 'player-4'),
+      () => 0,
+    )
+    if (!result.ok) throw new Error(result.diagnostic.message)
+    return result.session
+  }
+
+  it('locks the roster and assigned role field while preserving renames', () => {
+    const session = assignedSession()
+
+    expect(
+      addPlayer(
+        session,
+        assignmentGame,
+        'Eli',
+        clock('2026-08-22T12:01:00.000Z'),
+        ids('player-5'),
+      ),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'session.roster-locked' },
+    })
+    expect(
+      removePlayer(session, 'player-1', clock('2026-08-22T12:01:00.000Z')),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'session.roster-locked' },
+    })
+    expect(
+      updatePlayerField(
+        session,
+        assignmentGame,
+        'player-1',
+        'role',
+        'echo',
+        clock('2026-08-22T12:01:00.000Z'),
+      ),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'session.assignment-locked' },
+    })
+
+    const renamed = renamePlayer(
+      session,
+      'player-1',
+      'Ari Updated',
+      clock('2026-08-22T12:01:00.000Z'),
+    )
+    expect(renamed.ok).toBe(true)
+    if (!renamed.ok) return
+    expect(renamed.session.players[0]).toMatchObject({
+      id: 'player-1',
+      name: 'Ari Updated',
+    })
+    expect(renamed.session.assignments).toEqual(session.assignments)
+  })
+
+  it('deals an older compatible session only after an explicit action', () => {
+    const legacyGame = { ...assignmentGame, assignments: undefined }
+    const created = createSession(
+      legacyGame,
+      {
+        name: 'Legacy table',
+        playerNames: ['Ari', 'Bea', 'Cy', 'Dee'],
+      },
+      clock('2026-08-22T12:00:00.000Z'),
+      ids('session-1', 'player-1', 'player-2', 'player-3', 'player-4'),
+    )
+    if (!created.ok) throw new Error(created.diagnostic.message)
+    expect(created.session.assignments).toBeUndefined()
+
+    expect(
+      dealSessionAssignments(
+        created.session,
+        assignmentGame,
+        () => 0,
+        clock('2026-08-22T12:01:00.000Z'),
+      ),
+    ).toMatchObject({
+      ok: true,
+      session: {
+        updatedAt: '2026-08-22T12:01:00.000Z',
+        assignments: [
+          { playerId: 'player-1', roleId: 'drifter' },
+          { playerId: 'player-2', roleId: 'wayfinder' },
+          { playerId: 'player-3', roleId: 'wayfinder' },
+          { playerId: 'player-4', roleId: 'echo' },
+        ],
+      },
     })
   })
 })

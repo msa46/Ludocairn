@@ -18,6 +18,7 @@ export interface Session {
   readonly gameId: string
   readonly gameSchemaVersion: 1
   readonly players: readonly Player[]
+  readonly assignments?: readonly PlayerAssignment[]
   readonly currentPhase?: string
   readonly round?: number
   readonly notes: string
@@ -28,17 +29,21 @@ export interface Session {
 export interface SessionDiagnostic {
   readonly code:
     | 'session.duplicate-player-id'
+    | 'session.assignment-locked'
     | 'session.game-mismatch'
     | 'session.incompatible-game-version'
     | 'session.invalid-date'
     | 'session.invalid-field-value'
+    | 'session.invalid-assignments'
     | 'session.invalid-name'
     | 'session.invalid-phase'
     | 'session.invalid-record'
     | 'session.invalid-round'
+    | 'session.roster-locked'
     | 'session.unknown-field'
     | 'session.unknown-player'
     | 'session.unsupported-storage-version'
+    | 'session.unsupported-player-count'
   readonly message: string
   readonly path?: string
 }

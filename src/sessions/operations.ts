@@ -1,8 +1,11 @@
+import { dealPlayerAssignments } from '../assignments/deal'
+import type { RandomSource } from '../assignments/model'
 import type { GameDefinition, PlayerFieldDefinition } from '../games/model'
 import type {
   Clock,
   IdProvider,
   Player,
+  PlayerAssignment,
   Session,
   SessionDiagnostic,
   SessionFieldValue,
@@ -44,6 +47,38 @@ function playerById(session: Session, playerId: string): Player | undefined {
   return session.players.find((player) => player.id === playerId)
 }
 
+function mirrorAssignedRoles(
+  game: GameDefinition,
+  players: readonly Player[],
+  assignments: readonly PlayerAssignment[],
+): readonly Player[] {
+  const roleFieldIds = game.fields
+    .filter((field) => field.type === 'role')
+    .map((field) => field.id)
+  if (roleFieldIds.length === 0) return players
+  const roleByPlayer = new Map(
+    assignments.map((assignment) => [assignment.playerId, assignment.roleId]),
+  )
+  return players.map((player) => {
+    const roleId = roleByPlayer.get(player.id)
+    if (!roleId) return player
+    return {
+      ...player,
+      fields: {
+        ...player.fields,
+        ...Object.fromEntries(roleFieldIds.map((fieldId) => [fieldId, roleId])),
+      },
+    }
+  })
+}
+
+function assignmentFailure(
+  code: 'session.invalid-assignments' | 'session.unsupported-player-count',
+  message: string,
+): SessionResult {
+  return failure(code, message, 'assignments')
+}
+
 export function fieldValueIsValid(
   game: GameDefinition,
   field: PlayerFieldDefinition,
@@ -82,6 +117,7 @@ export function createSession(
   input: CreateSessionInput,
   clock: Clock,
   ids: IdProvider,
+  random: RandomSource = Math.random,
 ): SessionResult {
   const name = input.name.trim()
   if (!name) {
@@ -92,8 +128,7 @@ export function createSession(
     )
   }
 
-  const sessionId = ids.next('session')
-  const players: Player[] = []
+  const normalizedPlayerNames: string[] = []
   for (const [index, playerName] of input.playerNames.entries()) {
     const normalizedName = playerName.trim()
     if (!normalizedName) {
@@ -103,11 +138,48 @@ export function createSession(
         `players.${index}.name`,
       )
     }
-    players.push({
-      id: ids.next('player'),
-      name: normalizedName,
-      fields: defaultFields(game),
-    })
+    normalizedPlayerNames.push(normalizedName)
+  }
+  if (
+    game.assignments &&
+    (normalizedPlayerNames.length < game.players.min ||
+      (game.players.max !== undefined &&
+        normalizedPlayerNames.length > game.players.max))
+  ) {
+    return failure(
+      'session.unsupported-player-count',
+      `${game.name} can deal digital assignments only for ${game.players.min}${
+        game.players.max === undefined || game.players.max === game.players.min
+          ? ''
+          : `–${game.players.max}`
+      } players.`,
+      'players',
+    )
+  }
+
+  const sessionId = ids.next('session')
+  let players: readonly Player[] = normalizedPlayerNames.map((playerName) => ({
+    id: ids.next('player'),
+    name: playerName,
+    fields: defaultFields(game),
+  }))
+  let assignments: readonly PlayerAssignment[] | undefined
+  if (game.assignments) {
+    const dealt = dealPlayerAssignments(
+      game,
+      players.map((player) => player.id),
+      random,
+    )
+    if (!dealt.ok) {
+      return assignmentFailure(
+        dealt.diagnostic.code === 'assignment.unsupported-player-count'
+          ? 'session.unsupported-player-count'
+          : 'session.invalid-assignments',
+        dealt.diagnostic.message,
+      )
+    }
+    assignments = dealt.assignments
+    players = mirrorAssignedRoles(game, players, assignments)
   }
 
   const timestamp = clock()
@@ -120,6 +192,7 @@ export function createSession(
       gameId: game.id,
       gameSchemaVersion: game.schemaVersion,
       players,
+      ...(assignments === undefined ? {} : { assignments }),
       ...(game.initialPhase === undefined
         ? {}
         : { currentPhase: game.initialPhase }),
@@ -138,6 +211,12 @@ export function addPlayer(
   clock: Clock,
   ids: IdProvider,
 ): SessionResult {
+  if (session.assignments) {
+    return failure(
+      'session.roster-locked',
+      'Players cannot be added after digital assignments are dealt.',
+    )
+  }
   const name = displayName.trim()
   if (!name) {
     return failure('session.invalid-name', 'Player name cannot be blank.')
@@ -179,6 +258,12 @@ export function removePlayer(
   playerId: string,
   clock: Clock,
 ): SessionResult {
+  if (session.assignments) {
+    return failure(
+      'session.roster-locked',
+      'Players cannot be removed after digital assignments are dealt.',
+    )
+  }
   if (!playerById(session, playerId)) {
     return failure('session.unknown-player', `Unknown player "${playerId}".`)
   }
@@ -204,6 +289,12 @@ export function updatePlayerField(
   if (!field) {
     return failure('session.unknown-field', `Unknown field "${fieldId}".`)
   }
+  if (session.assignments && field.type === 'role') {
+    return failure(
+      'session.assignment-locked',
+      'Assigned role fields cannot be edited after digital assignments are dealt.',
+    )
+  }
   if (!fieldValueIsValid(game, field, value)) {
     return failure(
       'session.invalid-field-value',
@@ -218,6 +309,48 @@ export function updatePlayerField(
           ? { ...player, fields: { ...player.fields, [fieldId]: value } }
           : player,
       ),
+    },
+    clock,
+  )
+}
+
+export function dealSessionAssignments(
+  session: Session,
+  game: GameDefinition,
+  random: RandomSource,
+  clock: Clock,
+): SessionResult {
+  if (!game.assignments) {
+    return assignmentFailure(
+      'session.invalid-assignments',
+      `${game.name} does not define digital assignments.`,
+    )
+  }
+  if (session.assignments) {
+    return failure(
+      'session.assignment-locked',
+      'Digital assignments have already been dealt.',
+      'assignments',
+    )
+  }
+  const dealt = dealPlayerAssignments(
+    game,
+    session.players.map((player) => player.id),
+    random,
+  )
+  if (!dealt.ok) {
+    return assignmentFailure(
+      dealt.diagnostic.code === 'assignment.unsupported-player-count'
+        ? 'session.unsupported-player-count'
+        : 'session.invalid-assignments',
+      dealt.diagnostic.message,
+    )
+  }
+  return updated(
+    session,
+    {
+      assignments: dealt.assignments,
+      players: mirrorAssignedRoles(game, session.players, dealt.assignments),
     },
     clock,
   )
