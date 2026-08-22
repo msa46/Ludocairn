@@ -23,12 +23,10 @@
 }
 
 html {
-  min-width: 20rem;
   background: var(--canvas);
 }
 
 body {
-  min-width: 20rem;
   min-height: 100vh;
   margin: 0;
   color: var(--ink);

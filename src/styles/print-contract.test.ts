@@ -51,6 +51,14 @@ describe('print stylesheet contract', () => {
 })
 
 describe('PWA viewport stylesheet contract', () => {
+  it('does not pin the root layout to 320px when a classic scrollbar consumes width', () => {
+    const htmlRule = css.match(/html\s*{(?<body>[^}]*)}/s)?.groups?.body
+    const bodyRule = css.match(/body\s*{(?<body>[^}]*)}/s)?.groups?.body
+
+    expect(htmlRule).not.toMatch(/min-width:/)
+    expect(bodyRule).not.toMatch(/min-width:/)
+  })
+
   it('adds device safe areas without replacing the existing layout spacing', () => {
     expect(css).toContain('env(safe-area-inset-top, 0px)')
     expect(css).toContain('env(safe-area-inset-right, 0px)')
