@@ -7,6 +7,7 @@ import type { Clock, IdProvider, SessionFieldValue } from '../sessions/model'
 import {
   addPlayer,
   createSession,
+  dealSessionAssignments,
   removePlayer,
   renamePlayer,
   renameSession,
@@ -172,6 +173,17 @@ export function App({
                 navigate('')
               } else {
                 setActionError(removed.diagnostic.message)
+              }
+            }}
+            onDealAssignments={() => {
+              const dealt = dealSessionAssignments(
+                session,
+                sessionGame,
+                random,
+                clock,
+              )
+              if (accept(dealt) && dealt.ok) {
+                navigate(sessionSearch(dealt.session.id, sessionGame, true))
               }
             }}
           />

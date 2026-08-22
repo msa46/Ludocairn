@@ -5,6 +5,7 @@ import type { GameDefinition } from '../../games/model'
 import type { Session, SessionFieldValue } from '../../sessions/model'
 import { getPlayerCountWarning } from '../../sessions/operations'
 import { PlayerFieldControl } from './PlayerFieldControl'
+import { GameMasterAssignments } from './GameMasterAssignments'
 import { RoleGuide } from './RoleGuide'
 
 interface TrackerViewProps {
@@ -26,6 +27,7 @@ interface TrackerViewProps {
   readonly onRenamePlayer: (id: string, name: string) => void
   readonly onRename: (name: string) => void
   readonly onDeleteSession: () => void
+  readonly onDealAssignments: () => void
 }
 
 export function TrackerView({
@@ -43,12 +45,14 @@ export function TrackerView({
   onRenamePlayer,
   onRename,
   onDeleteSession,
+  onDealAssignments,
 }: TrackerViewProps) {
   const [newPlayerName, setNewPlayerName] = useState('')
   const [confirmingRemoval, setConfirmingRemoval] = useState<string>()
   const [confirmingSessionDelete, setConfirmingSessionDelete] = useState(false)
   const [exportError, setExportError] = useState<string>()
   const warning = getPlayerCountWarning(session, game)
+  const hasAssignments = session.assignments !== undefined
 
   function submitRename(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -124,6 +128,31 @@ export function TrackerView({
       {warning && <p className="guidance">{warning}</p>}
       {(error || exportError) && <p role="alert">{error ?? exportError}</p>}
       <RoleGuide game={game} playerCount={session.players.length} />
+      {!hasAssignments && game.assignments && (
+        <section
+          className="assignment-management print-hidden"
+          aria-labelledby="digital-assignments-title"
+        >
+          <div>
+            <p className="eyebrow">Optional upgrade for this saved table</p>
+            <h2 id="digital-assignments-title">Deal digital roles</h2>
+            <p>
+              This older session has no digital deal. Dealing now replaces its
+              recorded role fields and locks the player roster.
+            </p>
+          </div>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={onDealAssignments}
+          >
+            Deal digital roles
+          </button>
+        </section>
+      )}
+      {hasAssignments && (
+        <GameMasterAssignments game={game} session={session} />
+      )}
 
       <section
         className="session-management print-hidden"
@@ -147,8 +176,9 @@ export function TrackerView({
             Export session
           </button>
           <p className="privacy-note">
-            Exports include facilitator notes. Handle the downloaded file as
-            private table material.
+            Exports include facilitator notes
+            {hasAssignments ? ' and private assignments' : ''}. Handle the
+            downloaded file as private table material.
           </p>
         </div>
         <div className="destructive-controls">
@@ -269,70 +299,87 @@ export function TrackerView({
                 <button type="submit">Rename {player.name}</button>
               </form>
               <div className="field-grid">
-                {game.fields.map((field) => (
-                  <PlayerFieldControl
-                    field={field}
-                    key={field.id}
-                    playerName={player.name}
-                    roles={game.roles}
-                    value={player.fields[field.id]!}
-                    onChange={(value) => onField(player.id, field.id, value)}
-                  />
-                ))}
+                {game.fields
+                  .filter((field) => !(hasAssignments && field.type === 'role'))
+                  .map((field) => (
+                    <PlayerFieldControl
+                      field={field}
+                      key={field.id}
+                      playerName={player.name}
+                      roles={game.roles}
+                      value={player.fields[field.id]!}
+                      onChange={(value) => onField(player.id, field.id, value)}
+                    />
+                  ))}
               </div>
-              <div className="remove-region print-hidden">
-                {confirmingRemoval === player.id ? (
-                  <div role="alert">
-                    <p>Remove {player.name} from this session?</p>
+              {!hasAssignments && (
+                <div className="remove-region print-hidden">
+                  {confirmingRemoval === player.id ? (
+                    <div role="alert">
+                      <p>Remove {player.name} from this session?</p>
+                      <button
+                        type="button"
+                        onClick={() => onRemovePlayer(player.id)}
+                      >
+                        Confirm remove {player.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingRemoval(undefined)}
+                      >
+                        Keep {player.name}
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => onRemovePlayer(player.id)}
+                      onClick={() => setConfirmingRemoval(player.id)}
                     >
-                      Confirm remove {player.name}
+                      Remove {player.name}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingRemoval(undefined)}
-                    >
-                      Keep {player.name}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingRemoval(player.id)}
-                  >
-                    Remove {player.name}
-                  </button>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </article>
           ))}
         </div>
       </section>
 
-      <section
-        className="add-player print-hidden"
-        aria-labelledby="add-player-title"
-      >
-        <h2 id="add-player-title">Add a player</h2>
-        <label>
-          New player name
-          <input
-            value={newPlayerName}
-            onChange={(event) => setNewPlayerName(event.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            onAddPlayer(newPlayerName)
-            setNewPlayerName('')
-          }}
+      {hasAssignments ? (
+        <section
+          className="locked-roster print-hidden"
+          aria-label="Locked roster"
         >
-          Add player
-        </button>
-      </section>
+          <h2>Player roster locked</h2>
+          <p>
+            The roster is locked because roles have been dealt. Player names can
+            still be corrected without changing assignments.
+          </p>
+        </section>
+      ) : (
+        <section
+          className="add-player print-hidden"
+          aria-labelledby="add-player-title"
+        >
+          <h2 id="add-player-title">Add a player</h2>
+          <label>
+            New player name
+            <input
+              value={newPlayerName}
+              onChange={(event) => setNewPlayerName(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              onAddPlayer(newPlayerName)
+              setNewPlayerName('')
+            }}
+          >
+            Add player
+          </button>
+        </section>
+      )}
 
       <section className="notes-section">
         <h2>Facilitator notes</h2>

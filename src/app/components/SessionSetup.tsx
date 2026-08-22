@@ -31,11 +31,22 @@ export function SessionSetup({
     <section className="setup-card" aria-labelledby="setup-title">
       <p className="eyebrow">New {game.name} table</p>
       <h1 id="setup-title">Set up the session</h1>
-      <p>
-        {game.name} recommends {game.players.min}
-        {game.players.max ? '–' + game.players.max : '+'} players. You can still
-        create a smaller practice table.
-      </p>
+      {game.assignments ? (
+        <p>
+          {game.name} deals roles digitally for {game.players.min}
+          {game.players.max && game.players.max !== game.players.min
+            ? '–' + game.players.max
+            : ''}{' '}
+          named players. The unnamed Game Master stays outside the roster and
+          receives no role.
+        </p>
+      ) : (
+        <p>
+          {game.name} recommends {game.players.min}
+          {game.players.max ? '–' + game.players.max : '+'} players. You can
+          still create a smaller practice table.
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       <RoleGuide game={game} />
       <form onSubmit={submit}>

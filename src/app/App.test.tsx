@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { loadBundledGames } from '../games/catalog'
 import type { GameDefinition } from '../games/model'
-import type { IdProvider } from '../sessions/model'
+import type { IdProvider, Session } from '../sessions/model'
 import { MemorySessionRepository } from '../storage/memory'
 import { App } from './App'
 
@@ -237,6 +237,20 @@ describe('App', () => {
     fireEvent.change(screen.getByLabelText('Session name'), {
       target: { value: 'Secret table' },
     })
+    fireEvent.change(screen.getByLabelText('Player 1 name'), {
+      target: { value: 'Ari' },
+    })
+    fireEvent.change(screen.getByLabelText('Player 2 name'), {
+      target: { value: 'Bea' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Create session' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /digital assignments only for 5–12 players/i,
+    )
+    expect(
+      screen.getByRole('heading', { name: 'Set up the session' }),
+    ).toBeInTheDocument()
+
     for (const [index, name] of ['Ari', 'Bea', 'Cy', 'Dee', 'Eli'].entries()) {
       if (index >= 2) {
         fireEvent.click(
@@ -310,6 +324,74 @@ describe('App', () => {
       screen.getByRole('heading', { name: 'GM table' }),
     ).toBeInTheDocument()
     expect(screen.queryByText(/Pass the device to/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Ari — Role')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Add player' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(/roster is locked/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/exports include.*private assignments/i),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Game Master assignments' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('table', { name: 'Player assignments' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('lets an older compatible session explicitly deal roles', async () => {
+    const repository = new MemorySessionRepository(
+      () => privateAssignmentVeilquorum,
+    )
+    const legacySession: Session = {
+      storageVersion: 1,
+      id: 'legacy-session',
+      name: 'Legacy table',
+      gameId: privateAssignmentVeilquorum.id,
+      gameSchemaVersion: 1,
+      players: ['Ari', 'Bea', 'Cy', 'Dee', 'Eli'].map((name, index) => ({
+        id: `player-${index + 1}`,
+        name,
+        fields: {
+          active: true,
+          role: index === 0 ? 'echo' : index === 1 ? 'drifter' : 'wayfinder',
+          signals: 0,
+          clue: '',
+        },
+      })),
+      currentPhase: 'night',
+      round: 1,
+      notes: '',
+      createdAt: '2026-08-22T12:00:00.000Z',
+      updatedAt: '2026-08-22T12:00:00.000Z',
+    }
+    expect(repository.save(legacySession)).toMatchObject({ ok: true })
+    window.history.replaceState({}, '', '/?session=legacy-session')
+    render(
+      <App
+        games={[privateAssignmentVeilquorum]}
+        repository={repository}
+        clock={() => '2026-08-22T12:01:00.000Z'}
+        random={() => 0}
+      />,
+    )
+
+    expect(await screen.findByLabelText('Ari — Role')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Deal digital roles' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Pass the device to Ari',
+      }),
+    ).toBeInTheDocument()
+    expect(repository.load('legacy-session')).toMatchObject({
+      ok: true,
+      session: {
+        updatedAt: '2026-08-22T12:01:00.000Z',
+        assignments: expect.any(Array),
+      },
+    })
   })
 
   it('does not show an empty role guide for games without roles', () => {
