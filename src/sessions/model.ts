@@ -6,6 +6,11 @@ export interface Player {
   readonly fields: Readonly<Record<string, SessionFieldValue>>
 }
 
+export interface PlayerAssignment {
+  readonly playerId: string
+  readonly roleId: string
+}
+
 export interface Session {
   readonly storageVersion: 1
   readonly id: string
