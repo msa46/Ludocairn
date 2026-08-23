@@ -138,6 +138,14 @@ export function App({
     function onPopState() {
       const nextSearch = window.location.search
       const nextHash = window.location.hash
+      if (studioInteractionLocked) {
+        window.history.pushState(
+          {},
+          '',
+          (search || window.location.pathname) + sharedHash,
+        )
+        return
+      }
       if (studioDirty) {
         window.history.pushState(
           {},
@@ -168,7 +176,7 @@ export function App({
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [repairSource, search, sharedHash, studioDirty])
+  }, [repairSource, search, sharedHash, studioDirty, studioInteractionLocked])
 
   useEffect(() => {
     if (
@@ -188,6 +196,14 @@ export function App({
   useEffect(() => {
     function onHashChange() {
       const nextHash = window.location.hash
+      if (studioInteractionLocked) {
+        window.history.replaceState(
+          {},
+          '',
+          (search || window.location.pathname) + sharedHash,
+        )
+        return
+      }
       if (studioDirty && nextHash.startsWith('#share-game=')) {
         window.history.replaceState(
           {},
@@ -205,7 +221,7 @@ export function App({
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [search, sharedHash, studioDirty])
+  }, [search, sharedHash, studioDirty, studioInteractionLocked])
 
   useEffect(() => {
     if (sessionId && session?.id !== sessionId) open(sessionId)

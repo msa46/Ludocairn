@@ -74,6 +74,38 @@ interface PendingGuidedChange {
   readonly baseSource: string
 }
 
+interface NormalizationFocusTarget {
+  readonly element: HTMLElement
+  readonly identity?: string
+}
+
+function controlIdentity(element: HTMLElement): string | undefined {
+  const ariaLabel = element.getAttribute('aria-label')?.trim()
+  if (ariaLabel) return `aria:${ariaLabel}`
+
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLSelectElement ||
+    element instanceof HTMLTextAreaElement
+  ) {
+    const label = [...(element.labels ?? [])]
+      .map((candidate) => candidate.textContent?.trim())
+      .find(Boolean)
+    if (label) return `label:${label}`
+  }
+
+  const text = element.textContent?.trim()
+  return text ? `text:${text}` : undefined
+}
+
+function findControlByIdentity(identity: string): HTMLElement | undefined {
+  return [
+    ...document.querySelectorAll<HTMLElement>(
+      '.game-studio button, .game-studio input, .game-studio select, .game-studio textarea, .game-studio a[href]',
+    ),
+  ].find((candidate) => controlIdentity(candidate) === identity)
+}
+
 export function GameStudio({
   initialSource,
   originalId,
@@ -106,6 +138,7 @@ export function GameStudio({
   const [saveError, setSaveError] = useState<string>()
   const [pendingGuidedChange, setPendingGuidedChange] =
     useState<PendingGuidedChange>()
+  const [guidedEditorRevision, setGuidedEditorRevision] = useState(0)
   const [normalizationAcknowledged, setNormalizationAcknowledged] =
     useState(false)
   const [wide, setWide] = useState(studioIsWide)
@@ -115,7 +148,7 @@ export function GameStudio({
   const pendingPreviewFocus = useRef(false)
   const normalizationDialog = useRef<HTMLDivElement>(null)
   const continueGuidedButton = useRef<HTMLButtonElement>(null)
-  const normalizationTrigger = useRef<HTMLElement | null>(null)
+  const normalizationTrigger = useRef<NormalizationFocusTarget | null>(null)
   const dirty =
     savedSource === undefined ||
     source !== savedSource ||
@@ -186,18 +219,21 @@ export function GameStudio({
 
   useEffect(() => {
     if (!pendingGuidedChange) return
-    normalizationTrigger.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null
     continueGuidedButton.current?.focus()
-
-    return () => {
-      const trigger = normalizationTrigger.current
-      normalizationTrigger.current = null
-      if (trigger?.isConnected) trigger.focus()
-    }
   }, [pendingGuidedChange])
+
+  useLayoutEffect(() => {
+    if (pendingGuidedChange) return
+    const trigger = normalizationTrigger.current
+    if (!trigger) return
+    normalizationTrigger.current = null
+    const target = trigger.element.isConnected
+      ? trigger.element
+      : trigger.identity
+        ? findControlByIdentity(trigger.identity)
+        : undefined
+    target?.focus()
+  }, [guidedEditorRevision, pendingGuidedChange])
 
   function changeSource(nextSource: string) {
     const parsed = parseDraft(nextSource, originalId)
@@ -214,6 +250,16 @@ export function GameStudio({
   function changeGuidedSource(nextSource: string) {
     if (pendingGuidedChange) return
     if (!normalizationAcknowledged && sourceHasFrontmatterComments(source)) {
+      const activeElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : undefined
+      normalizationTrigger.current = activeElement
+        ? {
+            element: activeElement,
+            identity: controlIdentity(activeElement),
+          }
+        : null
       setPendingGuidedChange({ source: nextSource, baseSource: source })
       return
     }
@@ -223,6 +269,7 @@ export function GameStudio({
   function continueGuidedEditing() {
     if (!pendingGuidedChange) return
     if (source !== pendingGuidedChange.baseSource) {
+      setGuidedEditorRevision((revision) => revision + 1)
       setPendingGuidedChange(undefined)
       setSaveError(
         'The source changed while confirmation was open. Review the current draft and try the guided edit again.',
@@ -236,6 +283,7 @@ export function GameStudio({
   }
 
   function cancelGuidedEditing() {
+    setGuidedEditorRevision((revision) => revision + 1)
     setPendingGuidedChange(undefined)
   }
 
@@ -312,6 +360,7 @@ export function GameStudio({
           role="tabpanel"
         >
           <GuidedGameEditor
+            key={guidedEditorRevision}
             game={lastValid}
             idLocked={originalId !== undefined}
             onChange={changeGuidedSource}

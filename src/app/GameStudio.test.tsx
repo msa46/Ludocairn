@@ -41,6 +41,34 @@ const incompatibleSource = customSource.replace(
       default: false`,
 )
 
+const transactionalCommentedSource = `---
+schema_version: 1
+# keep this note
+id: custom-game
+name: Custom Game
+summary: A browser-authored fixture.
+deck: standard-52
+players:
+  min: 2
+  max: 6
+session:
+  phases:
+    - id: night
+      label: Night
+    - id: day
+      label: Day
+  initial_phase: night
+  round:
+    enabled: true
+    initial: 5
+  player_fields: []
+---
+
+# Custom Game
+
+Original rules.
+`
+
 const savedSession: Session = {
   storageVersion: 1,
   id: 'custom-session',
@@ -105,6 +133,30 @@ function renderStudio(initialSource: string) {
       onDirtyChange={() => undefined}
     />,
   )
+}
+
+function renderCancelableStudio() {
+  let savedSource: string | undefined
+  render(
+    <GameStudio
+      initialSource={transactionalCommentedSource}
+      bundledIds={new Set()}
+      customRecords={[]}
+      sessionRecords={[]}
+      onSave={(source) => {
+        savedSource = source
+        return { ok: true }
+      }}
+      onSaved={() => undefined}
+      onCancel={() => undefined}
+      onDirtyChange={() => undefined}
+    />,
+  )
+  return () => savedSource
+}
+
+function cancelNormalization() {
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel guided edit' }))
 }
 
 function mockStudioViewport(initialWide: boolean) {
@@ -449,6 +501,87 @@ describe('Game Studio', () => {
     )
   })
 
+  it.each([
+    ['Minimum players', '3', '2'],
+    ['Maximum players', '7', '6'],
+    ['Initial round', '8', '5'],
+  ])(
+    'rolls back the optimistic %s draft when normalization is canceled',
+    (label, optimisticValue, canonicalValue) => {
+      const savedSource = renderCancelableStudio()
+      const control = screen.getByLabelText(label)
+
+      fireEvent.change(control, { target: { value: optimisticValue } })
+      expect(control).toHaveValue(optimisticValue)
+      cancelNormalization()
+
+      expect(screen.getByLabelText(label)).toHaveValue(canonicalValue)
+      fireEvent.click(screen.getByRole('button', { name: 'Save game' }))
+      const source = savedSource()
+      expect(source).toBeDefined()
+      if (!source) return
+      expect(gameParser.parseGameSource(source, 'saved/game.md')).toMatchObject(
+        {
+          ok: true,
+          game: {
+            players: { min: 2, max: 6 },
+            round: { enabled: true, initial: 5 },
+          },
+        },
+      )
+    },
+  )
+
+  it('restores phase-add editor identity and focus after canceling normalization', () => {
+    renderCancelableStudio()
+    const trigger = screen.getByRole('button', { name: 'Add phase' })
+    trigger.focus()
+
+    fireEvent.click(trigger)
+    cancelNormalization()
+
+    expect(screen.getAllByLabelText(/Phase \d ID/)).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Add phase' })).toHaveFocus()
+  })
+
+  it('restores phase-remove editor identity and focus after canceling normalization', () => {
+    renderCancelableStudio()
+    const trigger = screen.getByRole('button', { name: 'Remove Night' })
+    trigger.focus()
+
+    fireEvent.click(trigger)
+    cancelNormalization()
+
+    expect(screen.getByLabelText('Phase 1 ID')).toHaveValue('night')
+    expect(screen.getByLabelText('Phase 2 ID')).toHaveValue('day')
+    expect(screen.getByRole('button', { name: 'Remove Night' })).toHaveFocus()
+  })
+
+  it('restores phase-rename editor identity and focus after canceling normalization', () => {
+    renderCancelableStudio()
+    const trigger = screen.getByLabelText('Phase 1 ID')
+    trigger.focus()
+
+    fireEvent.change(trigger, { target: { value: 'evening' } })
+    cancelNormalization()
+
+    expect(screen.getByLabelText('Phase 1 ID')).toHaveValue('night')
+    expect(screen.getByLabelText('Phase 1 ID')).toHaveFocus()
+  })
+
+  it('restores phase-move editor identity and focus after canceling normalization', () => {
+    renderCancelableStudio()
+    const trigger = screen.getByRole('button', { name: 'Move Day up' })
+    trigger.focus()
+
+    fireEvent.click(trigger)
+    cancelNormalization()
+
+    expect(screen.getByLabelText('Phase 1 ID')).toHaveValue('night')
+    expect(screen.getByLabelText('Phase 2 ID')).toHaveValue('day')
+    expect(screen.getByRole('button', { name: 'Move Day up' })).toHaveFocus()
+  })
+
   it('treats pending normalization as dirty and blocks underlying Studio actions', () => {
     const onSave = vi.fn(() => ({ ok: true }) as const)
     const onCancel = vi.fn()
@@ -521,7 +654,8 @@ describe('Game Studio', () => {
     expect(
       screen.queryByRole('dialog', { name: 'Normalize source formatting?' }),
     ).not.toBeInTheDocument()
-    expect(trigger).toHaveFocus()
+    expect(screen.getByLabelText('Game name')).toHaveFocus()
+    expect(trigger).not.toBeInTheDocument()
   })
 
   it('makes the application shell inert and blocks app navigation while normalization is pending', () => {
@@ -548,6 +682,64 @@ describe('Game Studio', () => {
     expect(
       screen.getByRole('dialog', { name: 'Normalize source formatting?' }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps normalization as the sole focused modal during popstate', () => {
+    const gameRepository = new MemoryGameRepository({
+      initial: {
+        [keyForGame('custom-game')]: transactionalCommentedSource,
+      },
+    })
+    window.history.replaceState({}, '', '/?studio=edit&game=custom-game')
+    renderApp(gameRepository)
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'Pending change' },
+    })
+    const continueButton = screen.getByRole('button', {
+      name: 'Continue with guided editing',
+    })
+    expect(continueButton).toHaveFocus()
+    window.history.replaceState({}, '', '/')
+
+    fireEvent.popState(window)
+
+    expect(window.location.search).toBe('?studio=edit&game=custom-game')
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    expect(
+      screen.getByRole('dialog', { name: 'Normalize source formatting?' }),
+    ).toBeInTheDocument()
+    expect(continueButton).toHaveFocus()
+  })
+
+  it('keeps normalization as the sole focused modal during shared-hash navigation', () => {
+    const gameRepository = new MemoryGameRepository({
+      initial: {
+        [keyForGame('custom-game')]: transactionalCommentedSource,
+      },
+    })
+    window.history.replaceState({}, '', '/?studio=edit&game=custom-game')
+    renderApp(gameRepository)
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'Pending change' },
+    })
+    const continueButton = screen.getByRole('button', {
+      name: 'Continue with guided editing',
+    })
+    const hash = sharedGameHash()
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + window.location.search + hash,
+    )
+
+    fireEvent(window, new Event('hashchange'))
+
+    expect(window.location.hash).toBe('')
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    expect(
+      screen.getByRole('dialog', { name: 'Normalize source formatting?' }),
+    ).toBeInTheDocument()
+    expect(continueButton).toHaveFocus()
   })
 
   it('blocks Studio save when custom-game storage enumeration failed', () => {
