@@ -363,4 +363,21 @@ describe('RoleEditor', () => {
     expect(screen.getByLabelText('Role 1 label')).toBe(label)
     expect(label).toHaveValue('Oraclese')
   })
+
+  it('keeps the same focused ID input through successive valid ID edits', () => {
+    renderRoleEditor({
+      roles: [{ id: 'oracle', label: 'Oracle', summary: 'Reads the signal.' }],
+    })
+    const id = screen.getByLabelText('Role 1 ID')
+    id.focus()
+
+    fireEvent.change(id, { target: { value: 'oracle-s' } })
+    expect(id).toHaveFocus()
+    expect(screen.getByLabelText('Role 1 ID')).toBe(id)
+
+    fireEvent.change(id, { target: { value: 'oracle-seer' } })
+    expect(id).toHaveFocus()
+    expect(screen.getByLabelText('Role 1 ID')).toBe(id)
+    expect(id).toHaveValue('oracle-seer')
+  })
 })

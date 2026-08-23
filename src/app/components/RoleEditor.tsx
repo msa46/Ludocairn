@@ -22,6 +22,7 @@ interface RoleEditorProps {
 type SelectorProperty = keyof CardSelector
 
 interface RoleDraft {
+  readonly uiKey: string
   readonly id: string
   readonly label: string
   readonly team: string
@@ -50,6 +51,7 @@ function selectorText(values: readonly string[] | undefined): string {
 
 function roleDraft(role: RoleDefinition): RoleDraft {
   return {
+    uiKey: `role:${role.id}`,
     id: role.id,
     label: role.label,
     team: role.team ?? '',
@@ -411,7 +413,7 @@ function RoleEditorForm({
       {drafts.map((draft, index) => {
         const displayLabel = draft.label.trim() || `Role ${index + 1}`
         return (
-          <div key={`${roles[index]?.id ?? 'draft'}-${index}`}>
+          <div key={draft.uiKey}>
             <label>
               Role {index + 1} ID
               <input
