@@ -5,10 +5,16 @@ import { RoleGuide } from './RoleGuide'
 interface RulesViewProps {
   readonly game: GameDefinition
   readonly onStart: () => void
+  readonly onEdit?: () => void
   readonly navigateHome: () => void
 }
 
-export function RulesView({ game, onStart, navigateHome }: RulesViewProps) {
+export function RulesView({
+  game,
+  onStart,
+  onEdit,
+  navigateHome,
+}: RulesViewProps) {
   return (
     <div className="page-stack rules-page">
       <nav aria-label="Breadcrumb" className="breadcrumb print-hidden">
@@ -31,6 +37,11 @@ export function RulesView({ game, onStart, navigateHome }: RulesViewProps) {
         <button type="button" onClick={() => window.print()}>
           Print rules
         </button>
+        {onEdit && (
+          <button type="button" onClick={onEdit}>
+            Edit custom game
+          </button>
+        )}
       </div>
       <RoleGuide game={game} />
       <article

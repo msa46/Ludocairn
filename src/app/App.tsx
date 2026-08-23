@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import type { RandomSource } from '../assignments/model'
 import { loadBundledGames } from '../games/catalog'
+import { createGameTemplate } from '../games/source'
 import type { GameDefinition } from '../games/model'
 import { PwaStatus } from '../pwa/PwaStatus'
 import type { RegisterWorker } from '../pwa/register'
@@ -23,6 +24,7 @@ import { LocalStorageSessionRepository } from '../storage/local-storage'
 import type { GameRepository } from '../storage/game-repository'
 import type { SessionRepository } from '../storage/repository'
 import { CatalogView } from './components/CatalogView'
+import { GameStudio } from './components/GameStudio'
 import { ImportGame } from './components/ImportGame'
 import { ImportSession } from './components/ImportSession'
 import { PlayerAssignmentView } from './components/PlayerAssignmentView'
@@ -50,6 +52,8 @@ const systemIds: IdProvider = {
   next: (kind) => kind + '-' + crypto.randomUUID(),
 }
 const noPwaRegistration: RegisterWorker = () => () => Promise.resolve()
+const missingRepairMessage =
+  'The repair draft is no longer available after refresh. Paste or import the source again to recover it.'
 
 export function App({
   games = bundledGames,
@@ -106,6 +110,7 @@ export function App({
   const parameters = new URLSearchParams(search)
   const gameId = parameters.get('game')
   const sessionId = parameters.get('session')
+  const studioId = parameters.get('studio')
   const requestedView = parameters.get('view')
   const game = gameId
     ? catalogGames.find((candidate) => candidate.id === gameId)
@@ -117,13 +122,40 @@ export function App({
 
   useEffect(() => {
     function onPopState() {
-      setSearch(window.location.search)
+      const nextSearch = window.location.search
+      const missingRepair =
+        !window.location.hash.startsWith('#share-game=') &&
+        repairSource === undefined &&
+        new URLSearchParams(nextSearch).get('studio') === 'repair'
+      if (missingRepair) {
+        window.history.replaceState(
+          {},
+          '',
+          window.location.pathname + window.location.hash,
+        )
+      }
+      setSearch(nextSearch)
       setSharedHash(window.location.hash)
       setSetupGameId(undefined)
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [])
+  }, [repairSource])
+
+  useEffect(() => {
+    if (
+      studioId !== 'repair' ||
+      repairSource !== undefined ||
+      shareHash !== undefined
+    )
+      return
+
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + window.location.hash,
+    )
+  }, [repairSource, shareHash, studioId])
 
   useEffect(() => {
     function onHashChange() {
@@ -193,11 +225,126 @@ export function App({
     )
   }
 
+  function catalog(
+    sessionRecords: ReturnType<SessionRepository['list']>,
+    recoveryMessage?: string,
+  ) {
+    return (
+      <CatalogView
+        games={catalogGames}
+        customGameIds={customIds}
+        gameRecovery={
+          (gameRecovery.length > 0 || recoveryMessage) && (
+            <div>
+              {recoveryMessage && (
+                <article className="recovery-card">
+                  <h3>Repair draft unavailable</h3>
+                  <p role="alert">{recoveryMessage}</p>
+                </article>
+              )}
+              {gameRecovery.map((record) => (
+                <article
+                  className="recovery-card"
+                  key={record.id || 'storage-error'}
+                >
+                  <h3>{record.id || 'Browser storage'}</h3>
+                  <p>
+                    {record.ok
+                      ? `Custom game ID conflicts with bundled game "${record.id}".`
+                      : record.diagnostic.message}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )
+        }
+        records={sessionRecords}
+        navigate={navigate}
+        removeRecord={(id) => {
+          sessionRepository.remove(id)
+          setRevision((value) => value + 1)
+        }}
+        importSession={
+          <ImportSession
+            ids={ids}
+            repository={sessionRepository}
+            resolveGame={resolveGame}
+            onImported={(id) => navigate('session=' + encodeURIComponent(id))}
+          />
+        }
+        importGame={importGame(sessionRecords)}
+        repairSource={repairSource}
+        key={revision}
+      />
+    )
+  }
+
   let content
   if (shareHash) {
     content = (
       <div className="page-stack">{importGame(sessionRepository.list())}</div>
     )
+  } else if (studioId) {
+    const sessionRecords = sessionRepository.list()
+    const loaded =
+      studioId === 'new' || studioId === 'repair'
+        ? undefined
+        : storedGames.load(studioId)
+    const initialSource =
+      studioId === 'new'
+        ? createGameTemplate()
+        : studioId === 'repair'
+          ? repairSource
+          : loaded?.ok
+            ? loaded.source
+            : undefined
+
+    if (initialSource !== undefined) {
+      content = (
+        <GameStudio
+          key={studioId}
+          initialSource={initialSource}
+          originalId={
+            studioId === 'new' || studioId === 'repair' ? undefined : studioId
+          }
+          bundledIds={new Set(games.map((candidate) => candidate.id))}
+          customRecords={customRecords}
+          sessionRecords={sessionRecords}
+          onSave={(source) => storedGames.save(source)}
+          onSaved={(id) => {
+            setRepairSource(undefined)
+            refreshGames()
+            navigate('game=' + encodeURIComponent(id))
+          }}
+          onCancel={() => {
+            setRepairSource(undefined)
+            navigate('')
+          }}
+        />
+      )
+    } else if (studioId === 'repair') {
+      content = catalog(sessionRecords, missingRepairMessage)
+    } else {
+      content = (
+        <section className="message-card">
+          <h1>Game unavailable</h1>
+          <p role="alert">
+            {loaded && !loaded.ok
+              ? loaded.diagnostic.message
+              : `No saved custom game with ID “${studioId}” was found.`}
+          </p>
+          <a
+            href="?"
+            onClick={(event) => {
+              event.preventDefault()
+              navigate('')
+            }}
+          >
+            Return to all games
+          </a>
+        </section>
+      )
+    }
   } else if (sessionId) {
     if (session?.id === sessionId && sessionGame) {
       content =
@@ -333,54 +480,18 @@ export function App({
         <RulesView
           game={game}
           navigateHome={() => navigate('')}
+          onEdit={
+            customIds.has(game.id)
+              ? () => navigate('studio=' + encodeURIComponent(game.id))
+              : undefined
+          }
           onStart={() => setSetupGameId(game.id)}
         />
       )
     }
   } else {
     const sessionRecords = sessionRepository.list()
-    content = (
-      <CatalogView
-        games={catalogGames}
-        customGameIds={customIds}
-        gameRecovery={
-          gameRecovery.length > 0 && (
-            <div>
-              {gameRecovery.map((record) => (
-                <article
-                  className="recovery-card"
-                  key={record.id || 'storage-error'}
-                >
-                  <h3>{record.id || 'Browser storage'}</h3>
-                  <p>
-                    {record.ok
-                      ? `Custom game ID conflicts with bundled game "${record.id}".`
-                      : record.diagnostic.message}
-                  </p>
-                </article>
-              ))}
-            </div>
-          )
-        }
-        records={sessionRecords}
-        navigate={navigate}
-        removeRecord={(id) => {
-          sessionRepository.remove(id)
-          setRevision((value) => value + 1)
-        }}
-        importSession={
-          <ImportSession
-            ids={ids}
-            repository={sessionRepository}
-            resolveGame={resolveGame}
-            onImported={(id) => navigate('session=' + encodeURIComponent(id))}
-          />
-        }
-        importGame={importGame(sessionRecords)}
-        repairSource={repairSource}
-        key={revision}
-      />
-    )
+    content = catalog(sessionRecords)
   }
 
   return (
