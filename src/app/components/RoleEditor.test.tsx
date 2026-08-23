@@ -273,6 +273,13 @@ describe('RoleEditor', () => {
       />,
     )
 
+    fireEvent.change(screen.getByLabelText('Role 1 summary'), {
+      target: { value: '' },
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Role summaries must be non-empty',
+    )
+
     rerender(
       <RoleEditor
         deck="standard-52"
@@ -284,5 +291,59 @@ describe('RoleEditor', () => {
     )
 
     expect(screen.getByLabelText('Role 1 ID')).toHaveValue('villager')
+    expect(screen.getByLabelText('Role 1 summary')).toHaveValue(
+      'Finds the truth.',
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    rerender(
+      <RoleEditor
+        deck="standard-52"
+        fields={[]}
+        roleDistributions={[]}
+        roles={[{ ...oracle }]}
+        onChange={onChange}
+      />,
+    )
+    expect(screen.getByLabelText('Role 1 summary')).toHaveValue(
+      'Reads the signal.',
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('preserves an incomplete draft across semantically equivalent role props', () => {
+    const oracle: RoleDefinition = {
+      id: 'oracle',
+      label: 'Oracle',
+      summary: 'Reads the signal.',
+    }
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <RoleEditor
+        deck="standard-52"
+        fields={[]}
+        roleDistributions={[]}
+        roles={[oracle]}
+        onChange={onChange}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText('Role 1 summary'), {
+      target: { value: '' },
+    })
+
+    rerender(
+      <RoleEditor
+        deck="standard-52"
+        fields={[]}
+        roleDistributions={[]}
+        roles={[{ ...oracle }]}
+        onChange={onChange}
+      />,
+    )
+
+    expect(screen.getByLabelText('Role 1 summary')).toHaveValue('')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Role summaries must be non-empty',
+    )
   })
 })

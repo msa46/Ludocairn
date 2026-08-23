@@ -221,4 +221,42 @@ describe('GuidedGameEditor', () => {
       },
     })
   })
+
+  it('preserves incomplete role and distribution drafts after an unrelated edit', () => {
+    const latestSource = renderGuided({
+      ...minimalGame,
+      players: { min: 5, max: 8 },
+      roles: [
+        { id: 'oracle', label: 'Oracle', summary: 'Reads the signal.' },
+        { id: 'villager', label: 'Villager', summary: 'Finds the truth.' },
+      ],
+      roleDistributions: [
+        {
+          players: { min: 5, max: 8 },
+          counts: { oracle: 1, villager: 'remaining' },
+        },
+      ],
+    })
+
+    fireEvent.change(screen.getByLabelText('Role 1 summary'), {
+      target: { value: '' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('Distribution band 1 Oracle count'),
+      { target: { value: '' } },
+    )
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'River Council Revised' },
+    })
+
+    expect(screen.getByLabelText('Role 1 summary')).toHaveValue('')
+    expect(
+      screen.getByLabelText('Distribution band 1 Oracle count'),
+    ).toHaveValue('')
+    expect(screen.getAllByRole('alert')).toHaveLength(2)
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: { name: 'River Council Revised' },
+    })
+  })
 })

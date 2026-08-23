@@ -75,6 +75,47 @@ function selectorFor(draft: RoleDraft): CardSelector {
   return selector
 }
 
+function committedRolesRevision(
+  roles: readonly RoleDefinition[],
+  deck: DeckType,
+): string {
+  return JSON.stringify([
+    deck,
+    roles.map((role) => [
+      role.id,
+      role.label,
+      role.team ?? null,
+      role.summary,
+      role.card
+        ? [
+            role.card.label,
+            SELECTOR_PROPERTIES.map(
+              (property) => role.card?.selector[property] ?? null,
+            ),
+          ]
+        : null,
+    ]),
+  ])
+}
+
+function roleErrorContext(
+  committedRevision: string,
+  roleDistributions: readonly RoleDistribution[],
+  assignments: AssignmentDefinition | undefined,
+  fields: readonly PlayerFieldDefinition[],
+): string {
+  return JSON.stringify([
+    committedRevision,
+    roleDistributions.map((distribution) =>
+      Object.keys(distribution.counts).sort(),
+    ),
+    assignments !== undefined,
+    fields.flatMap((field) =>
+      field.type === 'role' ? [[field.id, field.default]] : [],
+    ),
+  ])
+}
+
 function nextRoleId(roles: readonly RoleDefinition[]): string {
   let number = roles.length + 1
   while (roles.some((role) => role.id === `role-${number}`)) number += 1
@@ -104,24 +145,52 @@ function dependencyMessage(roleLabel: string, sections: readonly string[]) {
   return `${roleLabel} cannot be renamed or removed until these dependent sections are repaired: ${sections.join(', ')}.`
 }
 
-export function RoleEditor({
+export function RoleEditor({ roles, deck, ...props }: RoleEditorProps) {
+  const committedRevision = committedRolesRevision(roles, deck)
+  return (
+    <RoleEditorForm
+      key={committedRevision}
+      {...props}
+      committedRevision={committedRevision}
+      deck={deck}
+      roles={roles}
+    />
+  )
+}
+
+interface RoleEditorFormProps extends RoleEditorProps {
+  readonly committedRevision: string
+}
+
+function RoleEditorForm({
   roles,
   deck,
   roleDistributions,
   assignments,
   fields,
   onChange,
-}: RoleEditorProps) {
-  const [draftState, setDraftState] = useState(() => ({
-    source: roles,
-    values: roles.map(roleDraft),
-  }))
-  const [error, setError] = useState<string>()
-  const drafts =
-    draftState.source === roles ? draftState.values : roles.map(roleDraft)
+  committedRevision,
+}: RoleEditorFormProps) {
+  const errorContext = roleErrorContext(
+    committedRevision,
+    roleDistributions,
+    assignments,
+    fields,
+  )
+  const [drafts, setDraftsState] = useState(() => roles.map(roleDraft))
+  const [errorState, setErrorState] = useState<{
+    readonly context: string
+    readonly message: string
+  }>()
+  const error =
+    errorState?.context === errorContext ? errorState.message : undefined
+
+  function setError(message: string | undefined) {
+    setErrorState(message ? { context: errorContext, message } : undefined)
+  }
 
   function setDrafts(values: readonly RoleDraft[]) {
-    setDraftState({ source: roles, values: [...values] })
+    setDraftsState([...values])
   }
 
   function validateDraft(

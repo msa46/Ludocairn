@@ -242,6 +242,14 @@ describe('DistributionEditor', () => {
       />,
     )
 
+    fireEvent.change(
+      screen.getByLabelText('Distribution band 1 Oracle count'),
+      { target: { value: '' } },
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'needs a non-negative count',
+    )
+
     rerender(
       <DistributionEditor
         players={{ min: 5, max: 5 }}
@@ -254,5 +262,68 @@ describe('DistributionEditor', () => {
     expect(
       screen.getByLabelText('Distribution band 1 maximum players'),
     ).toHaveValue('5')
+    expect(
+      screen.getByLabelText('Distribution band 1 Oracle count'),
+    ).toHaveValue('1')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    rerender(
+      <DistributionEditor
+        players={{ min: 5, max: 8 }}
+        roleDistributions={[
+          {
+            players: { ...wide.players },
+            counts: { ...wide.counts },
+          },
+        ]}
+        roles={roles}
+        onChange={onChange}
+      />,
+    )
+    expect(
+      screen.getByLabelText('Distribution band 1 Oracle count'),
+    ).toHaveValue('1')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('preserves incomplete counts across semantically equivalent distribution props', () => {
+    const distribution: RoleDistribution = {
+      players: { min: 5, max: 8 },
+      counts: { oracle: 1, villager: 'remaining' },
+    }
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <DistributionEditor
+        players={{ min: 5, max: 8 }}
+        roleDistributions={[distribution]}
+        roles={roles}
+        onChange={onChange}
+      />,
+    )
+    fireEvent.change(
+      screen.getByLabelText('Distribution band 1 Oracle count'),
+      { target: { value: '' } },
+    )
+
+    rerender(
+      <DistributionEditor
+        players={{ min: 5, max: 8 }}
+        roleDistributions={[
+          {
+            players: { ...distribution.players },
+            counts: { ...distribution.counts },
+          },
+        ]}
+        roles={[...roles]}
+        onChange={onChange}
+      />,
+    )
+
+    expect(
+      screen.getByLabelText('Distribution band 1 Oracle count'),
+    ).toHaveValue('')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'needs a non-negative count',
+    )
   })
 })

@@ -50,6 +50,36 @@ function wholeNumber(value: string): number | undefined {
   return Number.isSafeInteger(number) ? number : undefined
 }
 
+function committedDistributionsRevision(
+  roleDistributions: readonly RoleDistribution[],
+  roles: readonly RoleDefinition[],
+  players: PlayersDefinition,
+): string {
+  return JSON.stringify([
+    [players.min, players.max ?? null],
+    roles.map((role) => role.id),
+    roleDistributions.map((distribution) => [
+      distribution.players.min,
+      distribution.players.max,
+      Object.entries(distribution.counts).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ]),
+  ])
+}
+
+function distributionErrorContext(
+  committedRevision: string,
+  roles: readonly RoleDefinition[],
+  assignments: AssignmentDefinition | undefined,
+): string {
+  return JSON.stringify([
+    committedRevision,
+    roles.map((role) => [role.id, role.label]),
+    assignments !== undefined,
+  ])
+}
+
 function parseDrafts(
   drafts: readonly DistributionDraft[],
   roles: readonly RoleDefinition[],
@@ -134,28 +164,65 @@ function parseDrafts(
 }
 
 export function DistributionEditor({
+  roleDistributions,
+  roles,
+  players,
+  ...props
+}: DistributionEditorProps) {
+  const committedRevision = committedDistributionsRevision(
+    roleDistributions,
+    roles,
+    players,
+  )
+  return (
+    <DistributionEditorForm
+      key={committedRevision}
+      {...props}
+      committedRevision={committedRevision}
+      players={players}
+      roleDistributions={roleDistributions}
+      roles={roles}
+    />
+  )
+}
+
+interface DistributionEditorFormProps extends DistributionEditorProps {
+  readonly committedRevision: string
+}
+
+function DistributionEditorForm({
   roles,
   players,
   roleDistributions,
   assignments,
   onChange,
-}: DistributionEditorProps) {
-  const [draftState, setDraftState] = useState(() => ({
-    source: roleDistributions,
-    values: roleDistributions.map(distributionDraft),
-  }))
-  const [error, setError] = useState<string>()
-  const drafts =
-    draftState.source === roleDistributions
-      ? draftState.values
-      : roleDistributions.map(distributionDraft)
+  committedRevision,
+}: DistributionEditorFormProps) {
+  const errorContext = distributionErrorContext(
+    committedRevision,
+    roles,
+    assignments,
+  )
+  const [drafts, setDrafts] = useState(() =>
+    roleDistributions.map(distributionDraft),
+  )
+  const [errorState, setErrorState] = useState<{
+    readonly context: string
+    readonly message: string
+  }>()
+  const error =
+    errorState?.context === errorContext ? errorState.message : undefined
   const completeDrafts = parseDrafts(drafts, roles, players)
   const canEnableAssignments =
     completeDrafts.ok && roles.length > 0 && completeDrafts.value.length > 0
   const canAddBand = roles.length > 0 && players.max !== undefined
 
+  function setError(message: string | undefined) {
+    setErrorState(message ? { context: errorContext, message } : undefined)
+  }
+
   function updateDrafts(nextDrafts: readonly DistributionDraft[]) {
-    setDraftState({ source: roleDistributions, values: [...nextDrafts] })
+    setDrafts([...nextDrafts])
     const parsed = parseDrafts(nextDrafts, roles, players)
     if (!parsed.ok) {
       setError(parsed.message)
@@ -170,10 +237,7 @@ export function DistributionEditor({
 
   function addBand() {
     const counts = Object.fromEntries(roles.map((role) => [role.id, '']))
-    setDraftState({
-      source: roleDistributions,
-      values: [...drafts, { min: '', max: '', counts }],
-    })
+    setDrafts([...drafts, { min: '', max: '', counts }])
     setError('Complete every distribution band before digital dealing.')
   }
 
