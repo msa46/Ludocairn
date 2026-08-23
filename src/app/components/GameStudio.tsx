@@ -4,11 +4,13 @@ import { reviewGameSave } from '../../games/manage'
 import type { GameDefinition } from '../../games/model'
 import { parseGameSource } from '../../games/parse'
 import { renderRules } from '../../games/render'
+import { sourceHasFrontmatterComments } from '../../games/source'
 import type {
   GameRepositoryRecord,
   GameSaveResult,
 } from '../../storage/game-repository'
 import type { RepositoryRecord } from '../../storage/repository'
+import { GuidedGameEditor } from './GuidedGameEditor'
 import { RoleGuide } from './RoleGuide'
 
 interface GameStudioProps {
@@ -55,6 +57,9 @@ export function GameStudio({
     initial.ok ? 'guided' : 'source',
   )
   const [saveError, setSaveError] = useState<string>()
+  const [pendingGuidedSource, setPendingGuidedSource] = useState<string>()
+  const [normalizationAcknowledged, setNormalizationAcknowledged] =
+    useState(false)
   const dirty = savedSource === undefined || source !== savedSource
 
   useEffect(() => {
@@ -84,6 +89,21 @@ export function GameStudio({
     } else {
       setDiagnostics(parsed.diagnostics)
     }
+  }
+
+  function changeGuidedSource(nextSource: string) {
+    if (!normalizationAcknowledged && sourceHasFrontmatterComments(source)) {
+      setPendingGuidedSource(nextSource)
+      return
+    }
+    changeSource(nextSource)
+  }
+
+  function continueGuidedEditing() {
+    if (!pendingGuidedSource) return
+    setNormalizationAcknowledged(true)
+    setPendingGuidedSource(undefined)
+    changeSource(pendingGuidedSource)
   }
 
   function save() {
@@ -186,43 +206,11 @@ export function GameStudio({
             id="studio-guided-panel"
             role="tabpanel"
           >
-            <h2>Draft summary</h2>
-            <label>
-              Game ID
-              <input
-                disabled={originalId !== undefined}
-                readOnly
-                type="text"
-                value={lastValid.id}
-              />
-            </label>
-            <dl className="import-preview">
-              <div>
-                <dt>Name</dt>
-                <dd>{lastValid.name}</dd>
-              </div>
-              <div>
-                <dt>Summary</dt>
-                <dd>{lastValid.summary}</dd>
-              </div>
-              <div>
-                <dt>Players</dt>
-                <dd>
-                  {lastValid.players.min}
-                  {lastValid.players.max ? `–${lastValid.players.max}` : '+'}
-                </dd>
-              </div>
-              <div>
-                <dt>Deck</dt>
-                <dd>
-                  {lastValid.deck === 'standard-52' ? '52-card' : 'Tarot'}
-                </dd>
-              </div>
-            </dl>
-            <p>
-              Guided controls arrive in the next Studio step. Use Source to edit
-              this draft now.
-            </p>
+            <GuidedGameEditor
+              game={lastValid}
+              idLocked={originalId !== undefined}
+              onChange={changeGuidedSource}
+            />
           </section>
         )}
 
@@ -284,6 +272,32 @@ export function GameStudio({
           </section>
         )}
       </div>
+
+      {pendingGuidedSource && (
+        <div
+          aria-labelledby="normalize-source-title"
+          aria-modal="true"
+          className="message-card"
+          role="dialog"
+        >
+          <h2 id="normalize-source-title">Normalize source formatting?</h2>
+          <p>
+            Guided editing rewrites the YAML frontmatter and will remove its
+            comments. Your rules Markdown will be preserved.
+          </p>
+          <div className="form-actions">
+            <button type="button" onClick={continueGuidedEditing}>
+              Continue with guided editing
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingGuidedSource(undefined)}
+            >
+              Cancel guided edit
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

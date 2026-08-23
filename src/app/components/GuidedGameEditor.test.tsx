@@ -1,0 +1,137 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { useState } from 'react'
+import { describe, expect, it } from 'vitest'
+
+import type { GameDefinition } from '../../games/model'
+import { parseGameSource } from '../../games/parse'
+import { GuidedGameEditor } from './GuidedGameEditor'
+
+const minimalGame: GameDefinition = {
+  schemaVersion: 1,
+  id: 'river-council',
+  name: 'River Council',
+  summary: 'A council beside the river.',
+  deck: 'standard-52',
+  players: { min: 2, max: 6 },
+  roles: [],
+  roleDistributions: [],
+  phases: [],
+  round: { enabled: false },
+  fields: [],
+  rulesMarkdown: '# River Council\n\nOriginal rules.\n',
+  source: 'fixture.md',
+}
+
+function renderGuided(game = minimalGame, idLocked = false) {
+  let source = ''
+  function Fixture() {
+    const [currentGame, setCurrentGame] = useState(game)
+    return (
+      <GuidedGameEditor
+        game={currentGame}
+        idLocked={idLocked}
+        onChange={(nextSource) => {
+          source = nextSource
+          const parsed = parseGameSource(
+            nextSource,
+            'custom/river-council/game.md',
+          )
+          if (parsed.ok) setCurrentGame(parsed.game)
+        }}
+      />
+    )
+  }
+  render(<Fixture />)
+  return () => source
+}
+
+function parseLatest(latestSource: () => string) {
+  return parseGameSource(latestSource(), 'custom/river-council/game.md')
+}
+
+function setPhase(index: number, id: string, label: string) {
+  fireEvent.change(screen.getByLabelText(`Phase ${index + 1} ID`), {
+    target: { value: id },
+  })
+  fireEvent.change(screen.getByLabelText(`Phase ${index + 1} label`), {
+    target: { value: label },
+  })
+}
+
+describe('GuidedGameEditor', () => {
+  it('edits identity and rules and emits valid canonical source', () => {
+    const latestSource = renderGuided()
+
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'River Council Revised' },
+    })
+    fireEvent.change(screen.getByLabelText('Rules Markdown'), {
+      target: { value: '# River Council\n\nPlay.' },
+    })
+
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: {
+        name: 'River Council Revised',
+        rulesMarkdown: '# River Council\n\nPlay.',
+      },
+    })
+  })
+
+  it('adds, reorders, and removes phases and configures an initial round', () => {
+    const latestSource = renderGuided()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add phase' }))
+    setPhase(0, 'night', 'Night')
+    fireEvent.click(screen.getByRole('button', { name: 'Add phase' }))
+    setPhase(1, 'day', 'Day')
+    fireEvent.click(screen.getByRole('button', { name: 'Move Day up' }))
+    fireEvent.click(screen.getByLabelText('Track rounds'))
+    fireEvent.change(screen.getByLabelText('Initial round'), {
+      target: { value: '2' },
+    })
+
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: {
+        phases: [{ id: 'day' }, { id: 'night' }],
+        initialPhase: 'day',
+        round: { enabled: true, initial: 2 },
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Night' }))
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: { phases: [{ id: 'day' }], initialPhase: 'day' },
+    })
+  })
+
+  it('keeps an incomplete number local until it becomes a valid integer', () => {
+    const latestSource = renderGuided()
+    const before = latestSource()
+
+    fireEvent.change(screen.getByLabelText('Minimum players'), {
+      target: { value: '' },
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Enter a positive whole number.',
+    )
+    expect(latestSource()).toBe(before)
+
+    fireEvent.change(screen.getByLabelText('Minimum players'), {
+      target: { value: '3' },
+    })
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: { players: { min: 3, max: 6 } },
+    })
+  })
+
+  it('locks an existing game ID', () => {
+    renderGuided(minimalGame, true)
+
+    expect(screen.getByLabelText('Game ID')).toBeDisabled()
+  })
+})

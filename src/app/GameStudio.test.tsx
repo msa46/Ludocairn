@@ -9,6 +9,7 @@ import { keyForGame } from '../storage/game-repository'
 import { MemoryGameRepository } from '../storage/memory-game-storage'
 import { MemorySessionRepository } from '../storage/memory'
 import { App } from './App'
+import { GameStudio } from './components/GameStudio'
 
 const customSource = `---
 schema_version: 1
@@ -106,6 +107,43 @@ describe('Game Studio', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'New Game' }),
     ).toBeInTheDocument()
+  })
+
+  it('warns before the first guided edit would normalize YAML comments', () => {
+    const commentedSource = customSource.replace(
+      'schema_version: 1',
+      'schema_version: 1\n# keep this note',
+    )
+    render(
+      <GameStudio
+        initialSource={commentedSource}
+        bundledIds={new Set()}
+        customRecords={[]}
+        sessionRecords={[]}
+        onSave={() => {
+          throw new Error('Save is not part of this test.')
+        }}
+        onSaved={() => undefined}
+        onCancel={() => undefined}
+        onDirtyChange={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Guided' }))
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'Changed' },
+    })
+
+    expect(
+      screen.getByRole('dialog', { name: 'Normalize source formatting?' }),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Continue with guided editing' }),
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+    expect(screen.getByLabelText('Complete game source')).not.toHaveValue(
+      expect.stringContaining('# keep this note'),
+    )
   })
 
   it('keeps a saved ID read-only and rejects an incompatible session revision', () => {
