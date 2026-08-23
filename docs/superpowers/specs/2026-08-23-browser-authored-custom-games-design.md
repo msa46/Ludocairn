@@ -1,7 +1,7 @@
 # Browser-Authored Custom Games Design
 
 **Date:** 2026-08-23
-**Status:** Approved in conversation; awaiting written-spec review
+**Status:** Approved for implementation
 
 ## Summary
 
