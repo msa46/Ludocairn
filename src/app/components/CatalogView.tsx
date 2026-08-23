@@ -60,9 +60,11 @@ export function CatalogView({
         </div>
         <div className="catalog-grid">
           {games.map((game, index) => {
-            const customRecord = customGameRecords.find(
-              (record) => record.ok && record.id === game.id,
-            )
+            const customRecord = customGameIds.has(game.id)
+              ? customGameRecords.find(
+                  (record) => record.ok && record.id === game.id,
+                )
+              : undefined
             return (
               <article className="game-card" key={game.id}>
                 <p className="card-index">

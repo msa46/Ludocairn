@@ -1,12 +1,15 @@
 import { useState } from 'react'
 
+import { reviewGameDeletion } from '../../games/manage'
 import type {
   GameRepositoryRecord,
   GameSaveResult,
 } from '../../storage/game-repository'
+import type { RepositoryRecord } from '../../storage/repository'
 
 interface GameRecoveryCardProps {
   readonly record: GameRepositoryRecord
+  readonly sessionRecords: readonly RepositoryRecord[]
   readonly onRemove: (id: string) => GameSaveResult
   readonly onRemoved: () => void
 }
@@ -17,6 +20,7 @@ function recoverableSource(record: GameRepositoryRecord): string | undefined {
 
 export function GameRecoveryCard({
   record,
+  sessionRecords,
   onRemove,
   onRemoved,
 }: GameRecoveryCardProps) {
@@ -26,8 +30,9 @@ export function GameRecoveryCard({
   const diagnostic = record.ok
     ? `Custom game ID conflicts with bundled game "${record.id}".`
     : record.diagnostic.message
-  const readFailed =
+  const readFailureSentinel =
     !record.ok && record.diagnostic.code === 'game-storage.read-failed'
+  const storageIdLabel = record.id === '' ? 'empty storage ID' : record.id
 
   function download() {
     if (source === undefined) return
@@ -54,6 +59,24 @@ export function GameRecoveryCard({
 
   function remove() {
     setError(undefined)
+    const review = reviewGameDeletion(record.id, sessionRecords)
+    if (!review.ok) {
+      if (review.diagnostic.code === 'game-delete.sessions-use-game') {
+        const names = review.diagnostic.sessionIds.map((id) => {
+          const blocking = sessionRecords.find(
+            (candidate) => candidate.id === id,
+          )
+          return blocking?.ok ? blocking.session.name : id
+        })
+        setError(
+          `${review.diagnostic.message} Export or delete these sessions first: ${names.join(', ')}.`,
+        )
+      } else {
+        setError(review.diagnostic.message)
+      }
+      return
+    }
+
     const removed = onRemove(record.id)
     if (!removed.ok) {
       setError(removed.diagnostic.message)
@@ -71,31 +94,32 @@ export function GameRecoveryCard({
           Download raw source
         </button>
       )}
-      {readFailed ? (
+      {readFailureSentinel ? (
         <p>
           No stored game can be targeted for deletion because browser storage
           could not be read.
         </p>
-      ) : (
-        record.id &&
-        (confirming ? (
-          <div role="alert">
-            <p>
-              This permanently deletes the stored custom game record with ID{' '}
-              <strong>{record.id}</strong> from this browser.
-            </p>
-            <button type="button" onClick={remove}>
-              Delete stored game {record.id}
-            </button>
-            <button type="button" onClick={() => setConfirming(false)}>
-              Keep stored game {record.id}
-            </button>
-          </div>
-        ) : (
-          <button type="button" onClick={() => setConfirming(true)}>
-            Review delete {record.id}
+      ) : confirming ? (
+        <div
+          role="group"
+          aria-label={`Confirm deletion of stored game ${storageIdLabel}`}
+        >
+          <p>
+            This permanently deletes the stored custom game record from this
+            browser. Storage ID:{' '}
+            <strong>{record.id === '' ? '"" (empty)' : record.id}</strong>.
+          </p>
+          <button type="button" onClick={remove}>
+            Delete stored game {storageIdLabel}
           </button>
-        ))
+          <button type="button" onClick={() => setConfirming(false)}>
+            Keep stored game {storageIdLabel}
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setConfirming(true)}>
+          Review delete {storageIdLabel}
+        </button>
       )}
       {error && <p role="alert">{error}</p>}
     </article>

@@ -363,6 +363,7 @@ export function App({
                 <GameRecoveryCard
                   key={record.id || 'storage-error'}
                   record={record}
+                  sessionRecords={sessionRecords}
                   onRemove={(id) => storedGames.remove(id)}
                   onRemoved={refreshGames}
                 />

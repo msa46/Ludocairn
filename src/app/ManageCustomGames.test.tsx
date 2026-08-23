@@ -6,6 +6,7 @@ import type { Session } from '../sessions/model'
 import { GAME_KEY_PREFIX, keyForGame } from '../storage/game-repository'
 import { MemoryGameRepository } from '../storage/memory-game-storage'
 import { MemorySessionRepository } from '../storage/memory'
+import type { SessionRepository } from '../storage/repository'
 import { App } from './App'
 
 const customSource = `---
@@ -26,6 +27,12 @@ session:
 
 Original rules.
 `
+
+const customGameFixture = new MemoryGameRepository({
+  initial: { [keyForGame('custom-game')]: customSource },
+}).load('custom-game')
+if (!customGameFixture.ok) throw new Error('Custom game fixture is invalid')
+const customGame = customGameFixture.game
 
 const customSession: Session = {
   storageVersion: 1,
@@ -162,6 +169,40 @@ describe('custom game catalog management', () => {
     expect(copied).toBe((shareLink as HTMLInputElement).value)
   })
 
+  it('never gives a bundled card actions from a colliding recovery record', () => {
+    const games = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: customSource },
+    })
+    render(
+      <App
+        games={[{ ...customGame, name: 'Bundled Custom Game' }]}
+        gameRepository={games}
+        repository={new MemorySessionRepository(() => customGame)}
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Bundled Custom Game' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Custom game ID conflicts with bundled game "custom-game".',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Edit Custom Game' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Export Custom Game' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Share Custom Game' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete Custom Game' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('keeps the share URL selectable when clipboard writing fails', async () => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -277,7 +318,11 @@ describe('custom game recovery and session portability', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Review delete broken-game' }),
     )
-    expect(screen.getByRole('alert')).toHaveTextContent('broken-game')
+    expect(
+      screen.getByRole('group', {
+        name: 'Confirm deletion of stored game broken-game',
+      }),
+    ).toHaveTextContent('broken-game')
     fireEvent.click(
       screen.getByRole('button', { name: 'Delete stored game broken-game' }),
     )
@@ -285,6 +330,95 @@ describe('custom game recovery and session portability', () => {
       ok: false,
       diagnostic: { code: 'game-storage.not-found' },
     })
+  })
+
+  it('blocks recovery deletion while an identifiable saved session uses the storage ID', () => {
+    const brokenRaw = '---\nid: custom-game\n'
+    const games = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: brokenRaw },
+    })
+    const sessions = new MemorySessionRepository((id) =>
+      id === customGame.id ? customGame : undefined,
+    )
+    expect(sessions.save(customSession)).toMatchObject({ ok: true })
+    render(<App games={[]} gameRepository={games} repository={sessions} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review delete custom-game' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete stored game custom-game' }),
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Friday Table')
+    expect(games.raw('custom-game')).toBe(brokenRaw)
+  })
+
+  it('blocks recovery deletion when saved sessions cannot be enumerated', () => {
+    const brokenRaw = '---\nid: custom-game\n'
+    const games = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: brokenRaw },
+    })
+    const writableSessions = new MemorySessionRepository(() => customGame)
+    const sessions: SessionRepository = {
+      list: () => [
+        {
+          id: '',
+          ok: false,
+          diagnostic: {
+            code: 'storage.read-failed',
+            message: 'Browser session storage is blocked.',
+          },
+        },
+      ],
+      load: (id) => writableSessions.load(id),
+      save: (session) => writableSessions.save(session),
+      remove: (id) => writableSessions.remove(id),
+      raw: (id) => writableSessions.raw(id),
+    }
+    render(<App games={[]} gameRepository={games} repository={sessions} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review delete custom-game' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete stored game custom-game' }),
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Saved sessions could not be read, so this game cannot be deleted safely.',
+    )
+    expect(games.raw('custom-game')).toBe(brokenRaw)
+  })
+
+  it('lifecycle-reviews and deletes a concrete malformed empty-ID record', () => {
+    const brokenRaw = '---\nid: empty-key\n'
+    const games = new MemoryGameRepository({
+      initial: { [GAME_KEY_PREFIX]: brokenRaw },
+    })
+    render(
+      <App
+        games={[]}
+        gameRepository={games}
+        repository={new MemorySessionRepository(() => undefined)}
+      />,
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review delete empty storage ID' }),
+    )
+    expect(
+      screen.getByRole('group', {
+        name: 'Confirm deletion of stored game empty storage ID',
+      }),
+    ).toHaveTextContent('Storage ID: "" (empty)')
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Delete stored game empty storage ID',
+      }),
+    )
+
+    expect(games.raw('')).toBeUndefined()
   })
 
   it('does not offer deletion for a read-failure sentinel with no target ID', () => {
