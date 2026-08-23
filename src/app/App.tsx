@@ -185,11 +185,25 @@ export function App({
 
   useEffect(() => {
     function onHashChange() {
-      setSharedHash(window.location.hash)
+      const nextHash = window.location.hash
+      if (studioDirty && nextHash.startsWith('#share-game=')) {
+        window.history.replaceState(
+          {},
+          '',
+          (search || window.location.pathname) + sharedHash,
+        )
+        setPendingNavigation({
+          search,
+          hash: nextHash,
+          history: 'replace',
+        })
+        return
+      }
+      setSharedHash(nextHash)
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  }, [search, sharedHash, studioDirty])
 
   useEffect(() => {
     if (sessionId && session?.id !== sessionId) open(sessionId)

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { StrictMode } from 'react'
 
 import { loadBundledGames } from '../games/catalog'
+import { createGameShareUrl } from '../files/game-files'
 import type { Session } from '../sessions/model'
 import { keyForGame } from '../storage/game-repository'
 import { MemoryGameRepository } from '../storage/memory-game-storage'
@@ -77,6 +78,13 @@ function dirtyNewStudio() {
   fireEvent.change(openSource(), {
     target: { value: customSource.replaceAll('custom-game', 'new-game') },
   })
+}
+
+function sharedGameHash() {
+  const shared = createGameShareUrl(customSource, window.location.href)
+  expect(shared.ok).toBe(true)
+  if (!shared.ok) throw new Error('Shared game fixture failed to encode')
+  return new URL(shared.url).hash
 }
 
 describe('Game Studio', () => {
@@ -207,6 +215,59 @@ describe('Game Studio', () => {
     expect(trigger).toHaveFocus()
     expect(document.querySelector('.app-shell')).not.toHaveAttribute('inert')
     expect(window.location.search).toBe('?studio=new')
+  })
+
+  it('restores a dirty Studio when shared-hash navigation is canceled', () => {
+    dirtyNewStudio()
+    const editor = screen.getByLabelText('Complete game source')
+    const draft = (editor as HTMLTextAreaElement).value
+    editor.focus()
+    const hash = sharedGameHash()
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + window.location.search + hash,
+    )
+
+    fireEvent(window, new Event('hashchange'))
+
+    expect(window.location.search).toBe('?studio=new')
+    expect(window.location.hash).toBe('')
+    expect(
+      screen.getByRole('dialog', { name: 'Discard unsaved changes?' }),
+    ).toBeInTheDocument()
+    fireEvent.keyDown(
+      screen.getByRole('dialog', { name: 'Discard unsaved changes?' }),
+      { key: 'Escape' },
+    )
+    expect(screen.getByLabelText('Complete game source')).toHaveValue(draft)
+    expect(editor).toHaveFocus()
+    expect(window.location.search).toBe('?studio=new')
+    expect(window.location.hash).toBe('')
+  })
+
+  it('opens shared review only after discarding a dirty Studio hash navigation', () => {
+    dirtyNewStudio()
+    const draft = (
+      screen.getByLabelText('Complete game source') as HTMLTextAreaElement
+    ).value
+    const hash = sharedGameHash()
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + window.location.search + hash,
+    )
+
+    fireEvent(window, new Event('hashchange'))
+
+    expect(window.location.hash).toBe('')
+    expect(screen.getByLabelText('Complete game source')).toHaveValue(draft)
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    expect(window.location.search).toBe('?studio=new')
+    expect(window.location.hash).toBe(hash)
+    expect(
+      screen.getByRole('region', { name: 'Review shared game' }),
+    ).toBeInTheDocument()
   })
 
   it('saves a valid current draft before opening its rules', () => {
