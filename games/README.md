@@ -1,10 +1,24 @@
 # Creating a Ludocairn Game
 
-Repository games are ordinary Markdown files with validated YAML frontmatter.
-The format is designed so that most game contributions do not require changes
-to application code.
+Ludocairn games are ordinary Markdown files with validated YAML frontmatter.
+The browser accepts the same canonical source used by repository games, so an
+author can create, paste, import, review, save, edit, and export a custom game
+without changing application code or using a backend.
 
-## Add a game
+## Make a browser game
+
+Choose **Create a game** in Ludocairn, use Guided or Source editing, and review
+the Preview before saving. Alternatively, paste a complete source or save it
+with a `.ludocairn-game.md` suffix and choose **Choose game file**. Follow the
+[game-format reference](../docs/game-format.md); browser custom games do not
+require `RIGHTS.md`, author/owner/license metadata, or a pull request.
+
+Custom games live only in the current browser profile. Use **Export** for an
+exact source backup or **Share** when the generated fragment link fits the
+8,000-character portability limit. Ludocairn does not claim, approve,
+moderate, or verify custom content.
+
+## Add a bundled repository game
 
 1. Choose a stable lowercase ID containing letters, digits, and single hyphens.
 2. Create `games/<game-id>/game.md`.
@@ -15,8 +29,7 @@ to application code.
    [game content rights policy](../docs/content-rights.md).
 6. Keep version 1 rules self-contained; embedded images and game-owned assets
    are not yet part of the format.
-7. Run `npm run ci`. Executable game-schema validation arrives with the
-   content-engine increment.
+7. Run `npm run ci` to execute game-schema and repository validation.
 8. Submit the game through a pull request.
 
 ## Authoring principles

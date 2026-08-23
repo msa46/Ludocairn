@@ -10,8 +10,8 @@ cloud storage.
 
 Game authors write Markdown and YAML rather than JavaScript. Domain behavior
 must remain testable without rendering React components. The design supports
-explicit session-file import and export while leaving fragment sharing and
-custom decks for later milestones.
+explicit game and session import/export plus bounded custom-game fragment
+sharing while leaving custom decks for later milestones.
 
 ## Technology
 
@@ -24,8 +24,9 @@ Vite uses a relative public base (`base: "./"`). Ludocairn keeps its
 first-milestone navigation on one physical `index.html`, so relative assets
 work under repository subpaths, renamed forks, and custom domains. Public game
 selection uses `?game=<game-id>` and restored sessions use
-`?session=<session-id>`. URL fragments remain available for future private
-state sharing because fragments are not sent in HTTP requests.
+`?session=<session-id>`. Custom-game sharing uses
+`#share-game=v1.<payload>`; fragments are not sent in HTTP requests and remain
+outside the single-document query router.
 
 The deployment approach follows the official
 [Vite GitHub Pages guidance](https://vite.dev/guide/static-deploy.html) and
@@ -58,8 +59,13 @@ separates YAML frontmatter from the Markdown body, validates metadata against
 the schema version declared by the game, and returns either a normalized game
 definition or structured diagnostics.
 
+Browser-authored games use exactly the same canonical source and parser. Valid
+custom records merge into the runtime catalog without shadowing bundled IDs;
+bundled games remain read-only. The source is capped at 1,048,576 UTF-8 bytes
+at paste, file, storage, and decompressed-share boundaries.
+
 The deploy pipeline validates every bundled game before publishing. Runtime
-validation remains necessary so future imported files can use the same safe
+validation keeps imported files and browser storage behind the same safe
 boundary. Raw HTML in Markdown is disabled. Game definitions cannot execute
 JavaScript.
 
@@ -95,11 +101,12 @@ so UI and import code cannot put invalid values into a session.
 
 ### Persistence boundary
 
-A storage interface exposes session listing, loading, saving, and deletion.
-The browser implementation uses `localStorage` for the first milestone; tests
-use an in-memory implementation. Every stored document has an independent
-`storageVersion`, allowing storage migrations without changing the game-format
-version.
+Separate storage interfaces expose session and custom-game listing, loading,
+saving, and deletion. Browser implementations use `localStorage`; tests use
+in-memory implementations. Sessions have an independent `storageVersion`,
+allowing storage migrations without changing the game-format version. Custom
+source uses keys shaped as `ludocairn.game.v1.<game-id>`, and the parsed ID must
+match the key suffix.
 
 Loading treats browser data as untrusted. Malformed or unsupported records
 produce a recoverable diagnostic instead of crashing the application or being
@@ -109,11 +116,20 @@ mismatches retain their raw bytes for recovery.
 
 Session export serializes the validated session as UTF-8 JSON and triggers a
 user download. Import reads one selected JSON file in the browser, resolves
-its bundled game, validates the complete session, presents a preview, and only
-then allows confirmation. An imported ID collision receives a fresh ID. Files
-are never uploaded. Confirmation aborts before any write if existing browser
-sessions cannot be enumerated safely. After export, file confidentiality
-depends on how the user stores and shares the download.
+its bundled or custom game, validates the complete session, presents a preview,
+and only then allows confirmation. An imported ID collision receives a fresh
+ID. Files are never uploaded. Confirmation aborts before any write if existing
+browser sessions cannot be enumerated safely. Sessions never embed custom game
+source, so another browser must import the custom game before its session.
+After export, file confidentiality depends on how the user stores and shares
+the download.
+
+Custom-game import accepts pasted source or one local Markdown file, validates
+it, and presents a review before saving. Export downloads the exact saved
+source. Sharing compresses that source into a versioned fragment and is offered
+only when the complete URL is at most 8,000 characters; export is the fallback.
+Decoded source is bounded before parsing. A successful shared-game save removes
+the fragment, while a failure retains it for retry or recovery.
 
 ### React application
 
@@ -123,29 +139,33 @@ persistence rules. Feature code should live with the domain it changes; avoid
 generic dumping grounds named `utils`, `types`, or `components`.
 
 The first milestone uses one document rather than client-side path routing.
-This avoids GitHub Pages fallback hacks and prevents a hash router from
-claiming the fragment namespace intended for future share data.
+This avoids GitHub Pages fallback hacks and leaves the fragment namespace to
+the explicit custom-game share decoder rather than a hash router.
 
 ## Data flow
 
 1. Vite bundles the repository game Markdown sources.
-2. The game loader parses and validates them into a catalog.
-3. A user selects a public game and reads its shared role guide, when defined,
+2. The game loader parses and validates them, then merges valid custom records
+   from `ludocairn.game.v1.*` into one runtime catalog.
+3. Paste, local file import, Studio edits, and `#share-game=v1.*` fragments all
+   cross the same bounded parser and review boundary before a custom save.
+4. A user selects a game and reads its shared role guide, when defined,
    alongside the rendered Markdown rules.
-4. Session creation applies defaults and, for an assignment-enabled game,
+5. Session creation applies defaults and, for an assignment-enabled game,
    shuffles the active role distribution across the named players.
-5. The visibility policy chooses a pass-the-device reveal, a public assignment
+6. The visibility policy chooses a pass-the-device reveal, a public assignment
    table, or no player screen. A separately gated Game Master view may expose
    all assignments without creating or naming a Game Master player.
-6. The ordinary tracker suppresses editable role controls and locks the roster
+7. The ordinary tracker suppresses editable role controls and locks the roster
    after assignments exist.
-7. The storage adapter serializes and validates each state change locally;
+8. The storage adapters serialize and validate each state change locally;
    reloading restores assignments without reshuffling them.
-8. An explicit export downloads the validated state, including private
-   assignments. Import validates and previews a local file without revealing
-   assignment values before saving it.
+9. Explicit exports download canonical game source or validated session state,
+   including private assignments. Import validates and previews a local file
+   without revealing assignment values before saving it.
 
-No application step sends session state across the network.
+No application step sends game source or session state to a backend. A person
+may explicitly move custom source through a downloaded file or copied fragment.
 
 ## Static artifact and deployment
 
@@ -181,13 +201,15 @@ offline first visit cannot work. Requests outside the deployment scope and
 other origins are not handled or cached by these routes.
 
 The application has no runtime data cache, API cache, background sync, or
-background transfer of session/private data. While the page is open, the
+background transfer of custom-game/session data. While the page is open, the
 registration boundary performs periodic foreground update checks that fetch
 only application-version metadata and assets. Service workers do not intercept
-`localStorage` operations: they cannot read, cache, transmit, or delete session
-records. Workbox cleanup removes only obsolete Workbox-owned application
-caches. Browser site-data clearing can still remove both those caches and
-browser-local sessions, so the export flow remains the user's backup boundary.
+`localStorage` operations: they cannot read, cache, transmit, or delete custom
+game or session records. Workbox cleanup removes only obsolete Workbox-owned
+application caches. Browser site-data clearing can still remove both those
+caches and browser-local records, so the export flow remains the user's backup
+boundary. Once the shell is cached, custom games remain usable offline because
+their source stays in origin `localStorage`, not because Workbox caches it.
 
 PWA registration is isolated in `src/pwa`. A waiting worker never replaces the
 running application automatically. The registration boundary checks for
@@ -240,11 +262,13 @@ GitHub Pages artifact; end-to-end tests are not the primary domain test layer.
 ## Security and privacy
 
 Ludocairn does not enable raw HTML in Markdown, evaluate game-authored code,
-or trust deserialized data. Session data remains in this browser's local
-storage unless a user performs an explicit export. Exported JSON contains
+or trust deserialized data. Custom game source and session data remain in this
+browser's local storage unless a user explicitly exports a file or creates and
+copies a game share link. Exported JSON contains
 player names, field values, facilitator notes, and any private assignments and
 must be treated as private table material. Import reads locally, keeps
 assignment values out of its preview, and does not transmit the file.
-Future fragment sharing
-must document that fragments avoid server transmission but can still appear in
-browser history, screenshots, copied URLs, extensions, and client-side code.
+Game share fragments avoid HTTP transmission to the static host, but can still
+appear in browser history, screenshots, copied URLs, extensions, and
+client-side code. They contain compressed source, not encryption. Ludocairn
+has no backend, account, analytics, moderation, ownership, or approval service.

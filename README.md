@@ -48,6 +48,42 @@ When an updated app version is ready, Ludocairn asks before reloading. Choose
 **Update and reload** only after it can save any pending session change; if the
 save fails, the current version remains open so you can retry or export first.
 
+## Create, import, and share a custom game
+
+Choose **Create a game** to start a valid version-1 template in Game Studio.
+The Guided, Source, and Preview views edit one canonical Markdown/YAML source;
+you can also paste a complete source or choose a local `.md` or
+`.ludocairn-game.md` file. Ludocairn validates the full schema and shows a
+review before saving. Saved custom games can be edited, opened, used to create
+sessions, exported as the exact `.ludocairn-game.md` source, shared, or deleted
+when no saved session depends on them. Bundled games remain read-only.
+
+Custom games are stored only in this browser profile's `localStorage`, under
+versioned `ludocairn.game.v1.*` keys. There is no backend, account, upload,
+cloud copy, or automatic sync. Clearing site data, changing browser, device,
+profile, or site origin, private-browsing cleanup, storage blocking, storage
+exhaustion, or profile loss can make local games unavailable. Export important
+games as backups before clearing or moving browser data. Ludocairn does not
+claim, approve, moderate, or verify custom content.
+
+Paste, file import, stored records, and decoded share links all reject source
+larger than 1,048,576 UTF-8 bytes (1 MiB). Share links compress the exact
+source into a `#share-game=v1.…` URL fragment and open the same review screen;
+the fragment is not sent in the HTTP request to the static host. Ludocairn
+offers a share link only when the complete URL is at most 8,000 characters. If
+it is longer, export the game file and share that instead. A fragment can still
+appear in browser history, screenshots, copied URLs, extensions, and code
+running in the page, so share it only with intended recipients.
+
+A session stores only its game ID and schema version; it does not embed custom
+game source. To move a custom-game session to another browser, export and
+import the custom game first, then import the session. Deleting or making an
+incompatible edit to a custom game is blocked while local sessions depend on
+it. After one successful online production load caches the PWA shell, locally
+stored custom games and their sessions can reopen offline. The service worker
+caches application code, not custom source or session data, so offline access
+is not a backup.
+
 ## Bundled games
 
 The catalog contains three original Ludocairn games:
@@ -125,19 +161,21 @@ npm run preview
 
 ## Author a game
 
-Game definitions are Markdown rules with validated version-1 YAML frontmatter
-at `games/<game-id>/game.md`; they do not contain JavaScript or raw HTML. Start
-with [the author guide](games/README.md), follow the exact
-[game-format reference](docs/game-format.md), add the required adjacent
-`RIGHTS.md`, and run `npm run ci`. New content must be independently authored
-or have documented compatible rights and attribution.
+The same canonical Markdown rules and validated version-1 YAML frontmatter are
+accepted in the browser and in the repository; they do not contain JavaScript
+or raw HTML. For a local custom game, use Game Studio or import a
+`.ludocairn-game.md` file. For a bundled contribution at
+`games/<game-id>/game.md`, start with [the author guide](games/README.md),
+follow the exact [game-format reference](docs/game-format.md), add the required
+adjacent `RIGHTS.md`, and run `npm run ci`. New bundled content must be
+independently authored or have documented compatible rights and attribution.
 
 ### AI assistants and coding agents
 
-Start with the [AI game-translation guide](Bots.md). It gives ChatGPT and other
-tools an end-to-end workflow for mapping game mechanics to Ludocairn's schema,
-writing the rulebook and rights record, validating the generated experience,
-and producing a rulebook PDF through the browser print flow.
+Start with the [AI game-authoring guide](Bots.md). It separates the browser
+path, which produces one complete importable source with no repository or
+rights-record requirement, from the bundled-contribution path with rights,
+validation, pull-request, preview, and print responsibilities.
 
 ## GitHub Pages deployment
 

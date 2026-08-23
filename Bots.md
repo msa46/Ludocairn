@@ -1,211 +1,104 @@
-# Guide for AI Game Translators
+# Guide for AI Game Authors
 
-This file is an operational guide for ChatGPT, coding agents, and other tools
-that turn a tabletop game into a Ludocairn contribution. A successful
-translation produces the source files from which Ludocairn builds the catalog
-entry, readable and printable rules, optional role guide, session setup, local
-tracker, and session import/export support.
+Start by asking the person which outcome they want:
 
-Ludocairn does **not** generate a PDF file during the build. Its **Print rules**
-action opens the browser print dialog; a person can choose **Save as PDF**
-there. Do not claim that a PDF was generated unless that browser/system step
-was actually completed and the resulting file was inspected.
+1. **Make a browser game** — create a custom game they can paste into or
+   import into Ludocairn, without changing this repository.
+2. **Contribute a bundled game** — add a reviewed game and rights record to
+   the repository through the contributor workflow.
 
-## Authority and scope
+Do not mix the two paths. A browser game does not require `RIGHTS.md`, a pull
+request, or author, owner, or license metadata. Ludocairn does not claim,
+approve, publish, moderate, or verify custom content; the person creating or
+sharing it remains responsible for it.
 
-Before authoring, read these files in this order:
+Ludocairn does **not** generate a PDF during its build. **Print rules** opens
+the browser print dialog, where a person may choose **Save as PDF**. Never
+claim that a PDF was generated unless that native step completed and the saved
+file was inspected.
 
-1. [`docs/content-rights.md`](docs/content-rights.md) — what content may be
-   contributed.
-2. [`docs/game-format.md`](docs/game-format.md) — the exact version 1 schema.
-3. [`games/README.md`](games/README.md) — the game-authoring workflow.
-4. One existing game with similar needs under [`games/`](games/) — a pattern,
-   not a source to copy.
+## Make a browser game
 
-Those documents and the parser are authoritative if this guide becomes stale.
-Do not modify application code merely to make a new game fit. Version 1 is a
-reference document plus a generic local tracker; it does not automate play.
+Use this path by default when someone wants a game to play locally.
 
-## Required inputs
+### 1. Gather the game before writing
 
-Establish all of the following before creating repository files:
+Ask for and resolve:
 
-- the game's mechanics, player range, required deck, setup, turn or round
-  sequence, end condition, and edge cases;
-- the source and ownership of the supplied material;
-- the copyright holder and license under which the resulting contribution may
-  be distributed;
-- whether the submitted wording, examples, setting, names, and role
-  descriptions are original; and
-- who will perform and document the required name screen.
+- the objective, player range, physical materials, and whether the deck is a
+  standard 52-card deck or tarot deck;
+- setup, the repeated turn/round/phase loop, ending and winner conditions,
+  tie handling, deck exhaustion, players joining/leaving, and other edge cases;
+- any roles, teams, physical card markers, player-count-specific role counts,
+  hidden information, and whether Ludocairn should deal roles digitally;
+- persistent facilitator state worth tracking per player, plus shared phases,
+  round number, and notes; and
+- enough original rule wording and examples to make the result self-contained.
 
-If provenance, permission, or licensing is unclear, stop and ask the user. Do
-not invent permission, authorship, a license, attribution, search results, or a
-search date.
+Do not guess a material rule. Ask. Do not copy, translate, lightly rewrite, or
+closely paraphrase a published rulebook, examples, flavor, characters,
+branding, artwork, or layout.
 
-### Translating an existing published game
+### 2. Map the mechanics to the complete version 1 schema
 
-Game mechanics and procedures may be described independently, but a published
-rulebook is not a writing template. Do not copy, translate, lightly rewrite,
-or closely paraphrase its text, examples, flavor, characters, role set,
-artwork, branding, or layout. Work from the mechanics and write a new,
-self-contained explanation from first principles. Do not imply affiliation or
-endorsement.
+Read [`docs/game-format.md`](docs/game-format.md) as the authoritative schema.
+Use only these top-level properties:
 
-The current bundled-game checks expect repository-hosted content to be
-MIT-licensed and to include a complete rights record. Third-party licensed or
-public-domain content requires reliable provenance, exact license terms and
-attribution, and maintainer approval; do not silently relicense it as MIT.
+- required `schema_version: 1`, stable `id`, `name`, `summary`, `deck`,
+  `players`, and `session`;
+- optional `roles`, `role_distributions`, and `assignments`.
 
-## Deliverables
+Validate every branch, including branches the game does not use:
 
-For one game, create exactly this source pair:
+- IDs start with a lowercase ASCII letter and contain lowercase letters,
+  digits, and single hyphens only. IDs are unique in their scope.
+- `deck` is exactly `standard-52` or `tarot`. `players.min` is a positive
+  integer; optional `players.max` is not below it.
+- Every role has `id`, `label`, and `summary`, with optional `team` and an
+  optional card `{ label, selector }`. A selector uses one or more of `ids`,
+  `suits`, `ranks`, `arcana`, or `tags`, and every selector value must be valid
+  for the chosen deck.
+- Role-distribution bands require roles and a finite maximum player count.
+  Ordered adjacent bands cover every supported count exactly once. Every band
+  names every role; counts are non-negative integers or one `remaining` value.
+  Fixed counts cannot exceed the band minimum; without `remaining`, a
+  single-count band's fixed values must fill that table exactly.
+- Digital dealing requires roles plus complete distributions. Use only
+  `method: shuffle`; `visibility.players` is `own`, `all`, or `none`, and
+  `visibility.game_master` is `all` or `none`.
+- Optional `session.phases` is a non-empty ordered list of objects with unique
+  `id` values and non-empty `label` values. It requires a matching
+  `session.initial_phase`. Omit both when the game has no phases.
+- `session.round` is required. Use `{ enabled: false }`, or use
+  `{ enabled: true, initial: <positive integer> }`.
+- `session.player_fields` is an ordered list of unique field IDs. A `boolean`
+  default is a Boolean; a `choice` has unique `choices` and a default in that
+  list; a `role` default names a declared role and has no `choices`; a `number`
+  has a finite default within optional `min`/`max` and an optional positive
+  `step`; a `text` has a string default and optional Boolean `multiline`.
+- Everything after the closing `---` is complete Markdown rules. Raw HTML,
+  JavaScript, remote widgets, embedded images, executable content, and secrets
+  are unsupported.
 
-```text
-games/<game-id>/
-├── game.md
-└── RIGHTS.md
-```
+Use the smallest tracker that supports facilitation. The tracker records
+state; it does not enforce turns, execute roles, calculate outcomes, choose
+cards, or decide a winner. Shared tracker fields are not a safe place for
+player secrets. If digital dealing is enabled, use its visibility policy.
 
-`game.md` supplies all user-facing game behavior:
+### 3. Emit one complete source file
 
-- catalog name and summary;
-- player limits and deck type;
-- optional structured roles and player-count distributions;
-- optional phases and round counter;
-- per-player tracker fields; and
-- the complete Markdown rulebook.
+Return exactly one fenced `game.md` block containing the complete canonical
+file: opening frontmatter delimiter, all required frontmatter and chosen
+optional branches, closing delimiter, and self-contained rules. Do not split
+the source across multiple fences and do not emit a partial skeleton. A
+minimal valid shape is:
 
-`RIGHTS.md` records authorship, license, provenance, and dated name-screen
-evidence. The site does not display this file, but repository validation
-requires it.
-
-Do not manually edit the catalog, React components, generated `dist/` files,
-or session storage for an ordinary game contribution. The Vite build discovers
-every `games/*/game.md` file automatically.
-
-## Translation workflow
-
-### 1. Model the game before writing YAML
-
-Write a compact mechanics outline:
-
-1. objective and ending;
-2. physical materials;
-3. setup;
-4. repeated play sequence;
-5. state that must remain visible between turns;
-6. unusual cases and tie resolution; and
-7. facilitator responsibilities.
-
-Resolve contradictions and missing cases with the user. Do not fill material
-rules gaps by guessing. Keep rules in prose unless the facilitator truly needs
-to update the value throughout play.
-
-### 2. Choose a permanent identity
-
-- `id` and directory: lowercase ASCII letters and digits separated by single
-  hyphens, beginning with a letter; for example, `river-council`.
-- `name`: a human-readable title supported by a recorded name screen.
-- `summary`: one plain-text catalog sentence that describes the play loop.
-- `deck`: exactly `standard-52` or `tarot`.
-
-The directory name and frontmatter `id` must match. Treat IDs as permanent API
-values. Never fabricate name-clearance research; record only searches that
-were actually performed, with their real date and scope.
-
-### 3. Map only persistent table state to the tracker
-
-Use the smallest set of fields that makes facilitation easier:
-
-| Need                          | Field type | Typical examples             |
-| ----------------------------- | ---------- | ---------------------------- |
-| Two-state fact                | `boolean`  | active, ready, protected     |
-| One status from a fixed list  | `choice`   | stance, location, condition  |
-| One declared structured role  | `role`     | role identity shown by label |
-| Score, resource, or counter   | `number`   | score, clues, health         |
-| Freeform player-specific text | `text`     | rulings, plans, notes        |
-
-Use `session.phases` only for a small, repeated phase cycle. Enable
-`session.round` only when a shared round number matters. The tracker records
-values; it does not validate moves, calculate scores, enforce turn order,
-execute role behavior, or determine a winner. Digital role dealing is an
-explicit top-level policy described below, not tracker scripting.
-
-Tracker values are shared facilitator-facing state. Do not model secrets there
-unless the game's procedure intentionally makes them visible to the person
-running the tracker.
-
-### 4. Add structured roles only when they improve reference
-
-Top-level `roles` create a shared role guide. Each role has a stable ID, label,
-purpose summary, optional team, and optional physical card marker. A role card
-selector identifies matching cards; it does not choose or reserve exact cards.
-
-Use `role_distributions` only when every supported table size has a defined
-composition. Its ordered, adjacent bands must cover `players.min` through
-`players.max` exactly once. Each band names every role. At most one role count
-may be `remaining`.
-
-If players need their roles recorded in the tracker, add a `type: role` player
-field whose default is a declared role ID. Otherwise the guide can exist
-without a role field.
-
-To let Ludocairn deal the distribution, add `assignments` with
-`method: shuffle`. Set `visibility.players` to `own`, `all`, or `none`, and
-`visibility.game_master` to `all` or `none`. Private `own` reveals use a
-pass-the-device sequence. The Game Master is a separate unnamed facilitator,
-never a player record, and receives no role. See `docs/game-format.md` for the
-complete schema, roster-locking behavior, and export privacy requirements.
-
-### 5. Write a self-contained rulebook
-
-Everything after the closing frontmatter delimiter is rendered as the rules.
-Use ordinary Markdown and a task-oriented structure such as:
-
-```markdown
-# Game Name
-
-One paragraph describing the objective and core decision.
-
-## What you need
-
-## Set up
-
-## How to play
-
-### 1. First step
-
-### 2. Second step
-
-## Ending the game
-
-## Edge cases
-
-## Facilitation notes
-```
-
-Define special terms before relying on them. State exact card ordering, tie
-rules, when tracker values change, what happens when the deck is exhausted,
-and how players join or leave if those cases matter. Examples must be newly
-written and consistent with the rules.
-
-Version 1 supports headings, paragraphs, emphasis, lists, tables, and links.
-Do not add raw HTML, JavaScript, remote widgets, images, executable content, or
-secrets.
-
-### 6. Create `game.md`
-
-Use the complete example in [`docs/game-format.md`](docs/game-format.md) as the
-schema reference. Start from this minimal skeleton and add only supported
-properties:
-
-```markdown
+```game.md
 ---
 schema_version: 1
 id: example-game
 name: Example Game
-summary: A concise sentence describing the game.
+summary: A concise sentence describing the play loop.
 deck: standard-52
 players:
   min: 2
@@ -218,124 +111,145 @@ session:
 
 # Example Game
 
-Write the complete, independently authored rules here.
+Write the complete rules here, including setup, play, ending, and edge cases.
 ```
 
-Unknown YAML properties are rejected. YAML types matter: booleans are
-`true`/`false`, numbers are unquoted numbers, and text defaults are strings.
-Choice defaults must appear in `choices`; role defaults must name a declared
-role; numeric defaults must satisfy their bounds; an enabled round requires a
-positive `initial`; and phases require a valid `initial_phase`.
+Before handing it off, validate the entire source against every applicable
+constraint in [`docs/game-format.md`](docs/game-format.md). Unknown YAML keys
+are rejected. YAML types matter. Do not say Ludocairn accepted or validated
+the game unless you actually observed its review screen reporting valid input.
 
-### 7. Create `RIGHTS.md`
+### 4. Tell the player how to use it
 
-The headings below are required by repository validation. Replace every
-placeholder with verified facts. Never preserve bracketed prompts in a final
-contribution.
+After the single source fence, give these browser instructions:
+
+1. Open Ludocairn and choose **Create a game**.
+2. Paste the complete source into **Source**, or save it as a filename ending
+   in `.ludocairn-game.md` and choose **Choose game file**.
+3. Review the validation result and game summary before saving. Invalid input
+   can be opened in Game Studio for repair.
+4. Choose **Save custom game**, then open its rules or start a session.
+5. Use **Export** for an exact portable Markdown backup. Use **Share** for a
+   fragment link when available; if the complete link would exceed 8,000
+   characters, export and send the `.ludocairn-game.md` file instead.
+
+Custom games are stored only in that browser profile. Clearing site data,
+switching browser/device/origin, private-browsing cleanup, storage blocking,
+or profile loss can remove them. A session that uses a custom game needs that
+game installed first in any other browser. Export both before moving. Game
+source larger than 1,048,576 UTF-8 bytes (1 MiB) is rejected. After the PWA
+shell has been cached once online, locally stored custom games remain usable
+offline; the service-worker cache does not back them up.
+
+## Contribute a bundled game
+
+Use this path only when the person explicitly wants the game shipped in the
+repository catalog.
+
+### Authority and required inputs
+
+Read these files in order:
+
+1. [`docs/content-rights.md`](docs/content-rights.md)
+2. [`docs/game-format.md`](docs/game-format.md)
+3. [`games/README.md`](games/README.md)
+4. One mechanically similar game under [`games/`](games/) as a structural
+   pattern, never as wording to copy.
+
+Establish the source and ownership of all supplied material, the copyright
+holder, the distribution license, whether wording and examples are original,
+and who will perform the dated name screen. If provenance, permission, or
+licensing is unclear, stop and ask. Never invent permission, authorship,
+license, attribution, search results, or dates.
+
+Third-party or public-domain material requires reliable provenance, exact
+license terms and attribution, and maintainer approval. Do not silently
+relicense it as MIT or imply affiliation or endorsement.
+
+### Repository deliverables
+
+Create exactly:
+
+```text
+games/<game-id>/
+├── game.md
+└── RIGHTS.md
+```
+
+The directory and frontmatter ID must match. Treat the ID as permanent.
+`game.md` follows the same complete schema and rule-writing process as the
+browser path. `RIGHTS.md` must contain verified facts under all of these
+headings:
 
 ```markdown
 # Example Game Rights Record
 
 ## Authorship
 
-[Identify the author and copyright holder.]
+[Verified author and copyright-holder facts.]
 
 ## License
 
-[State the applicable license. Bundled original content currently uses the
-repository's MIT License.]
+[Exact compatible distribution license.]
 
 ## Provenance
 
-[Explain what is original, what general mechanics or common deck facts were
-used, and list the source and permission for every reused item.]
+[Original work, general mechanics/common facts, and every permitted source.]
 
 ## Name clearance
 
-[Record the real YYYY-MM-DD search date, databases and catalogs searched,
-queries or variants checked, and results. State that this is a preliminary
-screen rather than legal advice or a guarantee.]
+[Real date, databases/catalogs, queries/variants, results, and the preliminary
+screen disclaimer.]
 ```
 
-Follow the fuller policy and existing records; do not treat an example's
-specific search claims as reusable boilerplate.
+Do not edit the catalog, React components, `dist/`, or browser storage for an
+ordinary contribution. The build discovers `games/*/game.md` automatically.
 
-## Validate the contribution
+### Validate and inspect the contribution
 
-From the repository root, use the supported Node.js 22 and npm 10 environment,
-then run:
+From the repository root, using supported Node.js 22 and npm 10, run:
 
 ```bash
 npm install
 npm run ci
 ```
 
-Use `npm ci` instead of `npm install` when recreating the exact lockfile
-environment. `npm run ci` checks formatting, linting, strict TypeScript,
-tests, the production build, the static artifact, all bundled definitions,
-and adjacent rights records. Do not work around a diagnostic by weakening the
-schema or tests; correct the game source.
+Use `npm ci` instead when recreating the lockfile exactly. The gate checks
+formatting, linting, strict TypeScript, tests, the production build, every
+bundled definition, and adjacent rights records. Correct the source rather
+than weakening validation.
 
-Then inspect the production artifact:
+Then run `npm run build` and `npm run preview`. In the production artifact,
+verify catalog facts; safely rendered rules; role guide and distributions;
+assignment visibility and Game Master separation; valid/out-of-range setup;
+tracker fields, defaults, phases, and round; add/remove, notes, save/restore,
+export/import; narrow layout; keyboard operation; and grayscale print output.
 
-```bash
-npm run build
-npm run preview
-```
+Submit `games/<game-id>/game.md` and its adjacent `RIGHTS.md` through a pull
+request. Summarize the mechanics and tracker mapping, link the verified rights
+and name-screen evidence, and include exact CI and preview results. Do not claim
+that the pull request was created, reviewed, merged, or published without
+evidence from that repository operation.
 
-Open the URL printed by Vite. Do not open `index.html` with a `file://` URL.
+For a PDF, choose **Print rules**, then **Save as PDF** in the native dialog.
+Inspect page breaks, headings, tables, role-guide content, grayscale contrast,
+and absence of controls. If the environment cannot inspect the dialog or saved
+file, state that boundary and leave the step to a person.
 
-## Verify the generated experience
+### Bundled-contribution completion checklist
 
-For the new game, confirm all of the following in the browser:
+- [ ] Rights, permission, authorship, license, provenance, and a real dated
+      name screen are documented.
+- [ ] Rule wording and examples are independently written.
+- [ ] Directory, game ID, and all stable IDs are valid and consistent.
+- [ ] The full version 1 schema validates with the smallest useful tracker.
+- [ ] Rules completely cover setup, play, ending, and edge cases.
+- [ ] `npm run ci` exits successfully.
+- [ ] The production preview, narrow layout, keyboard path, and print boundary
+      were checked and accurately reported.
+- [ ] No generated `dist/`, third-party assets, secrets, or unrelated changes
+      were added.
 
-1. Its catalog card shows the intended name, summary, deck, and player range.
-2. The rules page renders headings, lists, tables, and links safely and in the
-   intended order.
-3. The role guide appears only when configured and shows correct teams, card
-   markers, purposes, and table-size quantities.
-4. When assignments are configured, the dealt roles match the active
-   distribution, each visibility mode exposes only its intended information,
-   and the Game Master has no player name or role.
-5. Session setup accepts a valid player list and warns appropriately outside
-   the recommended range.
-6. The tracker contains exactly the configured phases, round control, fields,
-   labels, defaults, bounds, and choices.
-7. Add/remove player, facilitator notes, local save/restore, export, and import
-   still behave as expected for the configured state.
-8. Narrow-screen, keyboard-only, and grayscale output remain usable.
-
-### Produce the rulebook PDF
-
-1. Open the game's rules page in the production preview or deployed site.
-2. Select **Print rules**.
-3. In the browser/system print dialog, choose **Save as PDF**.
-4. Review page breaks, headings, tables, role-guide content, grayscale
-   contrast, and the absence of navigation or editing controls.
-5. Save the file with a clear game-specific name and inspect the saved PDF.
-
-The printable rules include the structured role guide when the game defines
-one. **Print tracker** is separate and prints current session state rather than
-the rulebook. Print-preview settings and PDF creation occur outside Ludocairn,
-so an agent that cannot control or inspect the native dialog must report that
-boundary honestly and leave the PDF step for a person.
-
-## Completion checklist for agents
-
-Do not say the game translation is complete until every applicable item is
-supported by fresh evidence:
-
-- [ ] Rights, permission, authorship, and license are known and documented.
-- [ ] Rule wording and examples were written independently.
-- [ ] The game ID matches its directory and all stable IDs are valid.
-- [ ] The YAML uses only version 1 properties and the smallest useful tracker.
-- [ ] The Markdown rules fully explain setup, play, ending, and edge cases.
-- [ ] `RIGHTS.md` contains verified facts and an actual dated name screen.
-- [ ] `npm run ci` completes successfully.
-- [ ] The production preview was checked for rules, roles, setup, and tracker.
-- [ ] Print preview was reviewed; the saved PDF was inspected if one was made.
-- [ ] No generated `dist/` files, third-party assets, secrets, or unrelated
-      application changes were added.
-
-When handing off, identify the two source files, summarize the tracker mapping,
-list the exact verification performed, and disclose anything not performed.
+When handing off a bundled contribution, identify both source files, summarize
+the tracker mapping, list exact verification evidence, and disclose anything
+not performed.

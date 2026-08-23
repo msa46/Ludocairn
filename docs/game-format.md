@@ -3,17 +3,24 @@
 ## Purpose
 
 A Ludocairn game definition combines machine-readable YAML frontmatter with
-human-readable Markdown rules. Authors should be able to create and review a
-game in a normal text editor and contribute it through a pull request without
-writing application code.
+human-readable Markdown rules. The browser and repository accept the same
+canonical source, so authors can create and review a local custom game or
+contribute a bundled game without writing application code.
 
 The first format is intentionally small. It describes tracker state and deck
 references and can optionally shuffle configured roles into private player
 assignments. It does not automate rules, choose physical cards, or run scripts.
 
-## File location
+## Browser files and repository location
 
-Each repository-hosted game has one entry file:
+A browser custom game may be pasted directly into Game Studio or imported from
+a local `.md` or `.ludocairn-game.md` file. The browser validates the complete
+source and shows a review before saving it locally. Export produces that same
+canonical source with a `.ludocairn-game.md` filename. Browser custom games do
+not require author, owner, license, or other rights metadata in the schema, and
+they do not require `RIGHTS.md`.
+
+Each bundled repository game has one entry file:
 
 ```text
 games/<game-id>/game.md
@@ -23,7 +30,7 @@ The directory name and frontmatter `id` must match. IDs use lowercase ASCII
 letters, digits, and single hyphens, start with a letter, and remain stable
 after publication.
 
-Each game also requires an adjacent rights record:
+Each bundled repository game also requires an adjacent rights record:
 
 ```text
 games/<game-id>/RIGHTS.md
@@ -386,6 +393,14 @@ game ID/schema version plus concrete player state and is validated against the
 currently bundled game before it can be restored or imported.
 
 ## Authoring and verification
+
+For a browser custom game, choose **Create a game**, paste source, or import a
+Markdown file. Review validation before saving, then export the canonical
+source as a backup or create a share link. Source larger than 1 MiB in UTF-8 is
+rejected. No browser save or review constitutes ownership, rights, moderation,
+approval, or publication by Ludocairn.
+
+For a bundled repository contribution:
 
 1. Choose a stable lowercase ID and create `games/<game-id>/game.md`.
 2. Copy the structure above, using only the field types and optional controls

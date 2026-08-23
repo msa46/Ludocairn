@@ -181,6 +181,32 @@ Acceptance criteria:
 
 ## Later milestones
 
+### Browser-authored custom games
+
+**Status:** Implemented and automated-verified; controller production-preview
+review pending.
+
+- [x] Create and edit complete version-1 games in Guided, Source, and Preview
+  Studio views, with canonical-source synchronization and actionable schema
+  diagnostics.
+- [x] Save custom source in the versioned browser-local
+  `ludocairn.game.v1.*` namespace, merge valid records into the catalog, and
+  preserve corrupt raw source for recovery.
+- [x] Paste or import Markdown for review before saving; export the exact
+  `.ludocairn-game.md` source; and review bounded `#share-game=v1.*` fragments
+  with an 8,000-character link limit and file-export fallback.
+- [x] Resolve custom games for session creation, restore, import, and export;
+  block incompatible edits and deletion while saved sessions depend on them.
+- [x] Enforce the 1 MiB UTF-8 source limit, keep all parsing and persistence in
+  the browser with no backend, and retain offline access after the PWA shell is
+  cached without putting custom source into the service-worker cache.
+- [x] Pass the complete `npm run ci` gate on 2026-08-23, including 427 tests,
+  production build, and static PWA artifact verification.
+- [ ] Complete the controller-owned production-preview checklist for the full
+  schema, synchronization, refresh and session restore, paste/file/share
+  review, guards and recovery, offline reopen, keyboard use, 375-pixel layout,
+  print isolation, and native download/clipboard/print boundaries.
+
 ### Mobile PWA implementation
 
 **Status:** Implemented; local browser verification partial; deployment and
@@ -223,10 +249,9 @@ or transmitting them. Accounts, analytics, cloud sync, background sync, and
 background transfer of session/private data remain out of scope. While the page
 is open, update checks fetch only application-version metadata and assets.
 
-Later work may add file sharing, compact fragment sharing for suitably small
-state, custom deck definitions, printable role/reference sheets, scripted role
-behavior, richer card group capabilities, and a carefully designed distinction
-between objective state and subjective player knowledge.
+Later work may add custom deck definitions, printable role/reference sheets,
+scripted role behavior, richer card group capabilities, and a carefully
+designed distinction between objective state and subjective player knowledge.
 
 Accounts, cloud synchronization, multiplayer networking, real-time
 collaboration, arbitrary scripts, AI game generation, and a plugin marketplace
