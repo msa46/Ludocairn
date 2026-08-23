@@ -12,6 +12,8 @@ interface CatalogViewProps {
   readonly navigate: (search: string) => void
   readonly removeRecord: (id: string) => void
   readonly importSession: ReactNode
+  readonly importGame: ReactNode
+  readonly repairSource?: string
 }
 
 export function CatalogView({
@@ -22,6 +24,7 @@ export function CatalogView({
   navigate,
   removeRecord,
   importSession,
+  importGame,
 }: CatalogViewProps) {
   const sessions = records.filter((record) => record.ok)
   const recovery = records.filter((record) => !record.ok)
@@ -133,6 +136,7 @@ export function CatalogView({
       )}
 
       {importSession}
+      {importGame}
     </div>
   )
 }

@@ -23,6 +23,7 @@ import { LocalStorageSessionRepository } from '../storage/local-storage'
 import type { GameRepository } from '../storage/game-repository'
 import type { SessionRepository } from '../storage/repository'
 import { CatalogView } from './components/CatalogView'
+import { ImportGame } from './components/ImportGame'
 import { ImportSession } from './components/ImportSession'
 import { PlayerAssignmentView } from './components/PlayerAssignmentView'
 import { RulesView } from './components/RulesView'
@@ -67,6 +68,8 @@ export function App({
     games: catalogGames,
     customIds,
     recovery: gameRecovery,
+    records: customRecords,
+    refresh: refreshGames,
   } = useGameStore(storedGames, games)
   const resolveGame = useMemo(
     () => (id: string) => {
@@ -85,7 +88,9 @@ export function App({
     [repository, resolveGame],
   )
   const [search, setSearch] = useState(() => window.location.search)
+  const [sharedHash, setSharedHash] = useState(() => window.location.hash)
   const [setupGameId, setSetupGameId] = useState<string>()
+  const [repairSource, setRepairSource] = useState<string>()
   const [revision, setRevision] = useState(0)
   const [actionError, setActionError] = useState<string>()
   const {
@@ -110,10 +115,19 @@ export function App({
   useEffect(() => {
     function onPopState() {
       setSearch(window.location.search)
+      setSharedHash(window.location.hash)
       setSetupGameId(undefined)
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  useEffect(() => {
+    function onHashChange() {
+      setSharedHash(window.location.hash)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
   useEffect(() => {
@@ -122,10 +136,19 @@ export function App({
 
   function navigate(nextSearch: string) {
     const query = nextSearch ? '?' + nextSearch : window.location.pathname
-    window.history.pushState({}, '', query)
+    window.history.pushState({}, '', query + window.location.hash)
     setSearch(nextSearch ? '?' + nextSearch : '')
     setSetupGameId(undefined)
     setActionError(undefined)
+  }
+
+  function clearSharedHash() {
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + window.location.search,
+    )
+    setSharedHash('')
   }
 
   function mutate(result: ReturnType<typeof updateNotes>, debounce = false) {
@@ -286,6 +309,7 @@ export function App({
       )
     }
   } else {
+    const sessionRecords = sessionRepository.list()
     content = (
       <CatalogView
         games={catalogGames}
@@ -309,7 +333,7 @@ export function App({
             </div>
           )
         }
-        records={sessionRepository.list()}
+        records={sessionRecords}
         navigate={navigate}
         removeRecord={(id) => {
           sessionRepository.remove(id)
@@ -323,6 +347,28 @@ export function App({
             onImported={(id) => navigate('session=' + encodeURIComponent(id))}
           />
         }
+        importGame={
+          <ImportGame
+            key={sharedHash}
+            sharedHash={
+              sharedHash.startsWith('#share-game=') ? sharedHash : undefined
+            }
+            bundledIds={new Set(games.map((candidate) => candidate.id))}
+            customRecords={customRecords}
+            sessionRecords={sessionRecords}
+            repository={storedGames}
+            onSaved={(id) => {
+              if (sharedHash.startsWith('#share-game=')) clearSharedHash()
+              refreshGames()
+              navigate('game=' + encodeURIComponent(id))
+            }}
+            onRepair={(source) => {
+              setRepairSource(source)
+              navigate('studio=repair')
+            }}
+          />
+        }
+        repairSource={repairSource}
         key={revision}
       />
     )
