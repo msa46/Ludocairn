@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { reviewGameSave } from '../../games/manage'
 import type { GameDefinition } from '../../games/model'
@@ -40,26 +40,6 @@ function studioIsWide(): boolean {
   )
 }
 
-function useWideStudioViewport(): boolean {
-  const [wide, setWide] = useState(studioIsWide)
-
-  useEffect(() => {
-    if (
-      typeof window === 'undefined' ||
-      typeof window.matchMedia !== 'function'
-    ) {
-      return
-    }
-
-    const media = window.matchMedia(WIDE_STUDIO_QUERY)
-    const update = (event: MediaQueryListEvent) => setWide(event.matches)
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [])
-
-  return wide
-}
-
 function parseDraft(source: string, originalId?: string) {
   return parseGameSource(source, `custom/${originalId ?? 'unsaved'}/game.md`)
 }
@@ -96,8 +76,50 @@ export function GameStudio({
   const [pendingGuidedSource, setPendingGuidedSource] = useState<string>()
   const [normalizationAcknowledged, setNormalizationAcknowledged] =
     useState(false)
-  const wide = useWideStudioViewport()
+  const [wide, setWide] = useState(studioIsWide)
+  const mobilePreviewTab = useRef<HTMLButtonElement>(null)
+  const mobilePreviewPanel = useRef<HTMLElement>(null)
+  const widePreview = useRef<HTMLElement>(null)
+  const pendingPreviewFocus = useRef(false)
   const dirty = savedSource === undefined || source !== savedSource
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
+      return
+    }
+
+    const media = window.matchMedia(WIDE_STUDIO_QUERY)
+    const update = (event: MediaQueryListEvent) => {
+      const active = document.activeElement
+      if (
+        event.matches &&
+        (active === mobilePreviewTab.current ||
+          (active !== null && mobilePreviewPanel.current?.contains(active)))
+      ) {
+        pendingPreviewFocus.current = true
+      } else if (
+        !event.matches &&
+        active !== null &&
+        widePreview.current?.contains(active)
+      ) {
+        pendingPreviewFocus.current = true
+        setActiveView('preview')
+      }
+      setWide(event.matches)
+    }
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!pendingPreviewFocus.current) return
+    const target = wide ? widePreview.current : mobilePreviewPanel.current
+    target?.focus()
+    pendingPreviewFocus.current = false
+  }, [activeView, wide])
 
   useEffect(() => {
     if (!dirty) return
@@ -304,6 +326,7 @@ export function GameStudio({
               disabled={view === 'guided' && invalid}
               id={`studio-${view}-tab`}
               key={view}
+              ref={view === 'preview' ? mobilePreviewTab : undefined}
               role="tab"
               type="button"
               onClick={() => selectView(view)}
@@ -318,7 +341,12 @@ export function GameStudio({
         {wide ? (
           <>
             {editorPanel(activeEditor)}
-            <aside aria-label="Live game preview" className="studio-preview">
+            <aside
+              aria-label="Live game preview"
+              className="studio-preview"
+              ref={widePreview}
+              tabIndex={-1}
+            >
               <p className="eyebrow studio-preview-label">Live preview</p>
               {previewContents()}
             </aside>
@@ -328,7 +356,9 @@ export function GameStudio({
             aria-labelledby="studio-preview-tab"
             className="studio-preview"
             id="studio-preview-panel"
+            ref={mobilePreviewPanel}
             role="tabpanel"
+            tabIndex={-1}
           >
             {previewContents()}
           </section>

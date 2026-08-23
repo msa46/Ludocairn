@@ -173,6 +173,18 @@ describe('Game Studio', () => {
       within(preview).getByRole('heading', { level: 1, name: 'Custom Game' }),
     ).toBeInTheDocument()
 
+    expect(screen.getByLabelText('Game name')).toHaveValue('Custom Game')
+    fireEvent.change(screen.getByLabelText('Rules Markdown'), {
+      target: { value: '# Revised Rules\n\nThe rules changed.' },
+    })
+    expect(screen.getByLabelText('Game name')).toHaveValue('Custom Game')
+    expect(
+      within(preview).getByRole('heading', {
+        level: 1,
+        name: 'Revised Rules',
+      }),
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
     const editor = screen.getByLabelText('Complete game source')
     const revisedSource = customSource
@@ -192,9 +204,13 @@ describe('Game Studio', () => {
     ).toBeInTheDocument()
   })
 
-  it('preserves a usable editor across the Studio breakpoint and cleans up its listener', () => {
+  it('moves focus between replacement preview regions across the breakpoint and cleans up its listener', () => {
     const viewport = mockStudioViewport(false)
-    const { unmount } = renderStudio(customSource)
+    const linkedSource = customSource.replace(
+      'Original rules.',
+      '[Rules reference](https://example.com/rules)',
+    )
+    const { unmount } = renderStudio(linkedSource)
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'Guided',
@@ -202,7 +218,11 @@ describe('Game Studio', () => {
       'Preview',
     ])
     fireEvent.click(screen.getByRole('tab', { name: 'Preview' }))
-    expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+    const mobilePreview = screen.getByRole('tabpanel')
+    within(mobilePreview).getByRole('link', { name: 'Rules reference' }).focus()
+    expect(
+      within(mobilePreview).getByRole('link', { name: 'Rules reference' }),
+    ).toHaveFocus()
 
     viewport.setWide(true)
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
@@ -210,22 +230,48 @@ describe('Game Studio', () => {
       'Source',
     ])
     expect(screen.getByLabelText('Game name')).toBeInTheDocument()
-    expect(
-      screen.getByRole('complementary', { name: 'Live game preview' }),
-    ).toBeInTheDocument()
+    const widePreview = screen.getByRole('complementary', {
+      name: 'Live game preview',
+    })
+    expect(widePreview).toHaveFocus()
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+    within(widePreview).getByRole('link', { name: 'Rules reference' }).focus()
     viewport.setWide(false)
-    expect(screen.getByLabelText('Complete game source')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Preview' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('tabpanel')).toHaveFocus()
     expect(
       screen.queryByRole('complementary', { name: 'Live game preview' }),
     ).not.toBeInTheDocument()
+
+    screen.getByRole('tab', { name: 'Preview' }).focus()
+    viewport.setWide(true)
+    expect(
+      screen.getByRole('complementary', { name: 'Live game preview' }),
+    ).toHaveFocus()
 
     unmount()
     expect(viewport.removeEventListener).toHaveBeenCalledWith(
       'change',
       expect.any(Function),
     )
+  })
+
+  it('does not steal focus from an editor that remains across breakpoint changes', () => {
+    const viewport = mockStudioViewport(false)
+    renderStudio(customSource)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+    const source = screen.getByLabelText('Complete game source')
+    source.focus()
+
+    viewport.setWide(true)
+    expect(screen.getByLabelText('Complete game source')).toHaveFocus()
+
+    viewport.setWide(false)
+    expect(screen.getByLabelText('Complete game source')).toHaveFocus()
   })
 
   it('opens a new Studio from the catalog authoring entry point', () => {
