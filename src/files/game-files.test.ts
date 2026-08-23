@@ -6,7 +6,9 @@ import { MAX_GAME_SOURCE_BYTES } from '../games/source'
 import {
   createGameDownload,
   createGameShareUrl,
+  GAME_MARKDOWN_FILE_ACCEPT,
   gameDownloadName,
+  isGameMarkdownFileName,
   parseGameFile,
   parseGameShareHash,
   SHARE_URL_LIMIT,
@@ -104,6 +106,15 @@ function parseWithInflatedByteCount(hash: string) {
 }
 
 describe('game files', () => {
+  it('defines the accepted Markdown-file types in one shared policy', () => {
+    expect(GAME_MARKDOWN_FILE_ACCEPT).toBe(
+      '.md,.ludocairn-game.md,text/markdown',
+    )
+    expect(isGameMarkdownFileName('game.md')).toBe(true)
+    expect(isGameMarkdownFileName('game.ludocairn-game.md')).toBe(true)
+    expect(isGameMarkdownFileName('game.json')).toBe(false)
+  })
+
   it('parses a valid source into a non-sensitive review preview', () => {
     expect(parseGameFile(cafeSource)).toMatchObject({
       ok: true,

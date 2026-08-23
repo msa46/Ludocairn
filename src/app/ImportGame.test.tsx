@@ -105,6 +105,18 @@ describe('ImportGame', () => {
     )
   })
 
+  it('reviews a valid uploaded Markdown file before saving it', async () => {
+    const gameRepository = new MemoryGameRepository()
+    renderApp(gameRepository)
+
+    uploadGame(customSource)
+
+    expect(
+      await screen.findByRole('region', { name: 'Review game import' }),
+    ).toHaveTextContent('Custom Game')
+    expect(gameRepository.list()).toHaveLength(0)
+  })
+
   it('reviews a shared game and clears the fragment only after a successful save', async () => {
     const shared = createGameShareUrl(customSource, window.location.href)
     expect(shared.ok).toBe(true)
@@ -125,6 +137,42 @@ describe('ImportGame', () => {
     expect(window.location.hash).toBe('')
     expect(
       screen.getByRole('heading', { level: 1, name: 'Custom Game' }),
+    ).toBeInTheDocument()
+  })
+
+  it('reviews a shared game before a game query route', async () => {
+    const shared = createGameShareUrl(
+      customSource,
+      window.location.origin + '/?game=custom-game',
+    )
+    expect(shared.ok).toBe(true)
+    if (!shared.ok) return
+    const url = new URL(shared.url)
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+
+    renderApp()
+
+    expect(
+      await screen.findByRole('region', { name: 'Review shared game' }),
+    ).toBeInTheDocument()
+  })
+
+  it('reviews a shared game before a session query route after hashchange', async () => {
+    window.history.replaceState({}, '', '/?session=missing-session')
+    renderApp()
+    expect(
+      await screen.findByRole('heading', { name: 'Session unavailable' }),
+    ).toBeInTheDocument()
+
+    const shared = createGameShareUrl(customSource, window.location.href)
+    expect(shared.ok).toBe(true)
+    if (!shared.ok) return
+    const url = new URL(shared.url)
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+    window.dispatchEvent(new Event('hashchange'))
+
+    expect(
+      await screen.findByRole('region', { name: 'Review shared game' }),
     ).toBeInTheDocument()
   })
 

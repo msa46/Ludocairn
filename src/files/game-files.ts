@@ -11,6 +11,11 @@ const INFLATE_INPUT_CHUNK_BYTES = 64
 const ADLER_MODULUS = 65_521
 
 export const SHARE_URL_LIMIT = 8_000
+export const GAME_MARKDOWN_FILE_ACCEPT = '.md,.ludocairn-game.md,text/markdown'
+
+export function isGameMarkdownFileName(name: string): boolean {
+  return name.toLowerCase().endsWith('.md')
+}
 
 export interface GameFilePreview {
   readonly name: string

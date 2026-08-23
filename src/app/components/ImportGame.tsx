@@ -2,6 +2,8 @@ import { useRef, useState, type ChangeEvent } from 'react'
 
 import { reviewGameSave } from '../../games/manage'
 import {
+  GAME_MARKDOWN_FILE_ACCEPT,
+  isGameMarkdownFileName,
   parseGameFile,
   parseGameShareHash,
   type GameFileResult,
@@ -113,7 +115,7 @@ export function ImportGame({
       return
     }
     const file = files[0]
-    if (!file || !file.name.toLowerCase().endsWith('.md')) {
+    if (!file || !isGameMarkdownFileName(file.name)) {
       setState({
         kind: 'review-invalid',
         message: 'Choose a Markdown game file.',
@@ -179,7 +181,7 @@ export function ImportGame({
         Game Markdown file
         <input
           ref={fileInput}
-          accept=".md,.ludocairn-game.md,text/markdown"
+          accept={GAME_MARKDOWN_FILE_ACCEPT}
           type="file"
           onChange={(event) => void selectFile(event)}
         />

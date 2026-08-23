@@ -111,6 +111,9 @@ export function App({
     ? catalogGames.find((candidate) => candidate.id === gameId)
     : undefined
   const sessionGame = session ? resolveGame(session.gameId) : undefined
+  const shareHash = sharedHash.startsWith('#share-game=')
+    ? sharedHash
+    : undefined
 
   useEffect(() => {
     function onPopState() {
@@ -168,8 +171,34 @@ export function App({
       : base
   }
 
+  function importGame(sessionRecords: ReturnType<SessionRepository['list']>) {
+    return (
+      <ImportGame
+        key={sharedHash}
+        sharedHash={shareHash}
+        bundledIds={new Set(games.map((candidate) => candidate.id))}
+        customRecords={customRecords}
+        sessionRecords={sessionRecords}
+        repository={storedGames}
+        onSaved={(id) => {
+          if (shareHash) clearSharedHash()
+          refreshGames()
+          navigate('game=' + encodeURIComponent(id))
+        }}
+        onRepair={(source) => {
+          setRepairSource(source)
+          navigate('studio=repair')
+        }}
+      />
+    )
+  }
+
   let content
-  if (sessionId) {
+  if (shareHash) {
+    content = (
+      <div className="page-stack">{importGame(sessionRepository.list())}</div>
+    )
+  } else if (sessionId) {
     if (session?.id === sessionId && sessionGame) {
       content =
         requestedView === 'assignments' &&
@@ -347,27 +376,7 @@ export function App({
             onImported={(id) => navigate('session=' + encodeURIComponent(id))}
           />
         }
-        importGame={
-          <ImportGame
-            key={sharedHash}
-            sharedHash={
-              sharedHash.startsWith('#share-game=') ? sharedHash : undefined
-            }
-            bundledIds={new Set(games.map((candidate) => candidate.id))}
-            customRecords={customRecords}
-            sessionRecords={sessionRecords}
-            repository={storedGames}
-            onSaved={(id) => {
-              if (sharedHash.startsWith('#share-game=')) clearSharedHash()
-              refreshGames()
-              navigate('game=' + encodeURIComponent(id))
-            }}
-            onRepair={(source) => {
-              setRepairSource(source)
-              navigate('studio=repair')
-            }}
-          />
-        }
+        importGame={importGame(sessionRecords)}
         repairSource={repairSource}
         key={revision}
       />
