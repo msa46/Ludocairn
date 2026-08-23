@@ -126,7 +126,7 @@ export function GuidedGameEditor({
     const [phase] = phases.splice(index, 1)
     if (!phase) return
     phases.splice(destination, 0, phase)
-    emit({ ...game, phases, initialPhase: phases[0]?.id })
+    emit({ ...game, phases })
   }
 
   function removePhase(index: number) {

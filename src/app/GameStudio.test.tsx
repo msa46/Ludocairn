@@ -88,6 +88,23 @@ function sharedGameHash() {
   return new URL(shared.url).hash
 }
 
+function renderStudio(initialSource: string) {
+  return render(
+    <GameStudio
+      initialSource={initialSource}
+      bundledIds={new Set()}
+      customRecords={[]}
+      sessionRecords={[]}
+      onSave={() => {
+        throw new Error('Save is not part of this test.')
+      }}
+      onSaved={() => undefined}
+      onCancel={() => undefined}
+      onDirtyChange={() => undefined}
+    />,
+  )
+}
+
 describe('Game Studio', () => {
   beforeEach(() => window.history.replaceState({}, '', '/'))
   afterEach(() => window.history.replaceState({}, '', '/'))
@@ -114,20 +131,7 @@ describe('Game Studio', () => {
       'schema_version: 1',
       'schema_version: 1\n# keep this note',
     )
-    render(
-      <GameStudio
-        initialSource={commentedSource}
-        bundledIds={new Set()}
-        customRecords={[]}
-        sessionRecords={[]}
-        onSave={() => {
-          throw new Error('Save is not part of this test.')
-        }}
-        onSaved={() => undefined}
-        onCancel={() => undefined}
-        onDirtyChange={() => undefined}
-      />,
-    )
+    renderStudio(commentedSource)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Guided' }))
     fireEvent.change(screen.getByLabelText('Game name'), {
@@ -143,6 +147,52 @@ describe('Game Studio', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
     expect(screen.getByLabelText('Complete game source')).not.toHaveValue(
       expect.stringContaining('# keep this note'),
+    )
+  })
+
+  it('keeps the first guided edit pending while normalization is confirmed', () => {
+    const commentedSource = customSource.replace(
+      'schema_version: 1',
+      'schema_version: 1\n# keep this note',
+    )
+    renderStudio(commentedSource)
+
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'First change' },
+    })
+    expect(
+      screen.getByRole('dialog', { name: 'Normalize source formatting?' }),
+    ).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Summary'), {
+      target: { value: 'Second change' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Continue with guided editing' }),
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+
+    const source = screen.getByLabelText(
+      'Complete game source',
+    ) as HTMLTextAreaElement
+    expect(source.value).toContain('name: First change')
+    expect(source.value).not.toContain('Second change')
+  })
+
+  it('leaves source unchanged when normalization is canceled', () => {
+    const commentedSource = customSource.replace(
+      'schema_version: 1',
+      'schema_version: 1\n# keep this note',
+    )
+    renderStudio(commentedSource)
+
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'Changed' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel guided edit' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+
+    expect(screen.getByLabelText('Complete game source')).toHaveValue(
+      commentedSource,
     )
   })
 

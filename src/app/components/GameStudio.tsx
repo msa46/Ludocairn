@@ -92,6 +92,7 @@ export function GameStudio({
   }
 
   function changeGuidedSource(nextSource: string) {
+    if (pendingGuidedSource) return
     if (!normalizationAcknowledged && sourceHasFrontmatterComments(source)) {
       setPendingGuidedSource(nextSource)
       return

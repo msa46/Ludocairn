@@ -78,7 +78,7 @@ describe('GuidedGameEditor', () => {
     })
   })
 
-  it('adds, reorders, and removes phases and configures an initial round', () => {
+  it('preserves the selected initial phase through reordering', () => {
     const latestSource = renderGuided()
 
     fireEvent.click(screen.getByRole('button', { name: 'Add phase' }))
@@ -95,7 +95,7 @@ describe('GuidedGameEditor', () => {
       ok: true,
       game: {
         phases: [{ id: 'day' }, { id: 'night' }],
-        initialPhase: 'day',
+        initialPhase: 'night',
         round: { enabled: true, initial: 2 },
       },
     })
