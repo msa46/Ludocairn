@@ -20,6 +20,7 @@ interface GameStudioProps {
   readonly onSave: (source: string) => GameSaveResult
   readonly onSaved: (id: string) => void
   readonly onCancel: () => void
+  readonly onDirtyChange: (dirty: boolean) => void
 }
 
 type StudioView = 'guided' | 'source' | 'preview'
@@ -37,6 +38,7 @@ export function GameStudio({
   onSave,
   onSaved,
   onCancel,
+  onDirtyChange,
 }: GameStudioProps) {
   const initial = parseDraft(initialSource, originalId)
   const [source, setSource] = useState(initialSource)
@@ -53,7 +55,6 @@ export function GameStudio({
     initial.ok ? 'guided' : 'source',
   )
   const [saveError, setSaveError] = useState<string>()
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const dirty = savedSource === undefined || source !== savedSource
 
   useEffect(() => {
@@ -67,6 +68,11 @@ export function GameStudio({
     window.addEventListener('beforeunload', protectUnload)
     return () => window.removeEventListener('beforeunload', protectUnload)
   }, [dirty])
+
+  useEffect(() => {
+    onDirtyChange(dirty)
+    return () => onDirtyChange(false)
+  }, [dirty, onDirtyChange])
 
   function changeSource(nextSource: string) {
     const parsed = parseDraft(nextSource, originalId)
@@ -110,14 +116,6 @@ export function GameStudio({
     onSaved(reviewed.game.id)
   }
 
-  function cancel() {
-    if (dirty) {
-      setConfirmingDiscard(true)
-      return
-    }
-    onCancel()
-  }
-
   const invalid = diagnostics.length > 0
 
   return (
@@ -127,7 +125,7 @@ export function GameStudio({
           href="?"
           onClick={(event) => {
             event.preventDefault()
-            cancel()
+            onCancel()
           }}
         >
           All games
@@ -149,7 +147,7 @@ export function GameStudio({
         <button className="primary-button" type="button" onClick={save}>
           Save game
         </button>
-        <button type="button" onClick={cancel}>
+        <button type="button" onClick={onCancel}>
           Cancel
         </button>
       </div>
@@ -286,32 +284,6 @@ export function GameStudio({
           </section>
         )}
       </div>
-
-      {confirmingDiscard && (
-        <section
-          aria-labelledby="discard-studio-title"
-          aria-modal="true"
-          className="message-card"
-          role="dialog"
-        >
-          <h2 id="discard-studio-title">Discard unsaved changes?</h2>
-          <p>Your current Game Studio draft will be lost.</p>
-          <div className="form-actions">
-            <button
-              type="button"
-              onClick={() => {
-                setConfirmingDiscard(false)
-                onCancel()
-              }}
-            >
-              Discard changes
-            </button>
-            <button type="button" onClick={() => setConfirmingDiscard(false)}>
-              Keep editing
-            </button>
-          </div>
-        </section>
-      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 
 import type { RandomSource } from '../assignments/model'
 import { loadBundledGames } from '../games/catalog'
@@ -55,6 +55,12 @@ const noPwaRegistration: RegisterWorker = () => () => Promise.resolve()
 const missingRepairMessage =
   'The repair draft is no longer available after refresh. Paste or import the source again to recover it.'
 
+interface PendingNavigation {
+  readonly search: string
+  readonly hash: string
+  readonly history: 'push' | 'replace'
+}
+
 export function App({
   games = bundledGames,
   gameRepository,
@@ -95,8 +101,14 @@ export function App({
   const [sharedHash, setSharedHash] = useState(() => window.location.hash)
   const [setupGameId, setSetupGameId] = useState<string>()
   const [repairSource, setRepairSource] = useState<string>()
+  const [studioDirty, setStudioDirty] = useState(false)
+  const [pendingNavigation, setPendingNavigation] =
+    useState<PendingNavigation>()
   const [revision, setRevision] = useState(0)
   const [actionError, setActionError] = useState<string>()
+  const discardDialog = useRef<HTMLDivElement>(null)
+  const keepEditingButton = useRef<HTMLButtonElement>(null)
+  const previousFocus = useRef<HTMLElement | null>(null)
   const {
     session,
     saveStatus,
@@ -110,7 +122,7 @@ export function App({
   const parameters = new URLSearchParams(search)
   const gameId = parameters.get('game')
   const sessionId = parameters.get('session')
-  const studioId = parameters.get('studio')
+  const studioMode = parameters.get('studio')
   const requestedView = parameters.get('view')
   const game = gameId
     ? catalogGames.find((candidate) => candidate.id === gameId)
@@ -123,8 +135,22 @@ export function App({
   useEffect(() => {
     function onPopState() {
       const nextSearch = window.location.search
+      const nextHash = window.location.hash
+      if (studioDirty) {
+        window.history.pushState(
+          {},
+          '',
+          (search || window.location.pathname) + sharedHash,
+        )
+        setPendingNavigation({
+          search: nextSearch,
+          hash: nextHash,
+          history: 'replace',
+        })
+        return
+      }
       const missingRepair =
-        !window.location.hash.startsWith('#share-game=') &&
+        !nextHash.startsWith('#share-game=') &&
         repairSource === undefined &&
         new URLSearchParams(nextSearch).get('studio') === 'repair'
       if (missingRepair) {
@@ -135,16 +161,16 @@ export function App({
         )
       }
       setSearch(nextSearch)
-      setSharedHash(window.location.hash)
+      setSharedHash(nextHash)
       setSetupGameId(undefined)
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [repairSource])
+  }, [repairSource, search, sharedHash, studioDirty])
 
   useEffect(() => {
     if (
-      studioId !== 'repair' ||
+      studioMode !== 'repair' ||
       repairSource !== undefined ||
       shareHash !== undefined
     )
@@ -155,7 +181,7 @@ export function App({
       '',
       window.location.pathname + window.location.hash,
     )
-  }, [repairSource, shareHash, studioId])
+  }, [repairSource, shareHash, studioMode])
 
   useEffect(() => {
     function onHashChange() {
@@ -169,12 +195,88 @@ export function App({
     if (sessionId && session?.id !== sessionId) open(sessionId)
   }, [open, session?.id, sessionId])
 
-  function navigate(nextSearch: string) {
-    const query = nextSearch ? '?' + nextSearch : window.location.pathname
-    window.history.pushState({}, '', query + window.location.hash)
-    setSearch(nextSearch ? '?' + nextSearch : '')
+  useEffect(() => {
+    if (!pendingNavigation) return
+
+    previousFocus.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    keepEditingButton.current?.focus()
+
+    return () => {
+      const target = previousFocus.current
+      previousFocus.current = null
+      if (target?.isConnected) target.focus()
+    }
+  }, [pendingNavigation])
+
+  function commitNavigation(
+    nextSearch: string,
+    nextHash: string,
+    history: PendingNavigation['history'],
+  ) {
+    const url = (nextSearch || window.location.pathname) + nextHash
+    window.history[history === 'push' ? 'pushState' : 'replaceState'](
+      {},
+      '',
+      url,
+    )
+    setSearch(nextSearch)
+    setSharedHash(nextHash)
     setSetupGameId(undefined)
     setActionError(undefined)
+  }
+
+  function navigate(nextSearch: string, bypassDirtyGuard = false) {
+    const normalizedSearch = nextSearch ? '?' + nextSearch : ''
+    if (studioDirty && !bypassDirtyGuard) {
+      setPendingNavigation({
+        search: normalizedSearch,
+        hash: window.location.hash,
+        history: 'push',
+      })
+      return
+    }
+    commitNavigation(normalizedSearch, window.location.hash, 'push')
+  }
+
+  function keepEditing() {
+    setPendingNavigation(undefined)
+  }
+
+  function discardChanges() {
+    const target = pendingNavigation
+    if (!target) return
+
+    setPendingNavigation(undefined)
+    setStudioDirty(false)
+    setRepairSource(undefined)
+    commitNavigation(target.search, target.hash, target.history)
+  }
+
+  function trapDiscardDialog(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      keepEditing()
+      return
+    }
+    if (event.key !== 'Tab' || !discardDialog.current) return
+
+    const focusable = [
+      ...discardDialog.current.querySelectorAll<HTMLElement>('button'),
+    ]
+    if (focusable.length === 0) return
+    const first = focusable[0]
+    const last = focusable.at(-1)
+    if (!first || !last) return
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
   }
 
   function clearSharedHash() {
@@ -284,54 +386,60 @@ export function App({
     content = (
       <div className="page-stack">{importGame(sessionRepository.list())}</div>
     )
-  } else if (studioId) {
+  } else if (studioMode) {
     const sessionRecords = sessionRepository.list()
+    const editId = studioMode === 'edit' ? gameId : null
+    const bundledCollision =
+      editId !== null && games.some((candidate) => candidate.id === editId)
     const loaded =
-      studioId === 'new' || studioId === 'repair'
-        ? undefined
-        : storedGames.load(studioId)
+      editId !== null && !bundledCollision
+        ? storedGames.load(editId)
+        : undefined
     const initialSource =
-      studioId === 'new'
+      studioMode === 'new'
         ? createGameTemplate()
-        : studioId === 'repair'
+        : studioMode === 'repair'
           ? repairSource
-          : loaded?.ok
+          : studioMode === 'edit' && loaded?.ok
             ? loaded.source
             : undefined
 
     if (initialSource !== undefined) {
       content = (
         <GameStudio
-          key={studioId}
+          key={editId === null ? studioMode : `edit:${editId}`}
           initialSource={initialSource}
-          originalId={
-            studioId === 'new' || studioId === 'repair' ? undefined : studioId
-          }
+          originalId={editId ?? undefined}
           bundledIds={new Set(games.map((candidate) => candidate.id))}
           customRecords={customRecords}
           sessionRecords={sessionRecords}
           onSave={(source) => storedGames.save(source)}
           onSaved={(id) => {
             setRepairSource(undefined)
+            setStudioDirty(false)
             refreshGames()
-            navigate('game=' + encodeURIComponent(id))
+            navigate('game=' + encodeURIComponent(id), true)
           }}
-          onCancel={() => {
-            setRepairSource(undefined)
-            navigate('')
-          }}
+          onCancel={() => navigate('')}
+          onDirtyChange={setStudioDirty}
         />
       )
-    } else if (studioId === 'repair') {
+    } else if (studioMode === 'repair') {
       content = catalog(sessionRecords, missingRepairMessage)
     } else {
       content = (
         <section className="message-card">
           <h1>Game unavailable</h1>
           <p role="alert">
-            {loaded && !loaded.ok
-              ? loaded.diagnostic.message
-              : `No saved custom game with ID “${studioId}” was found.`}
+            {bundledCollision
+              ? 'Bundled games cannot be edited in Game Studio.'
+              : studioMode !== 'edit'
+                ? `Studio mode “${studioMode}” is not available.`
+                : editId === null
+                  ? 'Choose a saved custom game to edit.'
+                  : loaded && !loaded.ok
+                    ? loaded.diagnostic.message
+                    : `No saved custom game with ID “${editId}” was found.`}
           </p>
           <a
             href="?"
@@ -482,7 +590,8 @@ export function App({
           navigateHome={() => navigate('')}
           onEdit={
             customIds.has(game.id)
-              ? () => navigate('studio=' + encodeURIComponent(game.id))
+              ? () =>
+                  navigate('studio=edit&game=' + encodeURIComponent(game.id))
               : undefined
           }
           onStart={() => setSetupGameId(game.id)}
@@ -495,41 +604,65 @@ export function App({
   }
 
   return (
-    <div className="app-shell">
-      <header className="site-header print-hidden">
-        <a
-          className="wordmark"
-          href="?"
-          onClick={(event) => {
-            event.preventDefault()
-            navigate('')
-          }}
-        >
-          Ludocairn
-        </a>
-        <p className="tagline">A local-first tabletop card-game toolkit</p>
-      </header>
-
-      <PwaStatus
-        prepareForReload={flushPendingSave}
-        registerWorker={registerWorker}
-      />
-
-      <main id="main-content" className="site-main">
-        {content}
-      </main>
-
-      <footer className="site-footer print-hidden">
-        <p>Static by design. No account or backend required.</p>
-        <p>Your saved sessions remain on this device.</p>
-        <p>
-          For AI assistants:{' '}
-          <a href="https://github.com/msa46/Deckwright/blob/main/Bots.md">
-            AI game translation guide
+    <>
+      <div className="app-shell" inert={pendingNavigation ? true : undefined}>
+        <header className="site-header print-hidden">
+          <a
+            className="wordmark"
+            href="?"
+            onClick={(event) => {
+              event.preventDefault()
+              navigate('')
+            }}
+          >
+            Ludocairn
           </a>
-          .
-        </p>
-      </footer>
-    </div>
+          <p className="tagline">A local-first tabletop card-game toolkit</p>
+        </header>
+
+        <PwaStatus
+          prepareForReload={flushPendingSave}
+          registerWorker={registerWorker}
+        />
+
+        <main id="main-content" className="site-main">
+          {content}
+        </main>
+
+        <footer className="site-footer print-hidden">
+          <p>Static by design. No account or backend required.</p>
+          <p>Your saved sessions remain on this device.</p>
+          <p>
+            For AI assistants:{' '}
+            <a href="https://github.com/msa46/Deckwright/blob/main/Bots.md">
+              AI game translation guide
+            </a>
+            .
+          </p>
+        </footer>
+      </div>
+
+      {pendingNavigation && (
+        <div
+          ref={discardDialog}
+          aria-labelledby="discard-studio-title"
+          aria-modal="true"
+          className="message-card"
+          role="dialog"
+          onKeyDown={trapDiscardDialog}
+        >
+          <h2 id="discard-studio-title">Discard unsaved changes?</h2>
+          <p>Your current Game Studio draft will be lost.</p>
+          <div className="form-actions">
+            <button type="button" onClick={discardChanges}>
+              Discard changes
+            </button>
+            <button ref={keepEditingButton} type="button" onClick={keepEditing}>
+              Keep editing
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

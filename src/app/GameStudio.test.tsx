@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { StrictMode } from 'react'
 
+import { loadBundledGames } from '../games/catalog'
 import type { Session } from '../sessions/model'
 import { keyForGame } from '../storage/game-repository'
 import { MemoryGameRepository } from '../storage/memory-game-storage'
@@ -71,6 +72,13 @@ function openSource() {
   return screen.getByLabelText('Complete game source')
 }
 
+function dirtyNewStudio() {
+  openNewStudio()
+  fireEvent.change(openSource(), {
+    target: { value: customSource.replaceAll('custom-game', 'new-game') },
+  })
+}
+
 describe('Game Studio', () => {
   beforeEach(() => window.history.replaceState({}, '', '/'))
   afterEach(() => window.history.replaceState({}, '', '/'))
@@ -101,7 +109,7 @@ describe('Game Studio', () => {
       return loaded.ok ? loaded.game : undefined
     })
     expect(sessionRepository.save(savedSession)).toMatchObject({ ok: true })
-    window.history.replaceState({}, '', '/?studio=custom-game')
+    window.history.replaceState({}, '', '/?studio=edit&game=custom-game')
     renderApp(gameRepository, sessionRepository)
 
     expect(screen.getByLabelText('Game ID')).toBeDisabled()
@@ -144,6 +152,61 @@ describe('Game Studio', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Choose a game' }),
     ).toBeInTheDocument()
+  })
+
+  it('guards wordmark navigation with the same dirty confirmation', () => {
+    dirtyNewStudio()
+
+    fireEvent.click(screen.getByRole('link', { name: 'Ludocairn' }))
+
+    expect(window.location.search).toBe('?studio=new')
+    expect(
+      screen.getByRole('dialog', { name: 'Discard unsaved changes?' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Complete game source')).toBeInTheDocument()
+  })
+
+  it('guards browser back navigation while the Studio is dirty', () => {
+    dirtyNewStudio()
+    window.history.replaceState({}, '', '/')
+
+    fireEvent.popState(window)
+
+    expect(window.location.search).toBe('?studio=new')
+    expect(
+      screen.getByRole('dialog', { name: 'Discard unsaved changes?' }),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    expect(window.location.search).toBe('')
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Choose a game' }),
+    ).toBeInTheDocument()
+  })
+
+  it('traps modal focus and restores the trigger when Escape keeps editing', () => {
+    dirtyNewStudio()
+    const trigger = screen.getByRole('link', { name: 'All games' })
+    trigger.focus()
+    fireEvent.click(trigger)
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Discard unsaved changes?',
+    })
+    const keepEditing = screen.getByRole('button', { name: 'Keep editing' })
+    const discard = screen.getByRole('button', { name: 'Discard changes' })
+    expect(keepEditing).toHaveFocus()
+    expect(document.querySelector('.app-shell')).toHaveAttribute('inert')
+
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(discard).toHaveFocus()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard unsaved changes?' }),
+    ).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    expect(document.querySelector('.app-shell')).not.toHaveAttribute('inert')
+    expect(window.location.search).toBe('?studio=new')
   })
 
   it('saves a valid current draft before opening its rules', () => {
@@ -240,7 +303,74 @@ describe('Game Studio', () => {
     renderApp(gameRepository)
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit custom game' }))
-    expect(window.location.search).toBe('?studio=custom-game')
+    expect(window.location.search).toBe('?studio=edit&game=custom-game')
     expect(screen.getByLabelText('Game ID')).toBeDisabled()
+  })
+
+  it.each(['new', 'repair'])(
+    'edits the valid custom ID %s explicitly',
+    (id) => {
+      const source = customSource.replace('id: custom-game', `id: ${id}`)
+      const gameRepository = new MemoryGameRepository({
+        initial: { [keyForGame(id)]: source },
+      })
+      window.history.replaceState({}, '', `/?studio=edit&game=${id}`)
+
+      renderApp(gameRepository)
+
+      expect(screen.getByLabelText('Game ID')).toBeDisabled()
+      expect(screen.getByLabelText('Game ID')).toHaveValue(id)
+    },
+  )
+
+  it('does not interpret an unknown Studio mode as a custom-game ID', () => {
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: customSource },
+    })
+    window.history.replaceState({}, '', '/?studio=custom-game')
+
+    renderApp(gameRepository)
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Game unavailable' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('Game ID')).not.toBeInTheDocument()
+  })
+
+  it('rejects a custom recovery record that collides with a bundled ID', () => {
+    const catalog = loadBundledGames()
+    expect(catalog.ok).toBe(true)
+    if (!catalog.ok) return
+    const bundled = catalog.games[0]
+    expect(bundled).toBeDefined()
+    if (!bundled) return
+    const collisionSource = customSource.replace(
+      'id: custom-game',
+      `id: ${bundled.id}`,
+    )
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame(bundled.id)]: collisionSource },
+    })
+    window.history.replaceState(
+      {},
+      '',
+      `/?studio=edit&game=${encodeURIComponent(bundled.id)}`,
+    )
+
+    render(
+      <App
+        games={[bundled]}
+        gameRepository={gameRepository}
+        repository={new MemorySessionRepository(() => undefined)}
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Game unavailable' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Bundled games cannot be edited in Game Studio',
+    )
+    expect(screen.queryByLabelText('Game ID')).not.toBeInTheDocument()
   })
 })
