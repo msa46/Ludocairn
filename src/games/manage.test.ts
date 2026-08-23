@@ -194,6 +194,37 @@ describe('reviewGameSave', () => {
       diagnostic: { code: 'game-save.session-enumeration-failed' },
     })
   })
+
+  it('does not let an unreadable custom-game enumeration permit any save', () => {
+    const unreadableGame: GameRepositoryRecord = {
+      id: '',
+      ok: false,
+      diagnostic: {
+        code: 'game-storage.read-failed',
+        message: 'Browser game storage is blocked.',
+      },
+    }
+
+    expect(
+      reviewGameSave(gameSource('new-game'), {
+        ...context,
+        customRecords: [unreadableGame],
+      }),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'game-save.game-enumeration-failed' },
+    })
+    expect(
+      reviewGameSave(alphaSource, {
+        ...context,
+        originalId: 'alpha',
+        customRecords: [customRecord('alpha'), unreadableGame],
+      }),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'game-save.game-enumeration-failed' },
+    })
+  })
 })
 
 describe('session lifecycle usage', () => {
@@ -230,6 +261,18 @@ describe('session lifecycle usage', () => {
       diagnostic: {
         code: 'game-save.incompatible-sessions',
         sessionIds: ['corrupt-session'],
+      },
+    })
+    expect(
+      reviewGameSave(alphaSource, {
+        ...context,
+        originalId: 'alpha',
+        sessionRecords: [corruptAlphaSession],
+      }),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: {
+        message: expect.stringContaining('corrupt-session'),
       },
     })
     expect(

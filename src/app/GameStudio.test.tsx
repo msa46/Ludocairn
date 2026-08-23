@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StrictMode } from 'react'
 
 import { loadBundledGames } from '../games/catalog'
+import * as gameParser from '../games/parse'
+import { MAX_GAME_SOURCE_BYTES } from '../games/source'
 import { createGameShareUrl } from '../files/game-files'
 import type { Session } from '../sessions/model'
 import { keyForGame } from '../storage/game-repository'
@@ -302,6 +304,65 @@ describe('Game Studio', () => {
     ).toBeInTheDocument()
   })
 
+  it('rejects oversized initial repair source before invoking the parser', () => {
+    const parse = vi.spyOn(gameParser, 'parseGameSource')
+    const oversizedSource = 'x'.repeat(MAX_GAME_SOURCE_BYTES + 1)
+
+    renderStudio(oversizedSource)
+
+    expect(parse).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Complete game source')).toHaveValue(
+      oversizedSource,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Game source exceeds the 1 MiB limit.',
+    )
+  })
+
+  it('rejects an oversized source edit before parsing and keeps the last valid preview', () => {
+    const parse = vi.spyOn(gameParser, 'parseGameSource')
+    renderStudio(customSource)
+    parse.mockClear()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+    fireEvent.change(screen.getByLabelText('Complete game source'), {
+      target: { value: 'x'.repeat(MAX_GAME_SOURCE_BYTES + 1) },
+    })
+
+    expect(parse).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Game source exceeds the 1 MiB limit.',
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }))
+    expect(
+      screen.getByText('Preview shows the last valid draft'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Custom Game' }),
+    ).toBeInTheDocument()
+  })
+
+  it('guards an oversized imported repair draft in Studio', () => {
+    const oversizedSource = 'x'.repeat(MAX_GAME_SOURCE_BYTES + 1)
+    renderApp()
+    fireEvent.click(screen.getByRole('button', { name: 'Paste game source' }))
+    fireEvent.change(screen.getByLabelText('Complete game source'), {
+      target: { value: oversizedSource },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Review game' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Repair in Game Studio' }),
+    )
+
+    expect(window.location.search).toBe('?studio=repair')
+    expect(screen.getByLabelText('Complete game source')).toHaveValue(
+      oversizedSource,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Game source exceeds the 1 MiB limit.',
+    )
+  })
+
   it('warns before the first guided edit would normalize YAML comments', () => {
     const commentedSource = customSource.replace(
       'schema_version: 1',
@@ -324,6 +385,22 @@ describe('Game Studio', () => {
     expect(screen.getByLabelText('Complete game source')).not.toHaveValue(
       expect.stringContaining('# keep this note'),
     )
+  })
+
+  it('warns before a guided edit would normalize an inline YAML comment', () => {
+    const commentedSource = customSource.replace(
+      'name: Custom Game',
+      'name: Custom Game # keep this rationale',
+    )
+    renderStudio(commentedSource)
+
+    fireEvent.change(screen.getByLabelText('Summary'), {
+      target: { value: 'Changed summary' },
+    })
+
+    expect(
+      screen.getByRole('dialog', { name: 'Normalize source formatting?' }),
+    ).toBeInTheDocument()
   })
 
   it('keeps the first guided edit pending while normalization is confirmed', () => {
@@ -372,6 +449,140 @@ describe('Game Studio', () => {
     )
   })
 
+  it('treats pending normalization as dirty and blocks underlying Studio actions', () => {
+    const onSave = vi.fn(() => ({ ok: true }) as const)
+    const onCancel = vi.fn()
+    const commentedSource = customSource.replace(
+      'schema_version: 1',
+      'schema_version: 1\n# keep this note',
+    )
+    render(
+      <GameStudio
+        initialSource={commentedSource}
+        bundledIds={new Set()}
+        customRecords={[]}
+        sessionRecords={[]}
+        onSave={onSave}
+        onSaved={() => undefined}
+        onCancel={onCancel}
+        onDirtyChange={() => undefined}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'Pending change' },
+    })
+
+    expect(document.querySelector('.game-studio')).toHaveAttribute('inert')
+    const unload = new Event('beforeunload', { cancelable: true })
+    expect(window.dispatchEvent(unload)).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Save game' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+    fireEvent.click(screen.getByRole('link', { name: 'All games' }))
+    expect(onSave).not.toHaveBeenCalled()
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(
+      screen.queryByLabelText('Complete game source'),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel guided edit' }))
+    expect(document.querySelector('.game-studio')).not.toHaveAttribute('inert')
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+    expect(screen.getByLabelText('Complete game source')).toHaveValue(
+      commentedSource,
+    )
+  })
+
+  it('traps normalization focus, cancels on Escape, and restores its trigger', () => {
+    const commentedSource = customSource.replace(
+      'schema_version: 1',
+      'schema_version: 1\n# keep this note',
+    )
+    renderStudio(commentedSource)
+    const trigger = screen.getByLabelText('Game name')
+    trigger.focus()
+    fireEvent.change(trigger, { target: { value: 'Pending change' } })
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Normalize source formatting?',
+    })
+    const continueButton = screen.getByRole('button', {
+      name: 'Continue with guided editing',
+    })
+    const cancelButton = screen.getByRole('button', {
+      name: 'Cancel guided edit',
+    })
+    expect(continueButton).toHaveFocus()
+    cancelButton.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(continueButton).toHaveFocus()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Normalize source formatting?' }),
+    ).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
+  it('makes the application shell inert and blocks app navigation while normalization is pending', () => {
+    const commentedSource = customSource.replace(
+      'schema_version: 1',
+      'schema_version: 1\n# keep this note',
+    )
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: commentedSource },
+    })
+    window.history.replaceState({}, '', '/?studio=edit&game=custom-game')
+    renderApp(gameRepository)
+
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'Pending change' },
+    })
+
+    expect(document.querySelector('.app-shell')).toHaveAttribute('inert')
+    fireEvent.click(screen.getByRole('link', { name: 'Ludocairn' }))
+    expect(window.location.search).toBe('?studio=edit&game=custom-game')
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard unsaved changes?' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'Normalize source formatting?' }),
+    ).toBeInTheDocument()
+  })
+
+  it('blocks Studio save when custom-game storage enumeration failed', () => {
+    const onSave = vi.fn(() => ({ ok: true }) as const)
+    render(
+      <GameStudio
+        initialSource={customSource}
+        originalId="custom-game"
+        bundledIds={new Set()}
+        customRecords={[
+          {
+            id: '',
+            ok: false,
+            diagnostic: {
+              code: 'game-storage.read-failed',
+              message: 'Browser game storage is blocked.',
+            },
+          },
+        ]}
+        sessionRecords={[]}
+        onSave={onSave}
+        onSaved={() => undefined}
+        onCancel={() => undefined}
+        onDirtyChange={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save game' }))
+
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Custom games could not be read',
+    )
+  })
+
   it('keeps a saved ID read-only and rejects an incompatible session revision', () => {
     const gameRepository = new MemoryGameRepository({
       initial: { [keyForGame('custom-game')]: customSource },
@@ -389,6 +600,8 @@ describe('Game Studio', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save game' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('saved session')
+    expect(screen.getByRole('alert')).toHaveTextContent('Saved table')
+    expect(screen.getByRole('alert')).toHaveTextContent('custom-session')
     expect(gameRepository.load('custom-game')).toMatchObject({
       ok: true,
       source: customSource,

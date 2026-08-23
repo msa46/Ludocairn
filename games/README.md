@@ -9,7 +9,8 @@ without changing application code or using a backend.
 
 Choose **Create a game** in Ludocairn, use Guided or Source editing, and review
 the Preview before saving. Alternatively, paste a complete source or save it
-with a `.ludocairn-game.md` suffix and choose **Choose game file**. Follow the
+with a `.ludocairn-game.md` suffix. Use the **Game Markdown file** control and
+follow the
 [game-format reference](../docs/game-format.md); browser custom games do not
 require `RIGHTS.md`, author/owner/license metadata, or a pull request.
 

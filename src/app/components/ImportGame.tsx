@@ -95,17 +95,21 @@ export function ImportGame({
   )
   const [source, setSource] = useState('')
   const [error, setError] = useState<string>()
+  const [recoveryReplacementConfirmed, setRecoveryReplacementConfirmed] =
+    useState(false)
 
   function reset() {
     setState({ kind: 'idle' })
     setSource('')
     setError(undefined)
+    setRecoveryReplacementConfirmed(false)
     if (fileInput.current) fileInput.current.value = ''
   }
 
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const files = event.target.files
     setError(undefined)
+    setRecoveryReplacementConfirmed(false)
     if (!files || files.length !== 1) {
       setState({
         kind: 'review-invalid',
@@ -140,16 +144,19 @@ export function ImportGame({
 
   function confirmPaste() {
     setError(undefined)
+    setRecoveryReplacementConfirmed(false)
     setState(reviewResult(source, false))
   }
 
   function save() {
     if (state.kind !== 'review-valid') return
-    const originalId = customRecords.some(
+    const matchingRecord = customRecords.find(
       (record) => record.id === state.result.game.id,
     )
-      ? state.result.game.id
-      : undefined
+    if (matchingRecord && !matchingRecord.ok && !recoveryReplacementConfirmed) {
+      return
+    }
+    const originalId = matchingRecord ? state.result.game.id : undefined
     const reviewed = reviewGameSave(state.source, {
       originalId,
       bundledIds,
@@ -173,6 +180,16 @@ export function ImportGame({
     state.kind === 'review-valid' || state.kind === 'review-invalid'
   const reviewName =
     reviewing && state.shared ? 'Review shared game' : 'Review game import'
+  const matchingRecord =
+    state.kind === 'review-valid'
+      ? customRecords.find((record) => record.id === state.result.game.id)
+      : undefined
+  const replacingRecovery = matchingRecord !== undefined && !matchingRecord.ok
+  const importAction = matchingRecord?.ok
+    ? 'Update existing custom game'
+    : replacingRecovery
+      ? 'Replace recoverable stored record'
+      : 'New custom game'
 
   return (
     <section className="import-card" aria-labelledby="import-game-title">
@@ -247,10 +264,56 @@ export function ImportGame({
                   : 'Tarot'}
               </dd>
             </div>
+            <div>
+              <dt>Schema version</dt>
+              <dd>{state.result.preview.schemaVersion}</dd>
+            </div>
+            <div>
+              <dt>Roles</dt>
+              <dd>{state.result.preview.roleCount}</dd>
+            </div>
+            <div>
+              <dt>Tracker fields</dt>
+              <dd>{state.result.preview.fieldCount}</dd>
+            </div>
+            <div>
+              <dt>Validation</dt>
+              <dd>Valid</dd>
+            </div>
+            <div>
+              <dt>Import action</dt>
+              <dd>{importAction}</dd>
+            </div>
           </dl>
+          {replacingRecovery && (
+            <div>
+              <p role="alert">
+                A damaged or mismatched record already uses this storage ID.
+                Saving will replace its recoverable raw source. Cancel and use
+                the catalog recovery download first if you need a backup.
+              </p>
+              <label className="checkbox-field">
+                <input
+                  checked={recoveryReplacementConfirmed}
+                  type="checkbox"
+                  onChange={(event) =>
+                    setRecoveryReplacementConfirmed(event.target.checked)
+                  }
+                />
+                <span>
+                  I understand this replaces the recoverable raw source
+                </span>
+              </label>
+            </div>
+          )}
           {error && <p role="alert">{error}</p>}
           <div className="form-actions">
-            <button className="primary-button" type="button" onClick={save}>
+            <button
+              className="primary-button"
+              disabled={replacingRecovery && !recoveryReplacementConfirmed}
+              type="button"
+              onClick={save}
+            >
               Save custom game
             </button>
             <button type="button" onClick={reset}>

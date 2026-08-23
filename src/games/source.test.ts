@@ -58,6 +58,29 @@ describe('game source', () => {
     expect(source).toContain('# Full Game\n')
   })
 
+  it('preserves leading rules whitespace and indented code blocks exactly', () => {
+    const rulesMarkdown =
+      '    const opening = "preserved"\n    console.log(opening)\n\nParagraph.\n'
+    const source = serializeGameSource({ ...fullGame, rulesMarkdown })
+    const reparsed = parseGameSource(source, 'custom/full-game/game.md')
+
+    expect(source).toContain(`---\n\n${rulesMarkdown}`)
+    expect(reparsed).toMatchObject({
+      ok: true,
+      game: { rulesMarkdown },
+    })
+  })
+
+  it('preserves a leading blank line in rules while keeping valid delimiter separation', () => {
+    const rulesMarkdown = '\n# Deliberately spaced rules\n'
+    const source = serializeGameSource({ ...fullGame, rulesMarkdown })
+
+    expect(parseGameSource(source, 'custom/full-game/game.md')).toMatchObject({
+      ok: true,
+      game: { rulesMarkdown },
+    })
+  })
+
   it('uses one UTF-8 byte limit for templates, paste, storage, and shares', () => {
     expect(gameSourceFitsLimit('é'.repeat(524_288))).toBe(true)
     expect(gameSourceFitsLimit('é'.repeat(524_289))).toBe(false)
@@ -74,5 +97,23 @@ describe('game source', () => {
     expect(sourceHasFrontmatterComments('---\n# comment\nid: x\n---\n# rules')).toBe(true)
     expect(sourceHasFrontmatterComments('---\nid: x\n---\n# rules')).toBe(false)
     expect(sourceHasFrontmatterComments('# before\n---\nid: x\n---\n')).toBe(false)
+  })
+
+  it('detects parser-valid inline YAML comments without treating quoted hashes as comments', () => {
+    expect(
+      sourceHasFrontmatterComments(
+        '---\nname: Game # rationale\nsummary: Plain\n---\n\nRules',
+      ),
+    ).toBe(true)
+    expect(
+      sourceHasFrontmatterComments(
+        '---\nname: "Game # rationale"\nsummary: \'Plain # text\'\n---\n\nRules',
+      ),
+    ).toBe(false)
+    expect(
+      sourceHasFrontmatterComments(
+        '---\nname: Game\nsummary: https://example.test/#fragment\n---\n\nRules',
+      ),
+    ).toBe(false)
   })
 })

@@ -183,8 +183,9 @@ Acceptance criteria:
 
 ### Browser-authored custom games
 
-**Status:** Implemented and automated-verified; controller production-preview
-review pending.
+**Status:** Implemented; automated and controller production-preview verified.
+The detailed observations and unavailable native-browser boundaries are recorded
+in the [SDD progress ledger](../.superpowers/sdd/2026-08-23-browser-authored-custom-games/progress.md).
 
 - [x] Create and edit complete version-1 games in Guided, Source, and Preview
   Studio views, with canonical-source synchronization and actionable schema
@@ -200,12 +201,15 @@ review pending.
 - [x] Enforce the 1 MiB UTF-8 source limit, keep all parsing and persistence in
   the browser with no backend, and retain offline access after the PWA shell is
   cached without putting custom source into the service-worker cache.
-- [x] Pass the complete `npm run ci` gate on 2026-08-23, including 427 tests,
+- [x] Pass the complete `npm run ci` gate on 2026-08-23, including 453 tests,
   production build, and static PWA artifact verification.
-- [ ] Complete the controller-owned production-preview checklist for the full
+- [x] Complete the controller-owned production-preview checklist for the full
   schema, synchronization, refresh and session restore, paste/file/share
   review, guards and recovery, offline reopen, keyboard use, 375-pixel layout,
-  print isolation, and native download/clipboard/print boundaries.
+  and print isolation. The ledger accurately distinguishes controller-observed
+  behavior from native download, clipboard-content, and system print-dialog
+  boundaries that the environment could not inspect and that remain covered by
+  automated tests.
 
 ### Mobile PWA implementation
 

@@ -1,4 +1,4 @@
-import { stringify } from 'yaml'
+import { parseDocument, stringify, visit } from 'yaml'
 
 import type {
   GameDefinition,
@@ -102,7 +102,7 @@ export function serializeGameSource(game: GameDefinition): string {
       : {}),
     session: serializeSessionDefinition(game),
   }
-  return `---\n${stringify(frontmatter).trimEnd()}\n---\n\n${game.rulesMarkdown.trimStart()}`
+  return `---\n${stringify(frontmatter).trimEnd()}\n---\n\n${game.rulesMarkdown}`
 }
 
 export function createGameTemplate(): string {
@@ -128,8 +128,17 @@ export function sourceHasFrontmatterComments(source: string): boolean {
   if (!normalized.startsWith('---\n')) return false
   const closingIndex = normalized.indexOf('\n---\n', 4)
   if (closingIndex === -1) return false
-  return normalized
-    .slice(4, closingIndex)
-    .split('\n')
-    .some((line) => /^\s*#/.test(line))
+  const document = parseDocument(normalized.slice(4, closingIndex))
+  if (document.errors.length > 0) return false
+  if (document.commentBefore || document.comment) return true
+
+  let found = false
+  visit(document, {
+    Node(_key, node) {
+      if (!node.commentBefore && !node.comment) return
+      found = true
+      return visit.BREAK
+    },
+  })
+  return found
 }

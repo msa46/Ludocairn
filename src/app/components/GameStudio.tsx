@@ -1,10 +1,20 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react'
+import { createPortal } from 'react-dom'
 
 import { reviewGameSave } from '../../games/manage'
 import type { GameDefinition } from '../../games/model'
 import { parseGameSource } from '../../games/parse'
 import { renderRules } from '../../games/render'
-import { sourceHasFrontmatterComments } from '../../games/source'
+import {
+  gameSourceFitsLimit,
+  sourceHasFrontmatterComments,
+} from '../../games/source'
 import type {
   GameRepositoryRecord,
   GameSaveResult,
@@ -23,6 +33,7 @@ interface GameStudioProps {
   readonly onSaved: (id: string) => void
   readonly onCancel: () => void
   readonly onDirtyChange: (dirty: boolean) => void
+  readonly onInteractionLockChange?: (locked: boolean) => void
 }
 
 type StudioView = 'guided' | 'source' | 'preview'
@@ -41,7 +52,26 @@ function studioIsWide(): boolean {
 }
 
 function parseDraft(source: string, originalId?: string) {
-  return parseGameSource(source, `custom/${originalId ?? 'unsaved'}/game.md`)
+  const sourceName = `custom/${originalId ?? 'unsaved'}/game.md`
+  if (!gameSourceFitsLimit(source)) {
+    return {
+      ok: false as const,
+      diagnostics: [
+        {
+          code: 'game-source.oversized' as const,
+          message: 'Game source exceeds the 1 MiB limit.',
+          source: sourceName,
+          path: undefined,
+        },
+      ],
+    }
+  }
+  return parseGameSource(source, sourceName)
+}
+
+interface PendingGuidedChange {
+  readonly source: string
+  readonly baseSource: string
 }
 
 export function GameStudio({
@@ -54,8 +84,9 @@ export function GameStudio({
   onSaved,
   onCancel,
   onDirtyChange,
+  onInteractionLockChange,
 }: GameStudioProps) {
-  const initial = parseDraft(initialSource, originalId)
+  const [initial] = useState(() => parseDraft(initialSource, originalId))
   const [source, setSource] = useState(initialSource)
   const [lastValid, setLastValid] = useState<GameDefinition | undefined>(
     initial.ok ? initial.game : undefined,
@@ -73,7 +104,8 @@ export function GameStudio({
     initial.ok ? 'guided' : 'source',
   )
   const [saveError, setSaveError] = useState<string>()
-  const [pendingGuidedSource, setPendingGuidedSource] = useState<string>()
+  const [pendingGuidedChange, setPendingGuidedChange] =
+    useState<PendingGuidedChange>()
   const [normalizationAcknowledged, setNormalizationAcknowledged] =
     useState(false)
   const [wide, setWide] = useState(studioIsWide)
@@ -81,7 +113,13 @@ export function GameStudio({
   const mobilePreviewPanel = useRef<HTMLElement>(null)
   const widePreview = useRef<HTMLElement>(null)
   const pendingPreviewFocus = useRef(false)
-  const dirty = savedSource === undefined || source !== savedSource
+  const normalizationDialog = useRef<HTMLDivElement>(null)
+  const continueGuidedButton = useRef<HTMLButtonElement>(null)
+  const normalizationTrigger = useRef<HTMLElement | null>(null)
+  const dirty =
+    savedSource === undefined ||
+    source !== savedSource ||
+    pendingGuidedChange !== undefined
 
   useEffect(() => {
     if (
@@ -138,6 +176,29 @@ export function GameStudio({
     return () => onDirtyChange(false)
   }, [dirty, onDirtyChange])
 
+  useEffect(() => {
+    const locked = pendingGuidedChange !== undefined
+    onInteractionLockChange?.(locked)
+    return () => {
+      if (locked) onInteractionLockChange?.(false)
+    }
+  }, [onInteractionLockChange, pendingGuidedChange])
+
+  useEffect(() => {
+    if (!pendingGuidedChange) return
+    normalizationTrigger.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    continueGuidedButton.current?.focus()
+
+    return () => {
+      const trigger = normalizationTrigger.current
+      normalizationTrigger.current = null
+      if (trigger?.isConnected) trigger.focus()
+    }
+  }, [pendingGuidedChange])
+
   function changeSource(nextSource: string) {
     const parsed = parseDraft(nextSource, originalId)
     setSource(nextSource)
@@ -151,22 +212,58 @@ export function GameStudio({
   }
 
   function changeGuidedSource(nextSource: string) {
-    if (pendingGuidedSource) return
+    if (pendingGuidedChange) return
     if (!normalizationAcknowledged && sourceHasFrontmatterComments(source)) {
-      setPendingGuidedSource(nextSource)
+      setPendingGuidedChange({ source: nextSource, baseSource: source })
       return
     }
     changeSource(nextSource)
   }
 
   function continueGuidedEditing() {
-    if (!pendingGuidedSource) return
+    if (!pendingGuidedChange) return
+    if (source !== pendingGuidedChange.baseSource) {
+      setPendingGuidedChange(undefined)
+      setSaveError(
+        'The source changed while confirmation was open. Review the current draft and try the guided edit again.',
+      )
+      return
+    }
+    const nextSource = pendingGuidedChange.source
     setNormalizationAcknowledged(true)
-    setPendingGuidedSource(undefined)
-    changeSource(pendingGuidedSource)
+    setPendingGuidedChange(undefined)
+    changeSource(nextSource)
+  }
+
+  function cancelGuidedEditing() {
+    setPendingGuidedChange(undefined)
+  }
+
+  function trapNormalizationDialog(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      cancelGuidedEditing()
+      return
+    }
+    if (event.key !== 'Tab' || !normalizationDialog.current) return
+
+    const focusable = [
+      ...normalizationDialog.current.querySelectorAll<HTMLElement>('button'),
+    ]
+    const first = focusable[0]
+    const last = focusable.at(-1)
+    if (!first || !last) return
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
   }
 
   function save() {
+    if (pendingGuidedChange) return
     const parsed = parseDraft(source, originalId)
     if (!parsed.ok) {
       setDiagnostics(parsed.diagnostics)
@@ -200,6 +297,7 @@ export function GameStudio({
   const invalid = diagnostics.length > 0
 
   function selectView(view: StudioView) {
+    if (pendingGuidedChange) return
     setActiveView(view)
     if (view !== 'preview') setActiveEditor(view)
   }
@@ -277,121 +375,139 @@ export function GameStudio({
   }
 
   return (
-    <div className="game-studio page-stack">
-      <nav aria-label="Breadcrumb" className="breadcrumb print-hidden">
-        <a
-          href="?"
-          onClick={(event) => {
-            event.preventDefault()
-            onCancel()
-          }}
-        >
-          All games
-        </a>
-        <span aria-hidden="true">/</span>
-        <span>Game Studio</span>
-      </nav>
-
-      <header className="page-intro">
-        <p className="eyebrow">Game Studio</p>
-        <h1>{originalId ? 'Edit custom game' : 'Create custom game'}</h1>
-        <p className="lede">
-          Keep the complete game source valid, then preview and save it to this
-          browser.
-        </p>
-      </header>
-
-      <div className="form-actions print-hidden">
-        <button className="primary-button" type="button" onClick={save}>
-          Save game
-        </button>
-        <button type="button" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-
-      {saveError && <p role="alert">{saveError}</p>}
-
+    <>
       <div
-        aria-label="Game Studio views"
-        className="game-studio-tabs"
-        role="tablist"
+        className="game-studio page-stack"
+        inert={pendingGuidedChange ? true : undefined}
       >
-        {(wide ? STUDIO_EDITOR_VIEWS : STUDIO_VIEWS).map((view) => {
-          const label = view[0].toUpperCase() + view.slice(1)
-          return (
-            <button
-              aria-controls={`studio-${view}-panel`}
-              aria-selected={wide ? activeEditor === view : activeView === view}
-              disabled={view === 'guided' && invalid}
-              id={`studio-${view}-tab`}
-              key={view}
-              ref={view === 'preview' ? mobilePreviewTab : undefined}
-              role="tab"
-              type="button"
-              onClick={() => selectView(view)}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
+        <nav aria-label="Breadcrumb" className="breadcrumb print-hidden">
+          <a
+            href="?"
+            onClick={(event) => {
+              event.preventDefault()
+              if (pendingGuidedChange) return
+              onCancel()
+            }}
+          >
+            All games
+          </a>
+          <span aria-hidden="true">/</span>
+          <span>Game Studio</span>
+        </nav>
 
-      <div className="game-studio-workbench">
-        {wide ? (
-          <>
-            {editorPanel(activeEditor)}
-            <aside
-              aria-label="Live game preview"
+        <header className="page-intro">
+          <p className="eyebrow">Game Studio</p>
+          <h1>{originalId ? 'Edit custom game' : 'Create custom game'}</h1>
+          <p className="lede">
+            Keep the complete game source valid, then preview and save it to
+            this browser.
+          </p>
+        </header>
+
+        <div className="form-actions print-hidden">
+          <button className="primary-button" type="button" onClick={save}>
+            Save game
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!pendingGuidedChange) onCancel()
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+
+        {saveError && <p role="alert">{saveError}</p>}
+
+        <div
+          aria-label="Game Studio views"
+          className="game-studio-tabs"
+          role="tablist"
+        >
+          {(wide ? STUDIO_EDITOR_VIEWS : STUDIO_VIEWS).map((view) => {
+            const label = view[0].toUpperCase() + view.slice(1)
+            return (
+              <button
+                aria-controls={`studio-${view}-panel`}
+                aria-selected={
+                  wide ? activeEditor === view : activeView === view
+                }
+                disabled={view === 'guided' && invalid}
+                id={`studio-${view}-tab`}
+                key={view}
+                ref={view === 'preview' ? mobilePreviewTab : undefined}
+                role="tab"
+                type="button"
+                onClick={() => selectView(view)}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="game-studio-workbench">
+          {wide ? (
+            <>
+              {editorPanel(activeEditor)}
+              <aside
+                aria-label="Live game preview"
+                className="studio-preview"
+                ref={widePreview}
+                tabIndex={-1}
+              >
+                <p className="eyebrow studio-preview-label">Live preview</p>
+                {previewContents()}
+              </aside>
+            </>
+          ) : activeView === 'preview' ? (
+            <section
+              aria-labelledby="studio-preview-tab"
               className="studio-preview"
-              ref={widePreview}
+              id="studio-preview-panel"
+              ref={mobilePreviewPanel}
+              role="tabpanel"
               tabIndex={-1}
             >
-              <p className="eyebrow studio-preview-label">Live preview</p>
               {previewContents()}
-            </aside>
-          </>
-        ) : activeView === 'preview' ? (
-          <section
-            aria-labelledby="studio-preview-tab"
-            className="studio-preview"
-            id="studio-preview-panel"
-            ref={mobilePreviewPanel}
-            role="tabpanel"
-            tabIndex={-1}
-          >
-            {previewContents()}
-          </section>
-        ) : (
-          editorPanel(activeView)
-        )}
+            </section>
+          ) : (
+            editorPanel(activeView)
+          )}
+        </div>
       </div>
 
-      {pendingGuidedSource && (
-        <div
-          aria-labelledby="normalize-source-title"
-          aria-modal="true"
-          className="message-card"
-          role="dialog"
-        >
-          <h2 id="normalize-source-title">Normalize source formatting?</h2>
-          <p>
-            Guided editing rewrites the YAML frontmatter and will remove its
-            comments. Your rules Markdown will be preserved.
-          </p>
-          <div className="form-actions">
-            <button type="button" onClick={continueGuidedEditing}>
-              Continue with guided editing
-            </button>
-            <button
-              type="button"
-              onClick={() => setPendingGuidedSource(undefined)}
-            >
-              Cancel guided edit
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      {pendingGuidedChange &&
+        createPortal(
+          <div
+            ref={normalizationDialog}
+            aria-labelledby="normalize-source-title"
+            aria-modal="true"
+            className="message-card"
+            role="dialog"
+            onKeyDown={trapNormalizationDialog}
+          >
+            <h2 id="normalize-source-title">Normalize source formatting?</h2>
+            <p>
+              Guided editing rewrites the YAML frontmatter and will remove its
+              comments. Your rules Markdown will be preserved.
+            </p>
+            <div className="form-actions">
+              <button
+                ref={continueGuidedButton}
+                type="button"
+                onClick={continueGuidedEditing}
+              >
+                Continue with guided editing
+              </button>
+              <button type="button" onClick={cancelGuidedEditing}>
+                Cancel guided edit
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   )
 }

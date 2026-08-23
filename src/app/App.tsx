@@ -103,6 +103,7 @@ export function App({
   const [setupGameId, setSetupGameId] = useState<string>()
   const [repairSource, setRepairSource] = useState<string>()
   const [studioDirty, setStudioDirty] = useState(false)
+  const [studioInteractionLocked, setStudioInteractionLocked] = useState(false)
   const [pendingNavigation, setPendingNavigation] =
     useState<PendingNavigation>()
   const [revision, setRevision] = useState(0)
@@ -245,6 +246,7 @@ export function App({
 
   function navigate(nextSearch: string, bypassDirtyGuard = false) {
     const normalizedSearch = nextSearch ? '?' + nextSearch : ''
+    if (studioInteractionLocked && !bypassDirtyGuard) return
     if (studioDirty && !bypassDirtyGuard) {
       setPendingNavigation({
         search: normalizedSearch,
@@ -437,6 +439,7 @@ export function App({
           }}
           onCancel={() => navigate('')}
           onDirtyChange={setStudioDirty}
+          onInteractionLockChange={setStudioInteractionLocked}
         />
       )
     } else if (studioMode === 'repair') {
@@ -621,7 +624,10 @@ export function App({
 
   return (
     <>
-      <div className="app-shell" inert={pendingNavigation ? true : undefined}>
+      <div
+        className="app-shell"
+        inert={pendingNavigation || studioInteractionLocked ? true : undefined}
+      >
         <header className="site-header print-hidden">
           <a
             className="wordmark"

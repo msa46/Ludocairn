@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { GameDefinition, PhaseDefinition } from '../../games/model'
 import { parseGameSource } from '../../games/parse'
-import { serializeGameSource } from '../../games/source'
+import { gameSourceFitsLimit, serializeGameSource } from '../../games/source'
 import { DistributionEditor } from './DistributionEditor'
 import { FieldEditor } from './FieldEditor'
 import { RoleEditor } from './RoleEditor'
@@ -18,6 +18,15 @@ interface NumericDrafts {
   readonly maximumPlayers: string
   readonly initialRound: string
 }
+
+type NumericDraftName = keyof NumericDrafts
+type NumericErrors = Partial<Record<NumericDraftName, string>>
+
+const NUMERIC_DRAFT_NAMES: readonly NumericDraftName[] = [
+  'minimumPlayers',
+  'maximumPlayers',
+  'initialRound',
+]
 
 function numericDraftsFor(game: GameDefinition): NumericDrafts {
   return {
@@ -46,11 +55,63 @@ export function GuidedGameEditor({
   onChange,
 }: GuidedGameEditorProps) {
   const [drafts, setDrafts] = useState(() => numericDraftsFor(game))
-  const [numericError, setNumericError] = useState<string>()
+  const roundInitial = game.round.enabled ? game.round.initial : undefined
+  const canonicalDrafts = useMemo(
+    () => ({
+      minimumPlayers: String(game.players.min),
+      maximumPlayers:
+        game.players.max === undefined ? '' : String(game.players.max),
+      initialRound: roundInitial === undefined ? '1' : String(roundInitial),
+    }),
+    [game.players.max, game.players.min, roundInitial],
+  )
+  const previousCanonicalDrafts = useRef(canonicalDrafts)
+  const [numericErrors, setNumericErrors] = useState<NumericErrors>({})
   const [definitionError, setDefinitionError] = useState<string>()
+  const nextPhaseKey = useRef(game.phases.length)
+  const [phaseKeys, setPhaseKeys] = useState(() =>
+    game.phases.map((_, index) => `phase:${index}`),
+  )
+
+  useEffect(() => {
+    const previous = previousCanonicalDrafts.current
+    const changed = NUMERIC_DRAFT_NAMES.filter(
+      (name) => previous[name] !== canonicalDrafts[name],
+    )
+    previousCanonicalDrafts.current = canonicalDrafts
+    if (changed.length === 0) return
+
+    setDrafts((current) => {
+      const next = { ...current }
+      for (const name of changed) next[name] = canonicalDrafts[name]
+      return next
+    })
+    setNumericErrors((current) => {
+      const next = { ...current }
+      for (const name of changed) delete next[name]
+      return next
+    })
+  }, [canonicalDrafts])
+
+  function setNumericError(
+    name: NumericDraftName,
+    message: string | undefined,
+  ) {
+    setNumericErrors((current) => {
+      if (message === undefined && current[name] === undefined) return current
+      const next = { ...current }
+      if (message === undefined) delete next[name]
+      else next[name] = message
+      return next
+    })
+  }
 
   function emit(next: GameDefinition) {
     const source = serializeGameSource(next)
+    if (!gameSourceFitsLimit(source)) {
+      setDefinitionError('Game source exceeds the 1 MiB limit.')
+      return
+    }
     const parsed = parseGameSource(source, game.source)
     if (!parsed.ok) {
       setDefinitionError(
@@ -79,34 +140,40 @@ export function GuidedGameEditor({
     setDrafts((current) => ({ ...current, minimumPlayers: value }))
     const minimumPlayers = positiveInteger(value)
     if (minimumPlayers === undefined) {
-      setNumericError('Enter a positive whole number.')
+      setNumericError('minimumPlayers', 'Enter a positive whole number.')
       return
     }
     if (game.players.max !== undefined && game.players.max < minimumPlayers) {
-      setNumericError('Minimum players cannot exceed maximum players.')
+      setNumericError(
+        'minimumPlayers',
+        'Minimum players cannot exceed maximum players.',
+      )
       return
     }
-    setNumericError(undefined)
+    setNumericError('minimumPlayers', undefined)
     emit({ ...game, players: { ...game.players, min: minimumPlayers } })
   }
 
   function changeMaximumPlayers(value: string) {
     setDrafts((current) => ({ ...current, maximumPlayers: value }))
     if (value === '') {
-      setNumericError(undefined)
+      setNumericError('maximumPlayers', undefined)
       emit({ ...game, players: { min: game.players.min } })
       return
     }
     const maximumPlayers = positiveInteger(value)
     if (maximumPlayers === undefined) {
-      setNumericError('Enter a positive whole number.')
+      setNumericError('maximumPlayers', 'Enter a positive whole number.')
       return
     }
     if (maximumPlayers < game.players.min) {
-      setNumericError('Maximum players cannot be lower than minimum players.')
+      setNumericError(
+        'maximumPlayers',
+        'Maximum players cannot be lower than minimum players.',
+      )
       return
     }
-    setNumericError(undefined)
+    setNumericError('maximumPlayers', undefined)
     emit({
       ...game,
       players: { ...game.players, max: maximumPlayers },
@@ -117,15 +184,16 @@ export function GuidedGameEditor({
     setDrafts((current) => ({ ...current, initialRound: value }))
     const initialRound = positiveInteger(value)
     if (initialRound === undefined) {
-      setNumericError('Enter a positive whole number.')
+      setNumericError('initialRound', 'Enter a positive whole number.')
       return
     }
-    setNumericError(undefined)
+    setNumericError('initialRound', undefined)
     emit({ ...game, round: { enabled: true, initial: initialRound } })
   }
 
   function addPhase() {
     const phase = nextPhase(game.phases)
+    setPhaseKeys((current) => [...current, `phase:${nextPhaseKey.current++}`])
     emit({
       ...game,
       phases: [...game.phases, phase],
@@ -140,17 +208,33 @@ export function GuidedGameEditor({
     const [phase] = phases.splice(index, 1)
     if (!phase) return
     phases.splice(destination, 0, phase)
+    setPhaseKeys((current) => {
+      const keys = [...current]
+      const [key] = keys.splice(index, 1)
+      if (key === undefined) return current
+      keys.splice(destination, 0, key)
+      return keys
+    })
     emit({ ...game, phases })
   }
 
   function removePhase(index: number) {
+    const removed = game.phases[index]
     const phases = game.phases.filter((_, phaseIndex) => phaseIndex !== index)
+    setPhaseKeys((current) =>
+      current.filter((_, phaseIndex) => phaseIndex !== index),
+    )
     emit({
       ...game,
       phases,
       ...(phases.length === 0
         ? { initialPhase: undefined }
-        : { initialPhase: phases[0]?.id }),
+        : {
+            initialPhase:
+              removed?.id === game.initialPhase
+                ? phases[0]?.id
+                : (game.initialPhase ?? phases[0]?.id),
+          }),
     })
   }
 
@@ -255,7 +339,7 @@ export function GuidedGameEditor({
           </button>
         </div>
         {game.phases.map((phase, index) => (
-          <div key={phase.id}>
+          <div key={phaseKeys[index] ?? `phase:fallback:${index}`}>
             <label>
               Phase {index + 1} ID
               <input
@@ -369,9 +453,14 @@ export function GuidedGameEditor({
         </label>
       </fieldset>
 
-      {(numericError || definitionError) && (
-        <p role="alert">{numericError ?? definitionError}</p>
+      {NUMERIC_DRAFT_NAMES.map((name) =>
+        numericErrors[name] ? (
+          <p key={name} role="alert">
+            {numericErrors[name]}
+          </p>
+        ) : null,
       )}
+      {definitionError && <p role="alert">{definitionError}</p>}
     </section>
   )
 }

@@ -5,13 +5,14 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { loadBundledGames } from '../games/catalog'
 import { createGameShareUrl } from '../files/game-files'
 import { keyForGame } from '../storage/game-repository'
 import { MemoryGameRepository } from '../storage/memory-game-storage'
 import { MemorySessionRepository } from '../storage/memory'
+import type { SessionRepository } from '../storage/repository'
 import { App } from './App'
 
 const customSource = `---
@@ -40,14 +41,51 @@ if (!bundledCatalog.ok) throw new Error('Bundled game fixture failed to load')
 const bundledGame = bundledCatalog.games[0]
 if (!bundledGame) throw new Error('Bundled game fixture was not found')
 
-function renderApp(gameRepository = new MemoryGameRepository()) {
+function renderApp(
+  gameRepository = new MemoryGameRepository(),
+  sessionRepository: SessionRepository = new MemorySessionRepository(
+    () => undefined,
+  ),
+) {
   return render(
     <App
       games={[]}
       gameRepository={gameRepository}
-      repository={new MemorySessionRepository(() => undefined)}
+      repository={sessionRepository}
     />,
   )
+}
+
+function reviewPastedSource(source = customSource) {
+  fireEvent.click(screen.getByRole('button', { name: 'Paste game source' }))
+  fireEvent.change(screen.getByLabelText('Complete game source'), {
+    target: { value: source },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Review game' }))
+  return screen.getByRole('region', { name: 'Review game import' })
+}
+
+function unreadableSessions(id = '', raw?: string): SessionRepository {
+  const fallback = new MemorySessionRepository(() => undefined)
+  return {
+    list: () => [
+      {
+        id,
+        ok: false,
+        ...(raw === undefined ? {} : { raw }),
+        diagnostic: {
+          code: id ? 'storage.invalid-session' : 'storage.read-failed',
+          message: id
+            ? 'Saved session is damaged.'
+            : 'Browser session storage is blocked.',
+        },
+      },
+    ],
+    load: (sessionId) => fallback.load(sessionId),
+    save: (session) => fallback.save(session),
+    remove: (sessionId) => fallback.remove(sessionId),
+    raw: (sessionId) => fallback.raw(sessionId),
+  }
 }
 
 function uploadGame(value: string, name = 'game.ludocairn-game.md') {
@@ -73,6 +111,11 @@ describe('ImportGame', () => {
 
     const review = screen.getByRole('region', { name: 'Review game import' })
     expect(within(review).getByText('Custom Game')).toBeInTheDocument()
+    expect(review).toHaveTextContent('Schema version1')
+    expect(review).toHaveTextContent('Roles0')
+    expect(review).toHaveTextContent('Tracker fields0')
+    expect(review).toHaveTextContent('ValidationValid')
+    expect(review).toHaveTextContent('Import actionNew custom game')
     expect(gameRepository.list()).toHaveLength(0)
 
     fireEvent.click(
@@ -189,9 +232,9 @@ describe('ImportGame', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save custom game' }))
 
     expect(window.location.hash).toBe(hash)
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Injected memory storage failure.',
-    )
+    expect(
+      screen.getByText('Injected memory storage failure.'),
+    ).toHaveTextContent('Injected memory storage failure.')
   })
 
   it('keeps invalid pasted source out of storage and routes it to repair', () => {
@@ -221,14 +264,125 @@ describe('ImportGame', () => {
     })
     renderApp(gameRepository)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Paste game source' }))
-    fireEvent.change(screen.getByLabelText('Complete game source'), {
-      target: { value: customSource },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Review game' }))
+    const review = reviewPastedSource()
+
+    expect(review).toHaveTextContent('Import actionUpdate existing custom game')
     fireEvent.click(screen.getByRole('button', { name: 'Save custom game' }))
 
     expect(gameRepository.raw('custom-game')).toBe(customSource)
+  })
+
+  it('requires explicit confirmation before replacing a recoverable corrupt record', () => {
+    const raw = '---\nid: custom-game\n'
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: raw },
+    })
+    renderApp(gameRepository)
+
+    const review = reviewPastedSource()
+    const save = within(review).getByRole('button', {
+      name: 'Save custom game',
+    })
+
+    expect(review).toHaveTextContent(
+      'Import actionReplace recoverable stored record',
+    )
+    expect(review).toHaveTextContent('recoverable raw source')
+    expect(save).toBeDisabled()
+    fireEvent.click(
+      within(review).getByRole('button', { name: 'Cancel import' }),
+    )
+    expect(gameRepository.raw('custom-game')).toBe(raw)
+  })
+
+  it('preserves corrupt raw source when confirmed replacement cannot be written', () => {
+    const raw = '---\nid: custom-game\n'
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: raw },
+      failWrites: true,
+    })
+    renderApp(gameRepository)
+    const review = reviewPastedSource()
+
+    fireEvent.click(
+      within(review).getByLabelText(
+        'I understand this replaces the recoverable raw source',
+      ),
+    )
+    fireEvent.click(
+      within(review).getByRole('button', { name: 'Save custom game' }),
+    )
+
+    expect(
+      screen.getByText('Injected memory storage failure.'),
+    ).toBeInTheDocument()
+    expect(gameRepository.raw('custom-game')).toBe(raw)
+  })
+
+  it('preserves corrupt raw source when replacement preflight cannot enumerate sessions', () => {
+    const raw = '---\nid: custom-game\n'
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: raw },
+    })
+    renderApp(gameRepository, unreadableSessions())
+    const review = reviewPastedSource()
+
+    fireEvent.click(
+      within(review).getByLabelText(
+        'I understand this replaces the recoverable raw source',
+      ),
+    )
+    fireEvent.click(
+      within(review).getByRole('button', { name: 'Save custom game' }),
+    )
+
+    expect(
+      screen.getByText(
+        'Saved sessions could not be read, so this game cannot be updated safely.',
+      ),
+    ).toHaveTextContent('Saved sessions could not be read')
+    expect(gameRepository.raw('custom-game')).toBe(raw)
+  })
+
+  it('identifies corrupt saved sessions that block an imported update', () => {
+    const originalSource = customSource.replace(
+      'A browser-authored fixture.',
+      'Original summary.',
+    )
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: originalSource },
+    })
+    renderApp(
+      gameRepository,
+      unreadableSessions(
+        'damaged-session',
+        '{"gameId":"custom-game","players":"broken"}',
+      ),
+    )
+    const review = reviewPastedSource()
+
+    fireEvent.click(
+      within(review).getByRole('button', { name: 'Save custom game' }),
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('damaged-session')
+    expect(gameRepository.raw('custom-game')).toBe(originalSource)
+  })
+
+  it('blocks import before repository.save when custom-game enumeration failed', () => {
+    const gameRepository = new MemoryGameRepository({ failReads: true })
+    const save = vi.spyOn(gameRepository, 'save')
+    renderApp(gameRepository)
+    const review = reviewPastedSource()
+
+    fireEvent.click(
+      within(review).getByRole('button', { name: 'Save custom game' }),
+    )
+
+    expect(save).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Custom games could not be read',
+    )
   })
 
   it('keeps a bundled-ID collision in review without writing it', async () => {

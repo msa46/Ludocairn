@@ -30,6 +30,10 @@ export type GameSaveDiagnostic =
       readonly message: string
     }
   | {
+      readonly code: 'game-save.game-enumeration-failed'
+      readonly message: string
+    }
+  | {
       readonly code: 'game-save.session-enumeration-failed'
       readonly message: string
     }
@@ -113,6 +117,19 @@ function sessionEnumerationFailed(
   )
 }
 
+function gameEnumerationFailed(
+  records: readonly GameRepositoryRecord[],
+): boolean {
+  return records.some(
+    (record) =>
+      !record.ok && record.diagnostic.code === 'game-storage.read-failed',
+  )
+}
+
+function blockingSessionLabel(record: RepositoryRecord): string {
+  return record.ok ? `${record.session.name} (${record.id})` : record.id
+}
+
 export function reviewGameSave(
   source: string,
   context: GameSaveContext,
@@ -123,6 +140,17 @@ export function reviewGameSave(
       diagnostic: {
         code: 'game-save.oversized-source',
         message: 'Game source exceeds the 1 MiB limit.',
+      },
+    }
+  }
+
+  if (gameEnumerationFailed(context.customRecords)) {
+    return {
+      ok: false,
+      diagnostic: {
+        code: 'game-save.game-enumeration-failed',
+        message:
+          'Custom games could not be read, so this game cannot be saved safely.',
       },
     }
   }
@@ -183,18 +211,21 @@ export function reviewGameSave(
   }
 
   if (context.originalId !== undefined) {
-    const incompatibleSessionIds = findGameUsage(
+    const incompatibleSessions = findGameUsage(
       game.id,
       context.sessionRecords,
+    ).filter(
+      (record) => !record.ok || !validateSession(record.session, game).ok,
     )
-      .filter((record) => !record.ok || !validateSession(record.session, game).ok)
-      .map((record) => record.id)
-    if (incompatibleSessionIds.length > 0) {
+    if (incompatibleSessions.length > 0) {
+      const incompatibleSessionIds = incompatibleSessions.map(
+        (record) => record.id,
+      )
       return {
         ok: false,
         diagnostic: {
           code: 'game-save.incompatible-sessions',
-          message: 'This revision is incompatible with saved sessions.',
+          message: `This revision is incompatible with saved sessions. Blocking sessions: ${incompatibleSessions.map(blockingSessionLabel).join(', ')}. Export or delete them before saving this revision.`,
           sessionIds: incompatibleSessionIds,
         },
       }

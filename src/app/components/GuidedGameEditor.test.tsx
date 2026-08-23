@@ -1,9 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { GameDefinition } from '../../games/model'
+import * as gameParser from '../../games/parse'
 import { parseGameSource } from '../../games/parse'
+import { MAX_GAME_SOURCE_BYTES } from '../../games/source'
 import { GuidedGameEditor } from './GuidedGameEditor'
 
 const minimalGame: GameDefinition = {
@@ -107,6 +109,43 @@ describe('GuidedGameEditor', () => {
     })
   })
 
+  it('preserves an explicitly selected initial phase when another phase is removed', () => {
+    const latestSource = renderGuided({
+      ...minimalGame,
+      phases: [
+        { id: 'night', label: 'Night' },
+        { id: 'day', label: 'Day' },
+        { id: 'dusk', label: 'Dusk' },
+      ],
+      initialPhase: 'dusk',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Night' }))
+
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: {
+        phases: [{ id: 'day' }, { id: 'dusk' }],
+        initialPhase: 'dusk',
+      },
+    })
+  })
+
+  it('keeps focus in a phase ID input after an accepted ID edit', () => {
+    renderGuided({
+      ...minimalGame,
+      phases: [{ id: 'night', label: 'Night' }],
+      initialPhase: 'night',
+    })
+    const input = screen.getByLabelText('Phase 1 ID')
+    input.focus()
+
+    fireEvent.change(input, { target: { value: 'evening' } })
+
+    expect(screen.getByLabelText('Phase 1 ID')).toHaveFocus()
+    expect(screen.getByLabelText('Phase 1 ID')).toHaveValue('evening')
+  })
+
   it('keeps an incomplete number local until it becomes a valid integer', () => {
     const latestSource = renderGuided()
     const before = latestSource()
@@ -127,6 +166,76 @@ describe('GuidedGameEditor', () => {
       ok: true,
       game: { players: { min: 3, max: 6 } },
     })
+  })
+
+  it('synchronizes the round draft when disabling and re-enabling rounds', () => {
+    renderGuided({
+      ...minimalGame,
+      round: { enabled: true, initial: 5 },
+    })
+
+    expect(screen.getByLabelText('Initial round')).toHaveValue('5')
+    fireEvent.click(screen.getByLabelText('Track rounds'))
+    fireEvent.click(screen.getByLabelText('Track rounds'))
+
+    expect(screen.getByLabelText('Initial round')).toHaveValue('1')
+  })
+
+  it('keeps numeric drafts and errors independent across canonical updates', () => {
+    const latestSource = renderGuided()
+
+    fireEvent.change(screen.getByLabelText('Minimum players'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('Maximum players'), {
+      target: { value: '1' },
+    })
+    fireEvent.change(screen.getByLabelText('Game name'), {
+      target: { value: 'River Council Revised' },
+    })
+
+    expect(screen.getByLabelText('Minimum players')).toHaveValue('')
+    expect(screen.getByLabelText('Maximum players')).toHaveValue('1')
+    expect(
+      screen.getByText('Enter a positive whole number.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Maximum players cannot be lower than minimum players.'),
+    ).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Minimum players'), {
+      target: { value: '2' },
+    })
+    expect(
+      screen.queryByText('Enter a positive whole number.'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Maximum players cannot be lower than minimum players.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Maximum players')).toHaveValue('1')
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: { name: 'River Council Revised', players: { min: 2, max: 6 } },
+    })
+  })
+
+  it('rejects oversized guided serialization before invoking the parser', () => {
+    const parse = vi.spyOn(gameParser, 'parseGameSource')
+    const latestSource = renderGuided()
+    parse.mockClear()
+
+    fireEvent.change(screen.getByLabelText('Rules Markdown'), {
+      target: { value: 'x'.repeat(MAX_GAME_SOURCE_BYTES + 1) },
+    })
+
+    expect(parse).not.toHaveBeenCalled()
+    expect(latestSource()).toBe('')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Game source exceeds the 1 MiB limit.',
+    )
+    expect(screen.getByLabelText('Rules Markdown')).toHaveValue(
+      minimalGame.rulesMarkdown,
+    )
   })
 
   it('locks an existing game ID', () => {
