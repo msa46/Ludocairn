@@ -46,6 +46,19 @@ export function keyForSession(id: string): string {
   return `${SESSION_KEY_PREFIX}${id}`
 }
 
+export function gameIdFromStoredSession(raw: string): string | undefined {
+  try {
+    const value: unknown = JSON.parse(raw)
+    return typeof value === 'object' &&
+      value !== null &&
+      typeof (value as Record<string, unknown>).gameId === 'string'
+      ? ((value as Record<string, unknown>).gameId as string)
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function errorMessage(error: unknown, fallback: string): string {
   if (
     typeof error === 'object' &&

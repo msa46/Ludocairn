@@ -4,6 +4,7 @@ import type { GameDefinition } from '../games/model'
 import type { Session } from '../sessions/model'
 import { LocalStorageSessionRepository } from './local-storage'
 import { MemorySessionRepository } from './memory'
+import { gameIdFromStoredSession } from './repository'
 
 const game: GameDefinition = {
   schemaVersion: 1,
@@ -34,6 +35,17 @@ const session: Session = {
 }
 
 const resolveGame = (id: string) => (id === game.id ? game : undefined)
+
+describe('gameIdFromStoredSession', () => {
+  it('reads only a string game ID from parseable stored session JSON', () => {
+    expect(gameIdFromStoredSession('{"gameId":"alpha","broken":true}')).toBe(
+      'alpha',
+    )
+    expect(gameIdFromStoredSession('{"gameId":42}')).toBeUndefined()
+    expect(gameIdFromStoredSession('["alpha"]')).toBeUndefined()
+    expect(gameIdFromStoredSession('{broken')).toBeUndefined()
+  })
+})
 
 describe('MemorySessionRepository', () => {
   it('round-trips, lists, exposes raw data, and removes sessions', () => {
