@@ -7,6 +7,8 @@ import { gameSourceFitsLimit, MAX_GAME_SOURCE_BYTES } from '../games/source'
 const SHARE_FRAGMENT_PREFIX = 'share-game='
 const SHARE_VERSION = 'v1'
 const BASE64_CHUNK_BYTES = 24_576
+const INFLATE_INPUT_CHUNK_BYTES = 64
+const ADLER_MODULUS = 65_521
 
 export const SHARE_URL_LIMIT = 8_000
 
@@ -151,20 +153,102 @@ function base64UrlToBytes(payload: string): Uint8Array {
   for (let index = 0; index < binary.length; index += 1) {
     bytes[index] = binary.charCodeAt(index)
   }
+  if (bytesToBase64Url(bytes) !== payload) {
+    throw new Error('Invalid base64url payload.')
+  }
   return bytes
 }
 
 class OversizedShareSourceError extends Error {}
+class InvalidZlibStreamError extends Error {}
+
+interface Adler32State {
+  readonly a: number
+  readonly b: number
+}
+
+interface UnzlibInternals {
+  readonly p: Uint8Array
+  readonly s: { readonly f?: number; readonly p: number }
+}
+
+function appendBytes(
+  left: Uint8Array<ArrayBufferLike>,
+  right: Uint8Array<ArrayBufferLike>,
+): Uint8Array<ArrayBufferLike> {
+  const combined = new Uint8Array(left.length + right.length)
+  combined.set(left)
+  combined.set(right, left.length)
+  return combined
+}
+
+function updateAdler32(
+  { a: initialA, b: initialB }: Adler32State,
+  bytes: Uint8Array,
+): Adler32State {
+  let a = initialA
+  let b = initialB
+  for (let index = 0; index < bytes.length; index += 1) {
+    a += bytes[index]
+    b += a
+    if (index % 5_552 === 5_551) {
+      a %= ADLER_MODULUS
+      b %= ADLER_MODULUS
+    }
+  }
+  return { a: a % ADLER_MODULUS, b: b % ADLER_MODULUS }
+}
+
+function adler32Value({ a, b }: Adler32State): number {
+  return ((b << 16) | a) >>> 0
+}
+
+function trailerChecksum(trailer: Uint8Array): number {
+  return (
+    ((trailer[0] << 24) |
+      (trailer[1] << 16) |
+      (trailer[2] << 8) |
+      trailer[3]) >>>
+    0
+  )
+}
+
+function hasCompleteDeflateStream(stream: Unzlib): boolean {
+  const { p, s } = stream as unknown as UnzlibInternals
+  return s.f === 1 && p.length === (s.p === 0 ? 0 : 1)
+}
 
 function inflateWithinSourceLimit(compressed: Uint8Array): string {
   const chunks: Uint8Array[] = []
   let length = 0
+  let checksum: Adler32State = { a: 1, b: 0 }
   const stream = new Unzlib((chunk) => {
     length += chunk.length
     if (length > MAX_GAME_SOURCE_BYTES) throw new OversizedShareSourceError()
     chunks.push(chunk)
+    checksum = updateAdler32(checksum, chunk)
   })
-  stream.push(compressed, true)
+  let trailer: Uint8Array<ArrayBufferLike> = new Uint8Array(0)
+  for (
+    let offset = 0;
+    offset < compressed.length;
+    offset += INFLATE_INPUT_CHUNK_BYTES
+  ) {
+    trailer = appendBytes(
+      trailer,
+      compressed.subarray(offset, offset + INFLATE_INPUT_CHUNK_BYTES),
+    )
+    if (trailer.length > 4) {
+      stream.push(trailer.subarray(0, -4), false)
+      trailer = trailer.slice(-4)
+    }
+  }
+  if (trailer.length !== 4) throw new InvalidZlibStreamError()
+  stream.push(trailer, true)
+  if (!hasCompleteDeflateStream(stream)) throw new InvalidZlibStreamError()
+  if (adler32Value(checksum) !== trailerChecksum(trailer)) {
+    throw new InvalidZlibStreamError()
+  }
 
   const sourceBytes = new Uint8Array(length)
   let offset = 0

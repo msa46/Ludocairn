@@ -1,4 +1,4 @@
-import { zlibSync, strToU8 } from 'fflate'
+import { strToU8, Unzlib, zlibSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
 import type { GameDefinition } from '../games/model'
@@ -67,6 +67,42 @@ function base64Url(bytes: Uint8Array): string {
     .replace(/=+$/, '')
 }
 
+function base64UrlBytes(payload: string): Uint8Array {
+  const base64 = payload.replaceAll('-', '+').replaceAll('_', '/')
+  const binary = atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4))
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0))
+}
+
+function shareHash(bytes: Uint8Array): string {
+  return `#share-game=v1.${base64Url(bytes)}`
+}
+
+function parseWithInflatedByteCount(hash: string) {
+  const originalPush = Unzlib.prototype.push
+  let inflatedBytes = 0
+  Unzlib.prototype.push = function (
+    this: Unzlib,
+    chunk: Uint8Array,
+    final?: boolean,
+  ) {
+    const originalOnData = this.ondata
+    this.ondata = (output, outputFinal) => {
+      inflatedBytes += output.length
+      originalOnData(output, outputFinal)
+    }
+    try {
+      return originalPush.call(this, chunk, final)
+    } finally {
+      this.ondata = originalOnData
+    }
+  }
+  try {
+    return { result: parseGameShareHash(hash), inflatedBytes }
+  } finally {
+    Unzlib.prototype.push = originalPush
+  }
+}
+
 describe('game files', () => {
   it('parses a valid source into a non-sensitive review preview', () => {
     expect(parseGameFile(cafeSource)).toMatchObject({
@@ -126,6 +162,82 @@ describe('game files', () => {
       ok: false,
       diagnostic: { code: 'game-share.url-too-long' },
     })
+  })
+
+  it('rejects a shared payload with a modified Adler-32 checksum', () => {
+    const shared = createGameShareUrl(cafeSource, 'https://example.test/app/')
+    expect(shared.ok).toBe(true)
+    if (!shared.ok) return
+
+    const payload = new URL(shared.url).hash.slice('#share-game=v1.'.length)
+    const compressed = base64UrlBytes(payload)
+    const checksumCorrupted = compressed.slice()
+    checksumCorrupted[checksumCorrupted.length - 1] ^= 1
+
+    expect(parseGameShareHash(shareHash(checksumCorrupted))).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'game-share.decompression-failed' },
+    })
+  })
+
+  it('rejects trailing and incomplete zlib streams', () => {
+    const shared = createGameShareUrl(cafeSource, 'https://example.test/app/')
+    expect(shared.ok).toBe(true)
+    if (!shared.ok) return
+
+    const payload = new URL(shared.url).hash.slice('#share-game=v1.'.length)
+    const compressed = base64UrlBytes(payload)
+    const trailing = new Uint8Array(compressed.length + 3)
+    trailing.set(compressed)
+    trailing.set([0, 1, 2], compressed.length)
+
+    expect(parseGameShareHash(shareHash(trailing))).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'game-share.decompression-failed' },
+    })
+    expect(
+      parseGameShareHash(shareHash(compressed.slice(0, -1))),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'game-share.decompression-failed' },
+    })
+  })
+
+  it('rejects noncanonical base64url tail bits', () => {
+    const shared = createGameShareUrl(cafeSource, 'https://example.test/app/')
+    expect(shared.ok).toBe(true)
+    if (!shared.ok) return
+
+    const payload = new URL(shared.url).hash.slice('#share-game=v1.'.length)
+    const tailBits = payload.length % 4 === 2 ? 4 : 2
+    const tailMask = (1 << tailBits) - 1
+    const alphabet =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+    const finalIndex = alphabet.indexOf(payload.at(-1) ?? '')
+    const noncanonicalFinal =
+      alphabet[(finalIndex & ~tailMask) | ((finalIndex + 1) & tailMask)]
+    const noncanonicalPayload = `${payload.slice(0, -1)}${noncanonicalFinal}`
+
+    expect(
+      parseGameShareHash(`#share-game=v1.${noncanonicalPayload}`),
+    ).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'game-share.invalid-payload' },
+    })
+  })
+
+  it('stops streaming inflate shortly after the source limit is crossed', () => {
+    const oversized = `${cafeSource}${'x'.repeat(4 * MAX_GAME_SOURCE_BYTES)}`
+    const { result, inflatedBytes } = parseWithInflatedByteCount(
+      shareHash(zlibSync(strToU8(oversized))),
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostic: { code: 'game-share.oversized-source' },
+    })
+    expect(inflatedBytes).toBeGreaterThan(MAX_GAME_SOURCE_BYTES)
+    expect(inflatedBytes).toBeLessThanOrEqual(MAX_GAME_SOURCE_BYTES + 70_000)
   })
 
   it('creates an exact UTF-8 Markdown download', async () => {
