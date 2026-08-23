@@ -346,4 +346,21 @@ describe('RoleEditor', () => {
       'Role summaries must be non-empty',
     )
   })
+
+  it('keeps focus while successive valid role edits are accepted', () => {
+    renderRoleEditor({
+      roles: [{ id: 'oracle', label: 'Oracle', summary: 'Reads the signal.' }],
+    })
+    const label = screen.getByLabelText('Role 1 label')
+    label.focus()
+
+    fireEvent.change(label, { target: { value: 'Oracles' } })
+    expect(label).toHaveFocus()
+    expect(screen.getByLabelText('Role 1 label')).toBe(label)
+
+    fireEvent.change(label, { target: { value: 'Oraclese' } })
+    expect(label).toHaveFocus()
+    expect(screen.getByLabelText('Role 1 label')).toBe(label)
+    expect(label).toHaveValue('Oraclese')
+  })
 })

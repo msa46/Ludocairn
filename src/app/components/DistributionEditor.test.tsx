@@ -326,4 +326,34 @@ describe('DistributionEditor', () => {
       'needs a non-negative count',
     )
   })
+
+  it('keeps focus while successive valid distribution edits are accepted', () => {
+    renderDistributionEditor(
+      roles,
+      { min: 500, max: 500 },
+      {
+        roleDistributions: [
+          {
+            players: { min: 500, max: 500 },
+            counts: { oracle: 1, villager: 'remaining' },
+          },
+        ],
+      },
+    )
+    const count = screen.getByLabelText('Distribution band 1 Oracle count')
+    count.focus()
+
+    fireEvent.change(count, { target: { value: '12' } })
+    expect(count).toHaveFocus()
+    expect(screen.getByLabelText('Distribution band 1 Oracle count')).toBe(
+      count,
+    )
+
+    fireEvent.change(count, { target: { value: '123' } })
+    expect(count).toHaveFocus()
+    expect(screen.getByLabelText('Distribution band 1 Oracle count')).toBe(
+      count,
+    )
+    expect(count).toHaveValue('123')
+  })
 })

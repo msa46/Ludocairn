@@ -35,6 +35,12 @@ interface RoleDraft {
   readonly tags: string
 }
 
+interface RoleDraftState {
+  readonly committedRevision: string
+  readonly pendingRevision?: string
+  readonly values: readonly RoleDraft[]
+}
+
 const ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
 const SELECTOR_PROPERTIES = ['ids', 'suits', 'ranks', 'arcana', 'tags'] as const
 
@@ -149,7 +155,6 @@ export function RoleEditor({ roles, deck, ...props }: RoleEditorProps) {
   const committedRevision = committedRolesRevision(roles, deck)
   return (
     <RoleEditorForm
-      key={committedRevision}
       {...props}
       committedRevision={committedRevision}
       deck={deck}
@@ -177,20 +182,56 @@ function RoleEditorForm({
     assignments,
     fields,
   )
-  const [drafts, setDraftsState] = useState(() => roles.map(roleDraft))
+  const [draftState, setDraftState] = useState<RoleDraftState>(() => ({
+    committedRevision,
+    values: roles.map(roleDraft),
+  }))
   const [errorState, setErrorState] = useState<{
     readonly context: string
     readonly message: string
   }>()
+  let currentDraftState = draftState
+  let currentErrorState = errorState
+  if (committedRevision === draftState.pendingRevision) {
+    currentDraftState = {
+      committedRevision,
+      values: draftState.values,
+    }
+    setDraftState(currentDraftState)
+  } else if (committedRevision !== draftState.committedRevision) {
+    currentDraftState = {
+      committedRevision,
+      values: roles.map(roleDraft),
+    }
+    setDraftState(currentDraftState)
+    if (currentErrorState !== undefined) {
+      currentErrorState = undefined
+      setErrorState(undefined)
+    }
+  }
+  if (
+    currentErrorState !== undefined &&
+    currentErrorState.context !== errorContext
+  ) {
+    currentErrorState = undefined
+    setErrorState(undefined)
+  }
+  const drafts = currentDraftState.values
   const error =
-    errorState?.context === errorContext ? errorState.message : undefined
+    currentErrorState?.context === errorContext
+      ? currentErrorState.message
+      : undefined
 
   function setError(message: string | undefined) {
     setErrorState(message ? { context: errorContext, message } : undefined)
   }
 
-  function setDrafts(values: readonly RoleDraft[]) {
-    setDraftsState([...values])
+  function setDrafts(values: readonly RoleDraft[], pendingRevision?: string) {
+    setDraftState({
+      committedRevision,
+      ...(pendingRevision ? { pendingRevision } : {}),
+      values: [...values],
+    })
   }
 
   function validateDraft(
@@ -255,8 +296,6 @@ function RoleEditorForm({
     const nextDrafts = drafts.map((draft, roleIndex) =>
       roleIndex === index ? nextDraft : draft,
     )
-    setDrafts(nextDrafts)
-
     if (nextDraft.id !== previousRole.id) {
       const sections = dependencySections(
         previousRole.id,
@@ -265,17 +304,23 @@ function RoleEditorForm({
         fields,
       )
       if (sections.length > 0) {
+        setDrafts(nextDrafts)
         setError(dependencyMessage(previousRole.label, sections))
         return
       }
     }
 
     const nextRole = validateDraft(nextDraft, index)
-    if (!nextRole) return
-    setError(undefined)
-    onChange(
-      roles.map((role, roleIndex) => (roleIndex === index ? nextRole : role)),
+    if (!nextRole) {
+      setDrafts(nextDrafts)
+      return
+    }
+    const nextRoles = roles.map((role, roleIndex) =>
+      roleIndex === index ? nextRole : role,
     )
+    setDrafts(nextDrafts, committedRolesRevision(nextRoles, deck))
+    setError(undefined)
+    onChange(nextRoles)
   }
 
   function addRole() {
@@ -295,9 +340,13 @@ function RoleEditorForm({
       label: `Role ${roles.length + 1}`,
       summary: 'Describe this role.',
     }
-    setDrafts([...drafts, roleDraft(role)])
+    const nextRoles = [...roles, role]
+    setDrafts(
+      [...drafts, roleDraft(role)],
+      committedRolesRevision(nextRoles, deck),
+    )
     setError(undefined)
-    onChange([...roles, role])
+    onChange(nextRoles)
   }
 
   function moveRole(index: number, direction: -1 | 1) {
@@ -310,7 +359,7 @@ function RoleEditorForm({
     const nextDrafts = [...drafts]
     const [draft] = nextDrafts.splice(index, 1)
     if (draft) nextDrafts.splice(destination, 0, draft)
-    setDrafts(nextDrafts)
+    setDrafts(nextDrafts, committedRolesRevision(nextRoles, deck))
     setError(undefined)
     onChange(nextRoles)
   }
@@ -328,9 +377,13 @@ function RoleEditorForm({
       setError(dependencyMessage(role.label, sections))
       return
     }
-    setDrafts(drafts.filter((_, roleIndex) => roleIndex !== index))
+    const nextRoles = roles.filter((_, roleIndex) => roleIndex !== index)
+    setDrafts(
+      drafts.filter((_, roleIndex) => roleIndex !== index),
+      committedRolesRevision(nextRoles, deck),
+    )
     setError(undefined)
-    onChange(roles.filter((_, roleIndex) => roleIndex !== index))
+    onChange(nextRoles)
   }
 
   function enableCard(index: number, enabled: boolean) {

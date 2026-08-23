@@ -27,6 +27,12 @@ interface DistributionDraft {
   readonly counts: Readonly<Record<string, string>>
 }
 
+interface DistributionDraftState {
+  readonly committedRevision: string
+  readonly pendingRevision?: string
+  readonly values: readonly DistributionDraft[]
+}
+
 type DraftResult =
   | { readonly ok: true; readonly value: readonly RoleDistribution[] }
   | { readonly ok: false; readonly message: string }
@@ -176,7 +182,6 @@ export function DistributionEditor({
   )
   return (
     <DistributionEditorForm
-      key={committedRevision}
       {...props}
       committedRevision={committedRevision}
       players={players}
@@ -203,15 +208,45 @@ function DistributionEditorForm({
     roles,
     assignments,
   )
-  const [drafts, setDrafts] = useState(() =>
-    roleDistributions.map(distributionDraft),
-  )
+  const [draftState, setDraftState] = useState<DistributionDraftState>(() => ({
+    committedRevision,
+    values: roleDistributions.map(distributionDraft),
+  }))
   const [errorState, setErrorState] = useState<{
     readonly context: string
     readonly message: string
   }>()
+  let currentDraftState = draftState
+  let currentErrorState = errorState
+  if (committedRevision === draftState.pendingRevision) {
+    currentDraftState = {
+      committedRevision,
+      values: draftState.values,
+    }
+    setDraftState(currentDraftState)
+  } else if (committedRevision !== draftState.committedRevision) {
+    currentDraftState = {
+      committedRevision,
+      values: roleDistributions.map(distributionDraft),
+    }
+    setDraftState(currentDraftState)
+    if (currentErrorState !== undefined) {
+      currentErrorState = undefined
+      setErrorState(undefined)
+    }
+  }
+  if (
+    currentErrorState !== undefined &&
+    currentErrorState.context !== errorContext
+  ) {
+    currentErrorState = undefined
+    setErrorState(undefined)
+  }
+  const drafts = currentDraftState.values
   const error =
-    errorState?.context === errorContext ? errorState.message : undefined
+    currentErrorState?.context === errorContext
+      ? currentErrorState.message
+      : undefined
   const completeDrafts = parseDrafts(drafts, roles, players)
   const canEnableAssignments =
     completeDrafts.ok && roles.length > 0 && completeDrafts.value.length > 0
@@ -221,13 +256,28 @@ function DistributionEditorForm({
     setErrorState(message ? { context: errorContext, message } : undefined)
   }
 
+  function setDrafts(
+    values: readonly DistributionDraft[],
+    pendingRevision?: string,
+  ) {
+    setDraftState({
+      committedRevision,
+      ...(pendingRevision ? { pendingRevision } : {}),
+      values: [...values],
+    })
+  }
+
   function updateDrafts(nextDrafts: readonly DistributionDraft[]) {
-    setDrafts([...nextDrafts])
     const parsed = parseDrafts(nextDrafts, roles, players)
     if (!parsed.ok) {
+      setDrafts(nextDrafts)
       setError(parsed.message)
       return
     }
+    setDrafts(
+      nextDrafts,
+      committedDistributionsRevision(parsed.value, roles, players),
+    )
     setError(undefined)
     onChange({
       roleDistributions: parsed.value,
