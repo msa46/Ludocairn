@@ -31,7 +31,6 @@
 **Files:**
 - Create: `src/games/source.ts`
 - Create: `src/games/source.test.ts`
-- Modify: `src/games/model.ts`
 
 **Interfaces:**
 - Consumes: `GameDefinition` and `parseGameSource(source, sourceName)`.
@@ -121,7 +120,7 @@ Expected: PASS with no diagnostics or console warnings.
 - [ ] **Step 5: Commit the source foundation**
 
 ```bash
-git add src/games/model.ts src/games/source.ts src/games/source.test.ts
+git add src/games/source.ts src/games/source.test.ts
 git commit -m "feat: serialize canonical custom game source"
 ```
 
@@ -461,7 +460,7 @@ git commit -m "feat: export and share custom games"
 - [ ] **Step 1: Write failing store and App integration tests**
 
 ```tsx
-it('loads a stored custom game and resolves its saved session after refresh', async () => {
+it('loads a stored custom game into the catalog', async () => {
   const gameRepository = new MemoryGameRepository({
     initial: { [keyForGame('custom-game')]: customSource },
   })
@@ -469,6 +468,28 @@ it('loads a stored custom game and resolves its saved session after refresh', as
   expect(screen.getByRole('heading', { name: 'Custom Game' })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('link', { name: 'Open Custom Game' }))
   expect(screen.getByRole('button', { name: 'Start session' })).toBeInTheDocument()
+})
+
+it('resolves a saved custom-game session after refresh', async () => {
+  const gameRepository = new MemoryGameRepository({
+    initial: { [keyForGame('custom-game')]: customSource },
+  })
+  const sessionRepository = new MemorySessionRepository((id) => {
+    const loaded = gameRepository.load(id)
+    return loaded.ok ? loaded.game : undefined
+  })
+  sessionRepository.save(customSession)
+  window.history.replaceState({}, '', '/?session=custom-session')
+  render(
+    <App
+      games={bundledGames}
+      gameRepository={gameRepository}
+      repository={sessionRepository}
+    />,
+  )
+  expect(
+    await screen.findByRole('heading', { level: 1, name: 'Custom Friday' }),
+  ).toBeInTheDocument()
 })
 
 it('does not let a custom record shadow a bundled game', () => {
