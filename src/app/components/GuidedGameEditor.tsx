@@ -1,7 +1,10 @@
 import { useState } from 'react'
 
 import type { GameDefinition, PhaseDefinition } from '../../games/model'
+import { parseGameSource } from '../../games/parse'
 import { serializeGameSource } from '../../games/source'
+import { DistributionEditor } from './DistributionEditor'
+import { RoleEditor } from './RoleEditor'
 
 interface GuidedGameEditorProps {
   readonly game: GameDefinition
@@ -43,9 +46,19 @@ export function GuidedGameEditor({
 }: GuidedGameEditorProps) {
   const [drafts, setDrafts] = useState(() => numericDraftsFor(game))
   const [numericError, setNumericError] = useState<string>()
+  const [definitionError, setDefinitionError] = useState<string>()
 
   function emit(next: GameDefinition) {
-    onChange(serializeGameSource(next))
+    const source = serializeGameSource(next)
+    const parsed = parseGameSource(source, game.source)
+    if (!parsed.ok) {
+      setDefinitionError(
+        parsed.diagnostics[0]?.message ?? 'The game definition is invalid.',
+      )
+      return
+    }
+    setDefinitionError(undefined)
+    onChange(source)
   }
 
   function replacePhase(index: number, next: PhaseDefinition) {
@@ -208,6 +221,25 @@ export function GuidedGameEditor({
         </label>
       </fieldset>
 
+      <RoleEditor
+        assignments={game.assignments}
+        deck={game.deck}
+        fields={game.fields}
+        roleDistributions={game.roleDistributions}
+        roles={game.roles}
+        onChange={(roles) => emit({ ...game, roles })}
+      />
+
+      <DistributionEditor
+        assignments={game.assignments}
+        players={game.players}
+        roleDistributions={game.roleDistributions}
+        roles={game.roles}
+        onChange={({ roleDistributions, assignments }) =>
+          emit({ ...game, roleDistributions, assignments })
+        }
+      />
+
       <fieldset>
         <legend>Session flow</legend>
         <div className="form-actions">
@@ -330,7 +362,9 @@ export function GuidedGameEditor({
         </label>
       </fieldset>
 
-      {numericError && <p role="alert">{numericError}</p>}
+      {(numericError || definitionError) && (
+        <p role="alert">{numericError ?? definitionError}</p>
+      )}
     </section>
   )
 }

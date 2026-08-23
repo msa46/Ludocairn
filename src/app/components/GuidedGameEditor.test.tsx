@@ -134,4 +134,91 @@ describe('GuidedGameEditor', () => {
 
     expect(screen.getByLabelText('Game ID')).toBeDisabled()
   })
+
+  it('does not emit a deck change that invalidates an existing card selector', () => {
+    const latestSource = renderGuided({
+      ...minimalGame,
+      roles: [
+        {
+          id: 'heart-reader',
+          label: 'Heart Reader',
+          summary: 'Reads hearts.',
+          card: { label: 'Heart', selector: { suits: ['hearts'] } },
+        },
+      ],
+    })
+    const before = latestSource()
+
+    fireEvent.change(screen.getByLabelText('Deck'), {
+      target: { value: 'tarot' },
+    })
+
+    expect(latestSource()).toBe(before)
+    expect(screen.getByRole('alert')).toHaveTextContent(/unknown suits value/i)
+  })
+
+  it('composes valid role distributions and digital dealing into the source', () => {
+    const latestSource = renderGuided({
+      ...minimalGame,
+      players: { min: 5, max: 8 },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add role' }))
+    fireEvent.change(screen.getByLabelText('Role 1 ID'), {
+      target: { value: 'oracle' },
+    })
+    fireEvent.change(screen.getByLabelText('Role 1 label'), {
+      target: { value: 'Oracle' },
+    })
+    fireEvent.change(screen.getByLabelText('Role 1 summary'), {
+      target: { value: 'Reads the signal.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add role' }))
+    fireEvent.change(screen.getByLabelText('Role 2 ID'), {
+      target: { value: 'villager' },
+    })
+    fireEvent.change(screen.getByLabelText('Role 2 label'), {
+      target: { value: 'Villager' },
+    })
+    fireEvent.change(screen.getByLabelText('Role 2 summary'), {
+      target: { value: 'Finds the truth.' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add distribution band' }),
+    )
+    fireEvent.change(
+      screen.getByLabelText('Distribution band 1 minimum players'),
+      { target: { value: '5' } },
+    )
+    fireEvent.change(
+      screen.getByLabelText('Distribution band 1 maximum players'),
+      { target: { value: '8' } },
+    )
+    fireEvent.change(
+      screen.getByLabelText('Distribution band 1 Oracle count'),
+      { target: { value: '1' } },
+    )
+    fireEvent.change(
+      screen.getByLabelText('Distribution band 1 Villager count'),
+      { target: { value: 'remaining' } },
+    )
+    fireEvent.click(screen.getByLabelText('Enable digital dealing'))
+
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: {
+        roles: [{ id: 'oracle' }, { id: 'villager' }],
+        roleDistributions: [
+          {
+            players: { min: 5, max: 8 },
+            counts: { oracle: 1, villager: 'remaining' },
+          },
+        ],
+        assignments: {
+          method: 'shuffle',
+          visibility: { players: 'own', gameMaster: 'all' },
+        },
+      },
+    })
+  })
 })
