@@ -1,11 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { loadBundledGames } from '../games/catalog'
 import type { GameDefinition } from '../games/model'
 import type { RegisterWorker } from '../pwa/register'
 import type { IdProvider, Session } from '../sessions/model'
+import { keyForGame } from '../storage/game-repository'
+import { MemoryGameRepository } from '../storage/memory-game-storage'
 import { MemorySessionRepository } from '../storage/memory'
+import { keyForSession } from '../storage/repository'
 import { App } from './App'
 
 const catalog = loadBundledGames()
@@ -118,13 +121,136 @@ const journeyGames = catalog.games.map((game) =>
   game.id === trackerVeilquorum.id ? trackerVeilquorum : game,
 )
 
+const customSource = `---
+schema_version: 1
+id: custom-game
+name: Custom Game
+summary: A browser-authored fixture.
+deck: standard-52
+players:
+  min: 1
+session:
+  round:
+    enabled: false
+  player_fields: []
+---
+
+# Custom Game
+`
+
+const customSession: Session = {
+  storageVersion: 1,
+  id: 'custom-session',
+  name: 'Custom Friday',
+  gameId: 'custom-game',
+  gameSchemaVersion: 1,
+  players: [],
+  notes: '',
+  createdAt: '2026-08-23T00:00:00.000Z',
+  updatedAt: '2026-08-23T00:00:00.000Z',
+}
+
 function ids(...values: string[]): IdProvider {
   let index = 0
   return { next: () => values[index++] ?? `generated-${index}` }
 }
 
 describe('App', () => {
-  beforeEach(() => window.history.replaceState({}, '', '/'))
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/')
+    window.localStorage.removeItem(keyForSession(customSession.id))
+  })
+
+  afterEach(() => {
+    window.localStorage.removeItem(keyForSession(customSession.id))
+  })
+
+  it('loads a stored custom game into the catalog', () => {
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: customSource },
+    })
+    const repository = new MemorySessionRepository(() => veilquorum)
+
+    render(
+      <App
+        games={[veilquorum]}
+        gameRepository={gameRepository}
+        repository={repository}
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Custom Game' }),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('link', { name: 'Open Custom Game' }))
+    expect(
+      screen.getByRole('button', { name: 'Start session' }),
+    ).toBeInTheDocument()
+  })
+
+  it('resolves a saved custom-game session after refresh', async () => {
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('custom-game')]: customSource },
+    })
+    const sessionRepository = new MemorySessionRepository((id) => {
+      const loaded = gameRepository.load(id)
+      return loaded.ok ? loaded.game : undefined
+    })
+    sessionRepository.save(customSession)
+    window.history.replaceState({}, '', '/?session=custom-session')
+
+    render(
+      <App
+        games={[veilquorum]}
+        gameRepository={gameRepository}
+        repository={sessionRepository}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Custom Friday' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the default session resolver aware of games saved after initialization', async () => {
+    const gameRepository = new MemoryGameRepository()
+
+    render(<App games={[veilquorum]} gameRepository={gameRepository} />)
+    gameRepository.save(customSource)
+    window.localStorage.setItem(
+      keyForSession(customSession.id),
+      JSON.stringify(customSession),
+    )
+    window.history.replaceState({}, '', '/?session=custom-session')
+    fireEvent.popState(window)
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Custom Friday' }),
+    ).toBeInTheDocument()
+  })
+
+  it('does not let a custom record shadow a bundled game', () => {
+    const collisionSource = customSource
+      .replace('id: custom-game', 'id: veilquorum')
+      .replace('name: Custom Game', 'name: Veilquorum')
+    const gameRepository = new MemoryGameRepository({
+      initial: { [keyForGame('veilquorum')]: collisionSource },
+    })
+    const repository = new MemorySessionRepository(() => veilquorum)
+
+    render(
+      <App
+        games={[veilquorum]}
+        gameRepository={gameRepository}
+        repository={repository}
+      />,
+    )
+
+    expect(screen.getAllByRole('heading', { name: 'Veilquorum' })).toHaveLength(
+      1,
+    )
+    expect(screen.getByText(/custom game ID conflicts/i)).toBeInTheDocument()
+  })
 
   it('renders the catalog in a semantic application shell', () => {
     const repository = new MemorySessionRepository(() => veilquorum)

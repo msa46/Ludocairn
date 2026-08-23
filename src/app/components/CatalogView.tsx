@@ -6,6 +6,8 @@ import { RecoveryCard } from './RecoveryCard'
 
 interface CatalogViewProps {
   readonly games: readonly GameDefinition[]
+  readonly customGameIds: ReadonlySet<string>
+  readonly gameRecovery: ReactNode
   readonly records: readonly RepositoryRecord[]
   readonly navigate: (search: string) => void
   readonly removeRecord: (id: string) => void
@@ -14,6 +16,8 @@ interface CatalogViewProps {
 
 export function CatalogView({
   games,
+  customGameIds,
+  gameRecovery,
   records,
   navigate,
   removeRecord,
@@ -36,12 +40,15 @@ export function CatalogView({
       <section aria-labelledby="games-title">
         <div className="section-heading">
           <h2 id="games-title">Game shelf</h2>
-          <span>{games.length} original game</span>
+          <span>
+            {games.length} game{games.length === 1 ? '' : 's'}
+          </span>
         </div>
         <div className="catalog-grid">
           {games.map((game, index) => (
             <article className="game-card" key={game.id}>
               <p className="card-index">{String(index + 1).padStart(2, '0')}</p>
+              {customGameIds.has(game.id) && <p>Custom game</p>}
               <h3>{game.name}</h3>
               <p>{game.summary}</p>
               <dl className="game-facts">
@@ -71,6 +78,13 @@ export function CatalogView({
           ))}
         </div>
       </section>
+
+      {gameRecovery && (
+        <section aria-labelledby="game-recovery-title">
+          <h2 id="game-recovery-title">Custom games needing attention</h2>
+          {gameRecovery}
+        </section>
+      )}
 
       {sessions.length > 0 && (
         <section aria-labelledby="sessions-title">

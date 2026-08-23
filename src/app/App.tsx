@@ -18,7 +18,9 @@ import {
   updateNotes,
   updatePlayerField,
 } from '../sessions/operations'
+import { LocalStorageGameRepository } from '../storage/local-game-storage'
 import { LocalStorageSessionRepository } from '../storage/local-storage'
+import type { GameRepository } from '../storage/game-repository'
 import type { SessionRepository } from '../storage/repository'
 import { CatalogView } from './components/CatalogView'
 import { ImportSession } from './components/ImportSession'
@@ -26,10 +28,12 @@ import { PlayerAssignmentView } from './components/PlayerAssignmentView'
 import { RulesView } from './components/RulesView'
 import { SessionSetup } from './components/SessionSetup'
 import { TrackerView } from './components/TrackerView'
+import { useGameStore } from './useGameStore'
 import { useSessionStore } from './useSessionStore'
 
 interface AppProps {
   readonly games?: readonly GameDefinition[]
+  readonly gameRepository?: GameRepository
   readonly repository?: SessionRepository
   readonly clock?: Clock
   readonly ids?: IdProvider
@@ -48,15 +52,31 @@ const noPwaRegistration: RegisterWorker = () => () => Promise.resolve()
 
 export function App({
   games = bundledGames,
+  gameRepository,
   repository,
   clock = systemClock,
   ids = systemIds,
   random = Math.random,
   registerWorker = noPwaRegistration,
 }: AppProps) {
+  const storedGames = useMemo(
+    () => gameRepository ?? new LocalStorageGameRepository(window.localStorage),
+    [gameRepository],
+  )
+  const {
+    games: catalogGames,
+    customIds,
+    recovery: gameRecovery,
+  } = useGameStore(storedGames, games)
   const resolveGame = useMemo(
-    () => (id: string) => games.find((game) => game.id === id),
-    [games],
+    () => (id: string) => {
+      const bundledGame = games.find((game) => game.id === id)
+      if (bundledGame) return bundledGame
+
+      const loaded = storedGames.load(id)
+      return loaded.ok ? loaded.game : undefined
+    },
+    [games, storedGames],
   )
   const sessionRepository = useMemo(
     () =>
@@ -82,7 +102,9 @@ export function App({
   const gameId = parameters.get('game')
   const sessionId = parameters.get('session')
   const requestedView = parameters.get('view')
-  const game = gameId ? resolveGame(gameId) : undefined
+  const game = gameId
+    ? catalogGames.find((candidate) => candidate.id === gameId)
+    : undefined
   const sessionGame = session ? resolveGame(session.gameId) : undefined
 
   useEffect(() => {
@@ -266,7 +288,27 @@ export function App({
   } else {
     content = (
       <CatalogView
-        games={games}
+        games={catalogGames}
+        customGameIds={customIds}
+        gameRecovery={
+          gameRecovery.length > 0 && (
+            <div>
+              {gameRecovery.map((record) => (
+                <article
+                  className="recovery-card"
+                  key={record.id || 'storage-error'}
+                >
+                  <h3>{record.id || 'Browser storage'}</h3>
+                  <p>
+                    {record.ok
+                      ? `Custom game ID conflicts with bundled game "${record.id}".`
+                      : record.diagnostic.message}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )
+        }
         records={sessionRepository.list()}
         navigate={navigate}
         removeRecord={(id) => {
