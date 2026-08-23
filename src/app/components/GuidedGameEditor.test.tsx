@@ -259,4 +259,37 @@ describe('GuidedGameEditor', () => {
       game: { name: 'River Council Revised' },
     })
   })
+
+  it('composes valid tracker fields into canonical game source', () => {
+    const latestSource = renderGuided()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add tracker field' }))
+    fireEvent.change(screen.getByLabelText('Field 1 ID'), {
+      target: { value: 'temperament' },
+    })
+    fireEvent.change(screen.getByLabelText('Field 1 type'), {
+      target: { value: 'choice' },
+    })
+    fireEvent.change(screen.getByLabelText('Field 1 choices'), {
+      target: { value: 'steady, daring' },
+    })
+    fireEvent.change(screen.getByLabelText('Field 1 default'), {
+      target: { value: 'steady' },
+    })
+
+    expect(parseLatest(latestSource)).toMatchObject({
+      ok: true,
+      game: {
+        fields: [
+          {
+            id: 'temperament',
+            label: 'Field 1',
+            type: 'choice',
+            choices: ['steady', 'daring'],
+            default: 'steady',
+          },
+        ],
+      },
+    })
+  })
 })

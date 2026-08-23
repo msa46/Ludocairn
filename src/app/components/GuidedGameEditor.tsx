@@ -4,6 +4,7 @@ import type { GameDefinition, PhaseDefinition } from '../../games/model'
 import { parseGameSource } from '../../games/parse'
 import { serializeGameSource } from '../../games/source'
 import { DistributionEditor } from './DistributionEditor'
+import { FieldEditor } from './FieldEditor'
 import { RoleEditor } from './RoleEditor'
 
 interface GuidedGameEditorProps {
@@ -228,6 +229,12 @@ export function GuidedGameEditor({
         roleDistributions={game.roleDistributions}
         roles={game.roles}
         onChange={(roles) => emit({ ...game, roles })}
+      />
+
+      <FieldEditor
+        fields={game.fields}
+        roles={game.roles}
+        onChange={(fields) => emit({ ...game, fields })}
       />
 
       <DistributionEditor
