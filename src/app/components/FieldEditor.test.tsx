@@ -135,6 +135,46 @@ describe('FieldEditor', () => {
     expect(latestFields()).toBe(before)
   })
 
+  it.each(['yes,', 'yes,,no', ',yes,no'])(
+    'keeps the choice draft %s local until every comma-separated choice is complete',
+    (draft) => {
+      const latestFields = renderFieldEditor([
+        {
+          id: 'answer',
+          label: 'Answer',
+          type: 'choice',
+          choices: ['yes', 'no'],
+          default: 'yes',
+        },
+      ])
+      const before = latestFields()
+
+      fireEvent.change(screen.getByLabelText('Field 1 choices'), {
+        target: { value: draft },
+      })
+
+      expect(
+        screen.getByText(
+          'Complete each comma-separated choice before adding another.',
+        ),
+      ).toBeInTheDocument()
+      expect(latestFields()).toBe(before)
+
+      fireEvent.change(screen.getByLabelText('Field 1 choices'), {
+        target: { value: 'yes, no' },
+      })
+      expect(latestFields()).toEqual([
+        {
+          id: 'answer',
+          label: 'Answer',
+          type: 'choice',
+          choices: ['yes', 'no'],
+          default: 'yes',
+        },
+      ])
+    },
+  )
+
   it('preserves ID-input focus after a valid controlled field update', () => {
     const latestFields = renderFieldEditor()
     addField('boolean')

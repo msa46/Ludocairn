@@ -108,10 +108,7 @@ function newFieldDraft(id: string, label: string): FieldDraft {
 }
 
 function choiceValues(value: string): readonly string[] {
-  return value
-    .split(',')
-    .map((choice) => choice.trim())
-    .filter(Boolean)
+  return value.split(',').map((choice) => choice.trim())
 }
 
 function finiteNumber(value: string): number | undefined {
@@ -154,8 +151,11 @@ function parseDrafts(
         break
       case 'choice': {
         const choices = choiceValues(draft.choices)
-        if (
-          choices.length === 0 ||
+        if (choices.some((choice) => choice === '')) {
+          messages.push(
+            'Complete each comma-separated choice before adding another.',
+          )
+        } else if (
           choices.some((choice) => !ID_PATTERN.test(choice)) ||
           new Set(choices).size !== choices.length
         ) {
