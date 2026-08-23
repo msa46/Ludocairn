@@ -39,7 +39,7 @@ Do not guess a material rule. Ask. Do not copy, translate, lightly rewrite, or
 closely paraphrase a published rulebook, examples, flavor, characters,
 branding, artwork, or layout.
 
-### 2. Map the mechanics to the complete version 1 schema
+### 2. Map the mechanics to the version 1 schema
 
 Read [`docs/game-format.md`](docs/game-format.md) as the authoritative schema.
 Use only these top-level properties:
@@ -48,16 +48,20 @@ Use only these top-level properties:
   `players`, and `session`;
 - optional `roles`, `role_distributions`, and `assignments`.
 
-Validate every branch, including branches the game does not use:
+Use the complete reference to validate every applicable branch. In particular,
+check these rejection-relevant constraints rather than relying on the shorter
+example below:
 
 - IDs start with a lowercase ASCII letter and contain lowercase letters,
   digits, and single hyphens only. IDs are unique in their scope.
+- `name` and `summary` are non-empty strings after trimming.
 - `deck` is exactly `standard-52` or `tarot`. `players.min` is a positive
   integer; optional `players.max` is not below it.
 - Every role has `id`, `label`, and `summary`, with optional `team` and an
   optional card `{ label, selector }`. A selector uses one or more of `ids`,
   `suits`, `ranks`, `arcana`, or `tags`, and every selector value must be valid
-  for the chosen deck.
+  for the chosen deck. Populated selector properties combine with logical AND,
+  and the complete combination must select at least one card.
 - Role-distribution bands require roles and a finite maximum player count.
   Ordered adjacent bands cover every supported count exactly once. Every band
   names every role; counts are non-negative integers or one `remaining` value.
@@ -71,11 +75,13 @@ Validate every branch, including branches the game does not use:
   `session.initial_phase`. Omit both when the game has no phases.
 - `session.round` is required. Use `{ enabled: false }`, or use
   `{ enabled: true, initial: <positive integer> }`.
-- `session.player_fields` is an ordered list of unique field IDs. A `boolean`
-  default is a Boolean; a `choice` has unique `choices` and a default in that
-  list; a `role` default names a declared role and has no `choices`; a `number`
-  has a finite default within optional `min`/`max` and an optional positive
-  `step`; a `text` has a string default and optional Boolean `multiline`.
+- `session.player_fields` is an ordered list of unique field IDs, and every
+  field label is a non-empty string after trimming. A `boolean` default is a
+  Boolean; a `choice` has unique, non-empty stable-ID values in `choices` and a
+  default in that list; a `role` default names a declared role and has no
+  `choices`; a `number` has a finite default within optional `min`/`max` and an
+  optional positive `step`; a `text` has a string default and optional Boolean
+  `multiline`.
 - Everything after the closing `---` is complete Markdown rules. Raw HTML,
   JavaScript, remote widgets, embedded images, executable content, and secrets
   are unsupported.
@@ -121,17 +127,32 @@ the game unless you actually observed its review screen reporting valid input.
 
 ### 4. Tell the player how to use it
 
-After the single source fence, give these browser instructions:
+After the single source fence, describe both real browser workflows with their
+exact interface labels.
+
+To paste directly into Game Studio:
 
 1. Open Ludocairn and choose **Create a game**.
-2. Paste the complete source into **Source**, or save it as a filename ending
-   in `.ludocairn-game.md` and choose **Choose game file**.
-3. Review the validation result and game summary before saving. Invalid input
-   can be opened in Game Studio for repair.
-4. Choose **Save custom game**, then open its rules or start a session.
-5. Use **Export** for an exact portable Markdown backup. Use **Share** for a
-   fragment link when available; if the complete link would exceed 8,000
-   characters, export and send the `.ludocairn-game.md` file instead.
+2. Choose the **Source** tab and paste the complete source into **Complete game
+   source**.
+3. Optionally use **Preview**, then choose **Save game**. A validation error
+   keeps the draft in Source for repair; a successful save opens its rules.
+
+To import and review before saving:
+
+1. In the catalog's **Import a custom game** section, either select a saved
+   `.md` or `.ludocairn-game.md` file with **Game Markdown file**, or choose
+   **Paste game source** and paste into **Complete game source**.
+2. Choose **Review game** for pasted source. File selection proceeds to the
+   same review when its local read completes.
+3. Check the validation result and game summary, then choose **Save custom
+   game**. Invalid input can instead be opened with **Repair in Game Studio**.
+
+After saving, the custom game's catalog card exposes game-specific buttons
+such as **Export Example Game** and **Share Example Game**. Use Export for an
+exact portable Markdown backup or Share for a fragment link. If the complete
+link would exceed 8,000 characters, export and send the
+`.ludocairn-game.md` file instead.
 
 Custom games are stored only in that browser profile. Clearing site data,
 switching browser/device/origin, private-browsing cleanup, storage blocking,

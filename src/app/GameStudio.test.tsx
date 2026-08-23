@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StrictMode } from 'react'
 
 import { loadBundledGames } from '../games/catalog'
@@ -105,9 +105,139 @@ function renderStudio(initialSource: string) {
   )
 }
 
+function mockStudioViewport(initialWide: boolean) {
+  const listeners = new Set<(event: MediaQueryListEvent) => void>()
+  let wide = initialWide
+  const addEventListener = vi.fn(
+    (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener)
+    },
+  )
+  const removeEventListener = vi.fn(
+    (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener)
+    },
+  )
+  const mediaQueryList = {
+    get matches() {
+      return wide
+    },
+    media: '(min-width: 64rem)',
+    onchange: null,
+    addEventListener,
+    removeEventListener,
+    dispatchEvent: () => true,
+  } as unknown as MediaQueryList
+
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => mediaQueryList),
+  )
+
+  return {
+    removeEventListener,
+    setWide(nextWide: boolean) {
+      wide = nextWide
+      act(() => {
+        for (const listener of listeners) {
+          listener({
+            matches: nextWide,
+            media: mediaQueryList.media,
+          } as MediaQueryListEvent)
+        }
+      })
+    },
+  }
+}
+
 describe('Game Studio', () => {
   beforeEach(() => window.history.replaceState({}, '', '/'))
-  afterEach(() => window.history.replaceState({}, '', '/'))
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('renders a synchronized editor and complementary preview on wide screens', () => {
+    mockStudioViewport(true)
+    renderStudio(customSource)
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Guided',
+      'Source',
+    ])
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+    const preview = screen.getByRole('complementary', {
+      name: 'Live game preview',
+    })
+    expect(
+      within(preview).getByRole('heading', { level: 1, name: 'Custom Game' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+    const editor = screen.getByLabelText('Complete game source')
+    const revisedSource = customSource
+      .replace('name: Custom Game', 'name: Revised Game')
+      .replace('# Custom Game', '# Revised Game')
+    fireEvent.change(editor, { target: { value: revisedSource } })
+    expect(
+      within(preview).getByRole('heading', { level: 1, name: 'Revised Game' }),
+    ).toBeInTheDocument()
+
+    fireEvent.change(editor, { target: { value: '---\nid: Broken' } })
+    expect(
+      within(preview).getByText('Preview shows the last valid draft'),
+    ).toBeInTheDocument()
+    expect(
+      within(preview).getByRole('heading', { level: 1, name: 'Revised Game' }),
+    ).toBeInTheDocument()
+  })
+
+  it('preserves a usable editor across the Studio breakpoint and cleans up its listener', () => {
+    const viewport = mockStudioViewport(false)
+    const { unmount } = renderStudio(customSource)
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Guided',
+      'Source',
+      'Preview',
+    ])
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }))
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+
+    viewport.setWide(true)
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Guided',
+      'Source',
+    ])
+    expect(screen.getByLabelText('Game name')).toBeInTheDocument()
+    expect(
+      screen.getByRole('complementary', { name: 'Live game preview' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }))
+    viewport.setWide(false)
+    expect(screen.getByLabelText('Complete game source')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('complementary', { name: 'Live game preview' }),
+    ).not.toBeInTheDocument()
+
+    unmount()
+    expect(viewport.removeEventListener).toHaveBeenCalledWith(
+      'change',
+      expect.any(Function),
+    )
+  })
+
+  it('opens a new Studio from the catalog authoring entry point', () => {
+    renderApp()
+
+    fireEvent.click(screen.getByRole('link', { name: 'Create a game' }))
+
+    expect(window.location.search).toBe('?studio=new')
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Create custom game' }),
+    ).toBeInTheDocument()
+  })
 
   it('opens a valid template, retains invalid source, and shows the last valid preview', () => {
     openNewStudio()

@@ -390,7 +390,8 @@ the session continues to store the same strings. The current saved-session
 Game schema versions and saved-session storage versions are separate. A game
 definition configures new trackers; an exported or stored session contains the
 game ID/schema version plus concrete player state and is validated against the
-currently bundled game before it can be restored or imported.
+currently available bundled or custom game definition before it can be
+restored or imported.
 
 ## Authoring and verification
 

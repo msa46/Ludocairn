@@ -49,6 +49,16 @@ export function CatalogView({
           Read the rules, gather the table, and keep facilitator notes on this
           device.
         </p>
+        <a
+          className="primary-link catalog-create-game"
+          href="?studio=new"
+          onClick={(event) => {
+            event.preventDefault()
+            navigate('studio=new')
+          }}
+        >
+          Create a game
+        </a>
       </section>
 
       <section aria-labelledby="games-title">

@@ -26,6 +26,39 @@ interface GameStudioProps {
 }
 
 type StudioView = 'guided' | 'source' | 'preview'
+type StudioEditorView = Exclude<StudioView, 'preview'>
+
+const STUDIO_VIEWS: readonly StudioView[] = ['guided', 'source', 'preview']
+const STUDIO_EDITOR_VIEWS: readonly StudioEditorView[] = ['guided', 'source']
+const WIDE_STUDIO_QUERY = '(min-width: 64rem)'
+
+function studioIsWide(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(WIDE_STUDIO_QUERY).matches
+  )
+}
+
+function useWideStudioViewport(): boolean {
+  const [wide, setWide] = useState(studioIsWide)
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
+      return
+    }
+
+    const media = window.matchMedia(WIDE_STUDIO_QUERY)
+    const update = (event: MediaQueryListEvent) => setWide(event.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  return wide
+}
 
 function parseDraft(source: string, originalId?: string) {
   return parseGameSource(source, `custom/${originalId ?? 'unsaved'}/game.md`)
@@ -56,10 +89,14 @@ export function GameStudio({
   const [activeView, setActiveView] = useState<StudioView>(
     initial.ok ? 'guided' : 'source',
   )
+  const [activeEditor, setActiveEditor] = useState<StudioEditorView>(
+    initial.ok ? 'guided' : 'source',
+  )
   const [saveError, setSaveError] = useState<string>()
   const [pendingGuidedSource, setPendingGuidedSource] = useState<string>()
   const [normalizationAcknowledged, setNormalizationAcknowledged] =
     useState(false)
+  const wide = useWideStudioViewport()
   const dirty = savedSource === undefined || source !== savedSource
 
   useEffect(() => {
@@ -113,6 +150,7 @@ export function GameStudio({
       setDiagnostics(parsed.diagnostics)
       setSaveError(undefined)
       setActiveView('source')
+      setActiveEditor('source')
       return
     }
 
@@ -138,6 +176,83 @@ export function GameStudio({
   }
 
   const invalid = diagnostics.length > 0
+
+  function selectView(view: StudioView) {
+    setActiveView(view)
+    if (view !== 'preview') setActiveEditor(view)
+  }
+
+  function editorPanel(view: StudioEditorView) {
+    if (view === 'guided') {
+      return lastValid ? (
+        <section
+          aria-labelledby="studio-guided-tab"
+          className="guided-editor"
+          id="studio-guided-panel"
+          role="tabpanel"
+        >
+          <GuidedGameEditor
+            game={lastValid}
+            idLocked={originalId !== undefined}
+            onChange={changeGuidedSource}
+          />
+        </section>
+      ) : null
+    }
+
+    return (
+      <section
+        aria-labelledby="studio-source-tab"
+        className="source-editor"
+        id="studio-source-panel"
+        role="tabpanel"
+      >
+        <label>
+          Complete game source
+          <textarea
+            aria-describedby={invalid ? 'studio-source-diagnostics' : undefined}
+            rows={24}
+            spellCheck={false}
+            value={source}
+            onChange={(event) => changeSource(event.target.value)}
+          />
+        </label>
+        {invalid && (
+          <div id="studio-source-diagnostics" role="alert">
+            {diagnostics.map((diagnostic, index) => (
+              <p key={`${diagnostic.code}-${diagnostic.path ?? index}`}>
+                {diagnostic.message}
+                {diagnostic.path ? ` Path: ${diagnostic.path}.` : ''}
+              </p>
+            ))}
+          </div>
+        )}
+      </section>
+    )
+  }
+
+  function previewContents() {
+    return (
+      <>
+        {invalid && lastValid && (
+          <p className="status-note">Preview shows the last valid draft</p>
+        )}
+        {lastValid ? (
+          <>
+            <RoleGuide game={lastValid} />
+            <article
+              className="rules-print prose"
+              dangerouslySetInnerHTML={{
+                __html: renderRules(lastValid.rulesMarkdown),
+              }}
+            />
+          </>
+        ) : (
+          <p>Preview is unavailable until the source validates.</p>
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="game-studio page-stack">
@@ -180,18 +295,18 @@ export function GameStudio({
         className="game-studio-tabs"
         role="tablist"
       >
-        {(['guided', 'source', 'preview'] as const).map((view) => {
+        {(wide ? STUDIO_EDITOR_VIEWS : STUDIO_VIEWS).map((view) => {
           const label = view[0].toUpperCase() + view.slice(1)
           return (
             <button
               aria-controls={`studio-${view}-panel`}
-              aria-selected={activeView === view}
+              aria-selected={wide ? activeEditor === view : activeView === view}
               disabled={view === 'guided' && invalid}
               id={`studio-${view}-tab`}
               key={view}
               role="tab"
               type="button"
-              onClick={() => setActiveView(view)}
+              onClick={() => selectView(view)}
             >
               {label}
             </button>
@@ -200,77 +315,25 @@ export function GameStudio({
       </div>
 
       <div className="game-studio-workbench">
-        {activeView === 'guided' && lastValid && (
-          <section
-            aria-labelledby="studio-guided-tab"
-            className="guided-editor"
-            id="studio-guided-panel"
-            role="tabpanel"
-          >
-            <GuidedGameEditor
-              game={lastValid}
-              idLocked={originalId !== undefined}
-              onChange={changeGuidedSource}
-            />
-          </section>
-        )}
-
-        {activeView === 'source' && (
-          <section
-            aria-labelledby="studio-source-tab"
-            className="source-editor"
-            id="studio-source-panel"
-            role="tabpanel"
-          >
-            <label>
-              Complete game source
-              <textarea
-                aria-describedby={
-                  invalid ? 'studio-source-diagnostics' : undefined
-                }
-                rows={24}
-                spellCheck={false}
-                value={source}
-                onChange={(event) => changeSource(event.target.value)}
-              />
-            </label>
-            {invalid && (
-              <div id="studio-source-diagnostics" role="alert">
-                {diagnostics.map((diagnostic, index) => (
-                  <p key={`${diagnostic.code}-${diagnostic.path ?? index}`}>
-                    {diagnostic.message}
-                    {diagnostic.path ? ` Path: ${diagnostic.path}.` : ''}
-                  </p>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {activeView === 'preview' && (
+        {wide ? (
+          <>
+            {editorPanel(activeEditor)}
+            <aside aria-label="Live game preview" className="studio-preview">
+              <p className="eyebrow studio-preview-label">Live preview</p>
+              {previewContents()}
+            </aside>
+          </>
+        ) : activeView === 'preview' ? (
           <section
             aria-labelledby="studio-preview-tab"
             className="studio-preview"
             id="studio-preview-panel"
             role="tabpanel"
           >
-            {invalid && lastValid && (
-              <p className="status-note">Preview shows the last valid draft</p>
-            )}
-            {lastValid ? (
-              <>
-                <RoleGuide game={lastValid} />
-                <article
-                  className="rules-print prose"
-                  dangerouslySetInnerHTML={{
-                    __html: renderRules(lastValid.rulesMarkdown),
-                  }}
-                />
-              </>
-            ) : (
-              <p>Preview is unavailable until the source validates.</p>
-            )}
+            {previewContents()}
           </section>
+        ) : (
+          editorPanel(activeView)
         )}
       </div>
 
