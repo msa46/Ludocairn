@@ -25,6 +25,7 @@ import type { GameRepository } from '../storage/game-repository'
 import type { SessionRepository } from '../storage/repository'
 import { CatalogView } from './components/CatalogView'
 import { GameStudio } from './components/GameStudio'
+import { GameRecoveryCard } from './components/GameRecoveryCard'
 import { ImportGame } from './components/ImportGame'
 import { ImportSession } from './components/ImportSession'
 import { PlayerAssignmentView } from './components/PlayerAssignmentView'
@@ -359,23 +360,21 @@ export function App({
                 </article>
               )}
               {gameRecovery.map((record) => (
-                <article
-                  className="recovery-card"
+                <GameRecoveryCard
                   key={record.id || 'storage-error'}
-                >
-                  <h3>{record.id || 'Browser storage'}</h3>
-                  <p>
-                    {record.ok
-                      ? `Custom game ID conflicts with bundled game "${record.id}".`
-                      : record.diagnostic.message}
-                  </p>
-                </article>
+                  record={record}
+                  onRemove={(id) => storedGames.remove(id)}
+                  onRemoved={refreshGames}
+                />
               ))}
             </div>
           )
         }
+        customGameRecords={customRecords}
         records={sessionRecords}
         navigate={navigate}
+        removeGame={(id) => storedGames.remove(id)}
+        refreshGames={refreshGames}
         removeRecord={(id) => {
           sessionRepository.remove(id)
           setRevision((value) => value + 1)
@@ -385,6 +384,7 @@ export function App({
             ids={ids}
             repository={sessionRepository}
             resolveGame={resolveGame}
+            isCustomGame={(id) => customIds.has(id)}
             onImported={(id) => navigate('session=' + encodeURIComponent(id))}
           />
         }
@@ -485,6 +485,7 @@ export function App({
           <TrackerView
             game={sessionGame}
             session={session}
+            isCustomGame={customIds.has(sessionGame.id)}
             saveStatus={saveStatus}
             error={error ?? actionError}
             navigateHome={() => navigate('')}

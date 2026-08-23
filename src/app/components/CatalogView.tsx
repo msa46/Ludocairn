@@ -1,15 +1,23 @@
 import type { ReactNode } from 'react'
 
 import type { GameDefinition } from '../../games/model'
+import type {
+  GameRepositoryRecord,
+  GameSaveResult,
+} from '../../storage/game-repository'
 import type { RepositoryRecord } from '../../storage/repository'
+import { CustomGameActions } from './CustomGameActions'
 import { RecoveryCard } from './RecoveryCard'
 
 interface CatalogViewProps {
   readonly games: readonly GameDefinition[]
   readonly customGameIds: ReadonlySet<string>
+  readonly customGameRecords: readonly GameRepositoryRecord[]
   readonly gameRecovery: ReactNode
   readonly records: readonly RepositoryRecord[]
   readonly navigate: (search: string) => void
+  readonly removeGame: (id: string) => GameSaveResult
+  readonly refreshGames: () => void
   readonly removeRecord: (id: string) => void
   readonly importSession: ReactNode
   readonly importGame: ReactNode
@@ -19,9 +27,12 @@ interface CatalogViewProps {
 export function CatalogView({
   games,
   customGameIds,
+  customGameRecords,
   gameRecovery,
   records,
   navigate,
+  removeGame,
+  refreshGames,
   removeRecord,
   importSession,
   importGame,
@@ -48,37 +59,57 @@ export function CatalogView({
           </span>
         </div>
         <div className="catalog-grid">
-          {games.map((game, index) => (
-            <article className="game-card" key={game.id}>
-              <p className="card-index">{String(index + 1).padStart(2, '0')}</p>
-              {customGameIds.has(game.id) && <p>Custom game</p>}
-              <h3>{game.name}</h3>
-              <p>{game.summary}</p>
-              <dl className="game-facts">
-                <div>
-                  <dt>Players</dt>
-                  <dd>
-                    {game.players.min}
-                    {game.players.max ? '–' + game.players.max : '+'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Deck</dt>
-                  <dd>{game.deck === 'standard-52' ? '52-card' : 'Tarot'}</dd>
-                </div>
-              </dl>
-              <a
-                className="primary-link"
-                href={'?game=' + encodeURIComponent(game.id)}
-                onClick={(event) => {
-                  event.preventDefault()
-                  navigate('game=' + encodeURIComponent(game.id))
-                }}
-              >
-                Open {game.name}
-              </a>
-            </article>
-          ))}
+          {games.map((game, index) => {
+            const customRecord = customGameRecords.find(
+              (record) => record.ok && record.id === game.id,
+            )
+            return (
+              <article className="game-card" key={game.id}>
+                <p className="card-index">
+                  {String(index + 1).padStart(2, '0')}
+                </p>
+                {customGameIds.has(game.id) && <p>Custom game</p>}
+                <h3>{game.name}</h3>
+                <p>{game.summary}</p>
+                <dl className="game-facts">
+                  <div>
+                    <dt>Players</dt>
+                    <dd>
+                      {game.players.min}
+                      {game.players.max ? '–' + game.players.max : '+'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Deck</dt>
+                    <dd>{game.deck === 'standard-52' ? '52-card' : 'Tarot'}</dd>
+                  </div>
+                </dl>
+                <a
+                  className="primary-link"
+                  href={'?game=' + encodeURIComponent(game.id)}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    navigate('game=' + encodeURIComponent(game.id))
+                  }}
+                >
+                  Open {game.name}
+                </a>
+                {customRecord?.ok && (
+                  <CustomGameActions
+                    record={customRecord}
+                    sessionRecords={records}
+                    onEdit={() =>
+                      navigate(
+                        'studio=edit&game=' + encodeURIComponent(game.id),
+                      )
+                    }
+                    onRemove={removeGame}
+                    onRemoved={refreshGames}
+                  />
+                )}
+              </article>
+            )
+          })}
         </div>
       </section>
 

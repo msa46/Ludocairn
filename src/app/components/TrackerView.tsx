@@ -11,6 +11,7 @@ import { RoleGuide } from './RoleGuide'
 interface TrackerViewProps {
   readonly game: GameDefinition
   readonly session: Session
+  readonly isCustomGame: boolean
   readonly saveStatus: string
   readonly error?: string
   readonly navigateHome: () => void
@@ -33,6 +34,7 @@ interface TrackerViewProps {
 export function TrackerView({
   game,
   session,
+  isCustomGame,
   saveStatus,
   error,
   navigateHome,
@@ -179,6 +181,9 @@ export function TrackerView({
             Exports include facilitator notes
             {hasAssignments ? ' and private assignments' : ''}. Handle the
             downloaded file as private table material.
+            {isCustomGame && (
+              <> To use it in another browser, export the custom game too.</>
+            )}
           </p>
         </div>
         <div className="destructive-controls">

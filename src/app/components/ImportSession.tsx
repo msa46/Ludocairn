@@ -13,6 +13,7 @@ interface ImportSessionProps {
   readonly resolveGame: GameResolver
   readonly repository: SessionRepository
   readonly ids: IdProvider
+  readonly isCustomGame: (id: string) => boolean
   readonly onImported: (id: string) => void
 }
 
@@ -31,6 +32,7 @@ export function ImportSession({
   resolveGame,
   repository,
   ids,
+  isCustomGame,
   onImported,
 }: ImportSessionProps) {
   const input = useRef<HTMLInputElement>(null)
@@ -109,11 +111,29 @@ export function ImportSession({
         />
       </label>
 
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert">
+          {error}
+          {result?.ok === false &&
+            result.diagnostic.code === 'import.missing-game' && (
+              <>
+                {' '}
+                If this is a custom game, import the custom game first, then
+                retry the session.
+              </>
+            )}
+        </p>
+      )}
 
       {result?.ok && (
         <section aria-labelledby="import-preview-title">
           <h3 id="import-preview-title">Review import</h3>
+          {isCustomGame(result.session.gameId) && (
+            <p>
+              This session uses a custom game. Export the custom game too when
+              moving the session to another browser.
+            </p>
+          )}
           <dl className="import-preview">
             <div>
               <dt>Session</dt>
