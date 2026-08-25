@@ -160,7 +160,7 @@ describe('ImportGame', () => {
     expect(gameRepository.list()).toHaveLength(0)
   })
 
-  it('reviews a shared game and clears the fragment only after a successful save', async () => {
+  it('opens a shared game on its rulebook without saving it', async () => {
     const shared = createGameShareUrl(customSource, window.location.href)
     expect(shared.ok).toBe(true)
     if (!shared.ok) return
@@ -173,17 +173,41 @@ describe('ImportGame', () => {
     renderApp()
 
     expect(
-      await screen.findByRole('region', { name: 'Review shared game' }),
+      await screen.findByRole('heading', { level: 1, name: 'Custom Game' }),
     ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Save custom game' }))
+    expect(screen.getByText('Shared rulebook')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Play game' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Print rules' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Review shared game')).not.toBeInTheDocument()
+    expect(window.location.hash).toContain('#share-game=v1.')
+  })
+
+  it('adds a shared game when play is chosen and opens session setup', async () => {
+    const games = new MemoryGameRepository()
+    const shared = createGameShareUrl(customSource, window.location.href)
+    expect(shared.ok).toBe(true)
+    if (!shared.ok) return
+    const url = new URL(shared.url)
+    window.history.replaceState({}, '', url.pathname + url.hash)
+
+    renderApp(games)
+    fireEvent.click(await screen.findByRole('button', { name: 'Play game' }))
 
     expect(window.location.hash).toBe('')
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Custom Game' }),
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Set up the session',
+      }),
     ).toBeInTheDocument()
+    expect(games.load('custom-game')).toMatchObject({ ok: true })
   })
 
-  it('reviews a shared game before a game query route', async () => {
+  it('shows a shared rulebook before a game query route', async () => {
     const shared = createGameShareUrl(
       customSource,
       window.location.origin + '/?game=custom-game',
@@ -196,11 +220,12 @@ describe('ImportGame', () => {
     renderApp()
 
     expect(
-      await screen.findByRole('region', { name: 'Review shared game' }),
+      await screen.findByRole('heading', { level: 1, name: 'Custom Game' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Shared rulebook')).toBeInTheDocument()
   })
 
-  it('reviews a shared game before a session query route after hashchange', async () => {
+  it('shows a shared rulebook before a session query route after hashchange', async () => {
     window.history.replaceState({}, '', '/?session=missing-session')
     renderApp()
     expect(
@@ -215,11 +240,12 @@ describe('ImportGame', () => {
     window.dispatchEvent(new Event('hashchange'))
 
     expect(
-      await screen.findByRole('region', { name: 'Review shared game' }),
+      await screen.findByRole('heading', { level: 1, name: 'Custom Game' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Shared rulebook')).toBeInTheDocument()
   })
 
-  it('retains a shared fragment when browser storage rejects the save', async () => {
+  it('keeps shared rules readable when adding the game fails', async () => {
     const shared = createGameShareUrl(customSource, window.location.href)
     expect(shared.ok).toBe(true)
     if (!shared.ok) return
@@ -228,13 +254,15 @@ describe('ImportGame', () => {
 
     renderApp(new MemoryGameRepository({ failWrites: true }))
 
-    await screen.findByRole('region', { name: 'Review shared game' })
-    fireEvent.click(screen.getByRole('button', { name: 'Save custom game' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Play game' }))
 
     expect(window.location.hash).toBe(hash)
     expect(
       screen.getByText('Injected memory storage failure.'),
     ).toHaveTextContent('Injected memory storage failure.')
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Custom Game' }),
+    ).toBeInTheDocument()
   })
 
   it('keeps invalid pasted source out of storage and routes it to repair', () => {

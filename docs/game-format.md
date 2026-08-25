@@ -397,9 +397,11 @@ restored or imported.
 
 For a browser custom game, choose **Create a game**, paste source, or import a
 Markdown file. Review validation before saving, then export the canonical
-source as a backup or create a share link. Source larger than 1 MiB in UTF-8 is
-rejected. No browser save or review constitutes ownership, rights, moderation,
-approval, or publication by Ludocairn.
+source as a backup or create a rulebook share link. Valid links open directly
+on the rules; the recipient can read or print without saving, while choosing
+to play saves the game through the normal compatibility checks. Source larger
+than 1 MiB in UTF-8 is rejected. No browser save or review constitutes
+ownership, rights, moderation, approval, or publication by Ludocairn.
 
 For a bundled repository contribution:
 

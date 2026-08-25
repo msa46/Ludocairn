@@ -194,8 +194,9 @@ in the [SDD progress ledger](../.superpowers/sdd/2026-08-23-browser-authored-cus
   `ludocairn.game.v1.*` namespace, merge valid records into the catalog, and
   preserve corrupt raw source for recovery.
 - [x] Paste or import Markdown for review before saving; export the exact
-  `.ludocairn-game.md` source; and review bounded `#share-game=v1.*` fragments
-  with an 8,000-character link limit and file-export fallback.
+  `.ludocairn-game.md` source; and open bounded `#share-game=v1.*` fragments on
+  a rules-first read/print/play screen with an 8,000-character link limit and
+  file-export fallback.
 - [x] Resolve custom games for session creation, restore, import, and export;
   block incompatible edits and deletion while saved sessions depend on them.
 - [x] Enforce the 1 MiB UTF-8 source limit, keep all parsing and persistence in

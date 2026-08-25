@@ -158,7 +158,9 @@ describe('custom game catalog management', () => {
     expect(anchor.href).toBe('blob:custom-game-export')
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:custom-game-export')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Share Custom Game' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Share rulebook for Custom Game' }),
+    )
     const shareLink = screen.getByLabelText('Share link')
     expect((shareLink as HTMLInputElement).value).toContain('#share-game=v1.')
     fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
@@ -196,7 +198,9 @@ describe('custom game catalog management', () => {
       screen.queryByRole('button', { name: 'Export Custom Game' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Share Custom Game' }),
+      screen.queryByRole('button', {
+        name: 'Share rulebook for Custom Game',
+      }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Delete Custom Game' }),
@@ -214,7 +218,9 @@ describe('custom game catalog management', () => {
     })
     renderCatalog()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Share Custom Game' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Share rulebook for Custom Game' }),
+    )
     const shareLink = screen.getByLabelText('Share link')
     const url = (shareLink as HTMLInputElement).value
     fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
@@ -233,7 +239,9 @@ describe('custom game catalog management', () => {
     )
     renderCatalog(source)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Share Custom Game' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Share rulebook for Custom Game' }),
+    )
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'This game is too large for a share link. Export its Markdown file instead.',

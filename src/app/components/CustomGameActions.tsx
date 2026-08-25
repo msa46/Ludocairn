@@ -119,7 +119,7 @@ export function CustomGameActions({
           Export {record.game.name}
         </button>
         <button type="button" onClick={createShareLink}>
-          Share {record.game.name}
+          Share rulebook for {record.game.name}
         </button>
         <button type="button" onClick={() => setConfirmingDelete(true)}>
           Delete {record.game.name}

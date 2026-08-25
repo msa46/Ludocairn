@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 
 import type { RandomSource } from '../assignments/model'
+import { parseGameShareHash } from '../files/game-files'
 import { loadBundledGames } from '../games/catalog'
+import { reviewGameSave } from '../games/manage'
 import { createGameTemplate } from '../games/source'
 import type { GameDefinition } from '../games/model'
 import { PwaStatus } from '../pwa/PwaStatus'
@@ -133,6 +135,10 @@ export function App({
   const shareHash = sharedHash.startsWith('#share-game=')
     ? sharedHash
     : undefined
+  const sharedGame = useMemo(
+    () => (shareHash ? parseGameShareHash(shareHash) : undefined),
+    [shareHash],
+  )
 
   useEffect(() => {
     function onPopState() {
@@ -338,6 +344,41 @@ export function App({
       : base
   }
 
+  function playSharedGame(
+    shared: Extract<NonNullable<typeof sharedGame>, { ok: true }>,
+  ) {
+    setActionError(undefined)
+    const matchingRecord = customRecords.find(
+      (record) => record.id === shared.game.id,
+    )
+    if (matchingRecord && !matchingRecord.ok) {
+      setActionError(
+        'A damaged stored game already uses this ID. Use the catalog recovery tools before adding this shared game.',
+      )
+      return
+    }
+    const reviewed = reviewGameSave(shared.source, {
+      originalId: matchingRecord?.id,
+      bundledIds: new Set(games.map((candidate) => candidate.id)),
+      customRecords,
+      sessionRecords: sessionRepository.list(),
+    })
+    if (!reviewed.ok) {
+      setActionError(reviewed.diagnostic.message)
+      return
+    }
+    const saved = storedGames.save(reviewed.source)
+    if (!saved.ok) {
+      setActionError(saved.diagnostic.message)
+      return
+    }
+
+    clearSharedHash()
+    refreshGames()
+    navigate('game=' + encodeURIComponent(reviewed.game.id))
+    setSetupGameId(reviewed.game.id)
+  }
+
   function importGame(sessionRecords: ReturnType<SessionRepository['list']>) {
     return (
       <ImportGame
@@ -416,7 +457,18 @@ export function App({
 
   let content
   if (shareHash) {
-    content = (
+    content = sharedGame?.ok ? (
+      <RulesView
+        error={actionError}
+        game={sharedGame.game}
+        navigateHome={() => {
+          clearSharedHash()
+          navigate('')
+        }}
+        onStart={() => playSharedGame(sharedGame)}
+        shared
+      />
+    ) : (
       <div className="page-stack">{importGame(sessionRepository.list())}</div>
     )
   } else if (studioMode) {

@@ -68,8 +68,10 @@ claim, approve, moderate, or verify custom content.
 
 Paste, file import, stored records, and decoded share links all reject source
 larger than 1,048,576 UTF-8 bytes (1 MiB). Share links compress the exact
-source into a `#share-game=v1.…` URL fragment and open the same review screen;
-the fragment is not sent in the HTTP request to the static host. Ludocairn
+source into a `#share-game=v1.…` URL fragment and open directly on the shared
+rulebook. Recipients can read or print without saving; choosing **Play game**
+adds or safely updates the game in their local library before session setup.
+The fragment is not sent in the HTTP request to the static host. Ludocairn
 offers a share link only when the complete URL is at most 8,000 characters. If
 it is longer, export the game file and share that instead. A fragment can still
 appear in browser history, screenshots, copied URLs, extensions, and code

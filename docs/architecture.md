@@ -148,7 +148,9 @@ the explicit custom-game share decoder rather than a hash router.
 2. The game loader parses and validates them, then merges valid custom records
    from `ludocairn.game.v1.*` into one runtime catalog.
 3. Paste, local file import, Studio edits, and `#share-game=v1.*` fragments all
-   cross the same bounded parser and review boundary before a custom save.
+   cross the same bounded parser. Paste and file imports require review before
+   saving; valid share fragments render the rulebook first and save only when
+   the recipient chooses to play.
 4. A user selects a game and reads its shared role guide, when defined,
    alongside the rendered Markdown rules.
 5. Session creation applies defaults and, for an assignment-enabled game,
@@ -264,11 +266,12 @@ GitHub Pages artifact; end-to-end tests are not the primary domain test layer.
 Ludocairn does not enable raw HTML in Markdown, evaluate game-authored code,
 or trust deserialized data. Custom game source and session data remain in this
 browser's local storage unless a user explicitly exports a file or creates and
-copies a game share link. Exported JSON contains
+copies a rulebook share link. Exported JSON contains
 player names, field values, facilitator notes, and any private assignments and
 must be treated as private table material. Import reads locally, keeps
 assignment values out of its preview, and does not transmit the file.
 Game share fragments avoid HTTP transmission to the static host, but can still
 appear in browser history, screenshots, copied URLs, extensions, and
-client-side code. They contain compressed source, not encryption. Ludocairn
-has no backend, account, analytics, moderation, ownership, or approval service.
+client-side code. They contain the complete compressed game source needed to
+run the game, not only the visible rules and not encryption. Ludocairn has no
+backend, account, analytics, moderation, ownership, or approval service.

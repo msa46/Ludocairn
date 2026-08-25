@@ -915,7 +915,7 @@ describe('Game Studio', () => {
     expect(window.location.hash).toBe('')
   })
 
-  it('opens shared review only after discarding a dirty Studio hash navigation', () => {
+  it('opens the shared rulebook only after discarding a dirty Studio hash navigation', () => {
     dirtyNewStudio()
     const draft = (
       screen.getByLabelText('Complete game source') as HTMLTextAreaElement
@@ -935,7 +935,7 @@ describe('Game Studio', () => {
     expect(window.location.search).toBe('?studio=new')
     expect(window.location.hash).toBe(hash)
     expect(
-      screen.getByRole('region', { name: 'Review shared game' }),
+      screen.getByRole('region', { name: 'Shared rulebook' }),
     ).toBeInTheDocument()
   })
 
